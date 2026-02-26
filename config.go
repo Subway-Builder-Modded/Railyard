@@ -7,10 +7,11 @@ import (
 	"railyard/internal/files"
 )
 
-// AppConfig is persisted at AppConfigPath() and is used for global configuration
+// AppConfig is persisted at ConfigPath() and is used for global configuration
 type AppConfig struct {
 	ModFolderPath  string `json:"modFolderPath,omitempty"`
 	ExecutablePath string `json:"executablePath,omitempty"`
+	// Other fields to be appended here
 }
 
 // ConfigPathValidation is the result of validating the appConfig paths
@@ -61,7 +62,7 @@ func NewConfig() *Config {
 
 func readAppConfig() (AppConfig, error) {
 	return files.ReadJSON[AppConfig](
-		AppConfigPath(),
+		ConfigPath(),
 		"app config",
 		files.JSONReadOptions{
 			AllowMissing: true,
@@ -71,7 +72,7 @@ func readAppConfig() (AppConfig, error) {
 }
 
 func writeAppConfig(cfg AppConfig) error {
-	return files.WriteJSON(AppConfigPath(), "app config", cfg)
+	return files.WriteJSON(ConfigPath(), "app config", cfg)
 }
 
 // ResolveConfig returns the current config from disk, or empty defaults when missing.
@@ -115,3 +116,5 @@ func (s *Config) UpdateModFolder(modFolderPath string) (AppConfig, error) {
 		cfg.ModFolderPath = strings.TrimSpace(modFolderPath)
 	})
 }
+
+// TODO: Add method for clearing config

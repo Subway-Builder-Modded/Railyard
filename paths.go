@@ -40,7 +40,7 @@ func RegistryRepoPath() string {
 	return filepath.Join(AppDataRoot(), RegistryDirName)
 }
 
-// AppConfigPath returns the default filesystem path for persisted app config.
-func AppConfigPath() string {
+// ConfigPath returns the default filesystem path for persisted app config.
+func ConfigPath() string {
 	return filepath.Join(AppDataRoot(), ConfigFileName)
 }
