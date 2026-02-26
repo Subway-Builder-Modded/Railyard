@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"strings"
+	"sync"
 
 	"railyard/internal/files"
 )
@@ -11,10 +12,12 @@ import (
 type AppConfig struct {
 	ModFolderPath  string `json:"modFolderPath,omitempty"`
 	ExecutablePath string `json:"executablePath,omitempty"`
-	// Other fields to be appended here
+
+	// Other fields to be appended here	
+	// AppVersion string `json:"appVersion,omitempty"`
 }
 
-// ConfigPathValidation is the result of validating the appConfig paths
+// ConfigPathValidation is the result of validating AppConfig paths
 type ConfigPathValidation struct {
 	IsConfigured        bool `json:"isConfigured"`
 	ModFolderPathValid  bool `json:"modFolderPathValid"`
@@ -27,7 +30,7 @@ type ResolveConfigResult struct {
 	Validation ConfigPathValidation `json:"validation"`
 }
 
-// AreConfigPathsConfigured checks if both required paths have been set in the AppConfig
+// AreConfigPathsConfigured checks if both required paths have been set in AppConfig
 func (c AppConfig) areConfigPathsConfigured() bool {
 	return strings.TrimSpace(c.ModFolderPath) != "" && strings.TrimSpace(c.ExecutablePath) != ""
 }
@@ -54,7 +57,10 @@ func (v ConfigPathValidation) IsValid() bool {
 	return v.IsConfigured && v.ModFolderPathValid && v.ExecutablePathValid
 }
 
-type Config struct{}
+type Config struct {
+	// Mutex should be locked for all read/write operations
+	mu sync.Mutex
+}
 
 func NewConfig() *Config {
 	return &Config{}
@@ -77,6 +83,8 @@ func writeAppConfig(cfg AppConfig) error {
 
 // ResolveConfig returns the current config from disk, or empty defaults when missing.
 func (s *Config) ResolveConfig() (ResolveConfigResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	cfg, err := readAppConfig()
 	if err != nil {
 		return ResolveConfigResult{}, err
@@ -90,6 +98,8 @@ func (s *Config) ResolveConfig() (ResolveConfigResult, error) {
 }
 
 func (s *Config) updateConfig(mutator func(*AppConfig)) (AppConfig, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	cfg, err := readAppConfig()
 	if err != nil {
 		return AppConfig{}, err
@@ -117,4 +127,17 @@ func (s *Config) UpdateModFolder(modFolderPath string) (AppConfig, error) {
 	})
 }
 
-// TODO: Add method for clearing config
+// SetConfig replaces the persisted app config with the provided object.
+func (s *Config) SetConfig(next AppConfig) (AppConfig, error) {
+	return s.updateConfig(func(cfg *AppConfig) {
+		*cfg = AppConfig{
+			ModFolderPath:  strings.TrimSpace(next.ModFolderPath),
+			ExecutablePath: strings.TrimSpace(next.ExecutablePath),
+		}
+	})
+}
+
+// ClearConfig clears all config fields (by replacing them with zero values).
+func (s *Config) ClearConfig() (AppConfig, error) {
+	return s.SetConfig(AppConfig{})
+}

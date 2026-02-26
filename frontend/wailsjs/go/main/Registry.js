@@ -6,6 +6,10 @@ export function GetGalleryImage(arg1, arg2, arg3) {
   return window['go']['main']['Registry']['GetGalleryImage'](arg1, arg2, arg3);
 }
 
+export function GetInstalledMapCodes() {
+  return window['go']['main']['Registry']['GetInstalledMapCodes']();
+}
+
 export function GetInstalledMaps() {
   return window['go']['main']['Registry']['GetInstalledMaps']();
 }

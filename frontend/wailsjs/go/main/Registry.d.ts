@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function GetGalleryImage(arg1:string,arg2:string,arg3:string):Promise<string>;
 
+export function GetInstalledMapCodes():Promise<Array<string>>;
+
 export function GetInstalledMaps():Promise<Array<string>>;
 
 export function GetInstalledMods():Promise<Array<string>>;
