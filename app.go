@@ -5,11 +5,14 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"path"
 	"slices"
 	"strings"
+	"time"
 )
 
 // App struct
@@ -20,6 +23,10 @@ type App struct {
 
 type MissingFilesError struct {
 	Files []string
+}
+
+func (e *MissingFilesError) Error() string {
+	return "Missing required files: " + strings.Join(e.Files, ", ")
 }
 
 type MapAlreadyExistsError struct {
@@ -37,25 +44,27 @@ type FileFoundStruct struct {
 }
 
 type ConfigData struct {
-	name             string
-	code             string
-	description      string
-	population       int
-	country          *string
-	thumbnailBbox    *[4]float64
-	creator          string
-	version          string
-	initialViewState struct {
-		latitude  float64
-		longitude float64
-		zoom      float64
-		pitch     *float64
-		bearing   float64
-	}
+	Name             string      `json:"name"`
+	Code             string      `json:"code"`
+	Description      string      `json:"description"`
+	Population       int         `json:"population"`
+	Country          *string     `json:"country"`
+	ThumbnailBbox    *[4]float64 `json:"thumbnail_bbox"`
+	Creator          string      `json:"creator"`
+	Version          string      `json:"version"`
+	InitialViewState struct {
+		Latitude  float64  `json:"latitude"`
+		Longitude float64  `json:"longitude"`
+		Zoom      float64  `json:"zoom"`
+		Pitch     *float64 `json:"pitch"`
+		Bearing   float64  `json:"bearing"`
+	} `json:"initial_view_state"`
 }
 
-func (e *MissingFilesError) Error() string {
-	return "Missing required files: " + strings.Join(e.Files, ", ")
+type InstallMapResponse struct {
+	Status  string      `json:"status"`
+	Message string      `json:"message,omitempty"`
+	Data    *ConfigData `json:"data,omitempty"`
 }
 
 // NewApp creates a new App application struct
@@ -76,10 +85,13 @@ func (a *App) startup(ctx context.Context) {
 	}
 }
 
-func (a *App) installMap(ctx context.Context, zipFilePath string, subwayBuilderDataPath string) error {
+func (a *App) InstallMap(zipFilePath string, subwayBuilderDataPath string) InstallMapResponse {
 	reader, err := zip.OpenReader(zipFilePath)
 	if err != nil {
-		return err
+		return InstallMapResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("Failed to open zip file: %v", err),
+		}
 	}
 	defer reader.Close()
 
@@ -131,90 +143,200 @@ func (a *App) installMap(ctx context.Context, zipFilePath string, subwayBuilderD
 		}
 	}
 	if len(missingRequiredFiles) > 0 {
-		return &MissingFilesError{Files: missingRequiredFiles}
+		return InstallMapResponse{
+			Status:  "error",
+			Message: "Missing required files: " + strings.Join(missingRequiredFiles, ", "),
+		}
 	}
 
 	configFile, err := filesFound["config"].fileObject.Open()
 	if err != nil {
-		return err
+		return InstallMapResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("Failed to open config file: %v", err),
+		}
 	}
 	defer configFile.Close()
-	fileBytes := make([]byte, filesFound["config"].fileObject.FileInfo().Size())
-	_, err = configFile.Read(fileBytes)
+
+	fileBytes, err := io.ReadAll(configFile)
 	if err != nil {
-		return err
+		return InstallMapResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("Failed to read config file: %v", err),
+		}
 	}
 
 	var configData ConfigData
 	err = json.Unmarshal(fileBytes, &configData)
-
 	if err != nil {
-		return err
+		return InstallMapResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("Failed to parse config file: %v", err),
+		}
 	}
 
 	installedMaps := a.Registry.GetInstalledMapCodes()
 	vanillaMaps := a.GetVanillaMapCodes()
 
-	if slices.Contains(installedMaps, configData.code) || slices.Contains(vanillaMaps, configData.code) {
-		return &MapAlreadyExistsError{MapCode: configData.code}
+	if slices.Contains(installedMaps, configData.Code) || slices.Contains(vanillaMaps, configData.Code) {
+		return InstallMapResponse{
+			Status:  "error",
+			Message: "Map with code '" + configData.Code + "' has already been installed or would overwrite a vanilla map.",
+		}
 	}
 
-	os.MkdirAll(path.Join(subwayBuilderDataPath, "cities", "data", configData.code), os.ModePerm)
+	os.MkdirAll(path.Join(subwayBuilderDataPath, "cities", "data", configData.Code), os.ModePerm)
 
+	// Channel to collect errors from all goroutines
+	errorChan := make(chan error, len(filesFound))
+	var activeGoroutines int
+
+	// Process each file (except config) in its own goroutine for maximum parallelization
 	for entry, fileInfo := range filesFound {
-		if fileInfo.found && entry != "config" && entry != "thumbnail" {
-			srcFile, err := fileInfo.fileObject.Open()
-			if err != nil {
-				return err
-			}
-			defer srcFile.Close()
+		if fileInfo.found && entry != "config" {
+			activeGoroutines++
+			go func(entry string, fileInfo FileFoundStruct) {
+				defer func() {
+					// Always send to channel to signal completion (nil for success)
+					if r := recover(); r != nil {
+						errorChan <- fmt.Errorf("Panic in %s processing: %v", entry, r)
+					}
+				}()
 
-			destFilePath := path.Join(subwayBuilderDataPath, "cities", "data", configData.code, path.Base(fileInfo.fileObject.Name)+".gz")
-			destFile, err := os.Create(destFilePath)
-			if err != nil {
-				return err
-			}
-			defer destFile.Close()
-			compressedWriter := gzip.NewWriter(destFile)
-			defer compressedWriter.Close()
-			fileContent := make([]byte, fileInfo.fileObject.FileInfo().Size())
-			_, err = srcFile.Read(fileContent)
-			compressedWriter.Write(fileContent)
-			if err != nil {
-				return err
-			}
-		}
-		if fileInfo.found && entry == "thumbnail" {
-			srcFile, err := fileInfo.fileObject.Open()
-			if err != nil {
-				return err
-			}
-			defer srcFile.Close()
-			srcFileContent := make([]byte, fileInfo.fileObject.FileInfo().Size())
-			cityMapsExists, err := os.Stat(path.Join(subwayBuilderDataPath, "public", "data", "city-maps"))
-			if os.IsNotExist(err) || !cityMapsExists.IsDir() {
-				err = os.MkdirAll(path.Join(subwayBuilderDataPath, "public", "data", "city-maps"), os.ModePerm)
+				log.Printf("[DEBUG] Starting %s goroutine...", entry)
+				srcFile, err := fileInfo.fileObject.Open()
 				if err != nil {
-					return err
+					log.Printf("[ERROR] Failed to open %s file: %v", entry, err)
+					errorChan <- fmt.Errorf("Failed to open file %s: %v", entry, err)
+					return
+				}
+				defer srcFile.Close()
+				log.Printf("[DEBUG] Successfully opened %s file", entry)
+
+				// Handle different file types
+				switch entry {
+				case "tiles":
+					userConfigDir, err := os.UserConfigDir()
+					if err != nil {
+						errorChan <- fmt.Errorf("Failed to get user config directory for tiles: %v", err)
+						return
+					}
+
+					tilesDir := path.Join(userConfigDir, "railyard", "tiles")
+					err = os.MkdirAll(tilesDir, os.ModePerm)
+					if err != nil {
+						errorChan <- fmt.Errorf("Failed to create tiles directory: %v", err)
+						return
+					}
+
+					destFilePath := path.Join(tilesDir, configData.Code+".pmtiles")
+					log.Printf("Installing %s for map %s at %s", entry, configData.Code, destFilePath)
+					destFile, err := os.Create(destFilePath)
+					if err != nil {
+						errorChan <- fmt.Errorf("Failed to create destination file for tiles: %v", err)
+						return
+					}
+					defer destFile.Close()
+
+					_, err = io.Copy(destFile, srcFile)
+					if err != nil {
+						errorChan <- fmt.Errorf("Failed to copy tiles file: %v", err)
+						return
+					}
+					log.Printf("Successfully installed %s for map %s", entry, configData.Code)
+
+				case "thumbnail":
+					cityMapsExists, err := os.Stat(path.Join(subwayBuilderDataPath, "public", "data", "city-maps"))
+					if os.IsNotExist(err) || !cityMapsExists.IsDir() {
+						err = os.MkdirAll(path.Join(subwayBuilderDataPath, "public", "data", "city-maps"), os.ModePerm)
+						if err != nil {
+							errorChan <- fmt.Errorf("Failed to create city-maps directory: %v", err)
+							return
+						}
+					}
+					destFilePath := path.Join(subwayBuilderDataPath, "public", "data", "city-maps", configData.Code+".svg")
+					log.Printf("Installing %s for map %s at %s", entry, configData.Code, destFilePath)
+					destFile, err := os.Create(destFilePath)
+					if err != nil {
+						errorChan <- fmt.Errorf("Failed to create destination file for thumbnail: %v", err)
+						return
+					}
+					defer destFile.Close()
+
+					_, err = io.Copy(destFile, srcFile)
+					if err != nil {
+						errorChan <- fmt.Errorf("Failed to copy thumbnail file: %v", err)
+						return
+					}
+					log.Printf("Successfully installed %s for map %s", entry, configData.Code)
+
+				default:
+					// Handle compressed files (demandData, roads, runways, buildings, oceanDepth)
+					destFilePath := path.Join(subwayBuilderDataPath, "cities", "data", configData.Code, path.Base(fileInfo.fileObject.Name)+".gz")
+					fileSize := fileInfo.fileObject.UncompressedSize64
+					log.Printf("Installing %s for map %s at %s (size: %.2f MB)", entry, configData.Code, destFilePath, float64(fileSize)/(1024*1024))
+
+					destFile, err := os.Create(destFilePath)
+					if err != nil {
+						errorChan <- fmt.Errorf("Failed to create destination file for %s: %v", entry, err)
+						return
+					}
+					defer destFile.Close()
+
+					// Use fastest compression level for better performance
+					compressedWriter, err := gzip.NewWriterLevel(destFile, gzip.BestSpeed)
+					if err != nil {
+						errorChan <- fmt.Errorf("Failed to create gzip writer for %s: %v", entry, err)
+						return
+					}
+					defer compressedWriter.Close()
+
+					log.Printf("[DEBUG] Starting compression for %s (%.2f MB)...", entry, float64(fileSize)/(1024*1024))
+					startTime := time.Now()
+
+					_, err = io.Copy(compressedWriter, srcFile)
+					if err != nil {
+						errorChan <- fmt.Errorf("Failed to copy and compress file %s: %v", entry, err)
+						return
+					}
+
+					duration := time.Since(startTime)
+					log.Printf("Successfully installed %s for map %s (compressed in %v)", entry, configData.Code, duration)
+				}
+
+				// Signal successful completion
+				errorChan <- nil
+			}(entry, fileInfo)
+		}
+	}
+
+	// Wait for all goroutines to complete
+	log.Printf("Waiting for %d file processing goroutines to complete...", activeGoroutines)
+	for i := 0; i < activeGoroutines; i++ {
+		select {
+		case err := <-errorChan:
+			if err != nil {
+				log.Printf("[ERROR] File processing failed: %v", err)
+				return InstallMapResponse{
+					Status:  "error",
+					Message: err.Error(),
 				}
 			}
-			destFilePath := path.Join(subwayBuilderDataPath, "public", "data", "city-maps", configData.code+".svg")
-			destFile, err := os.Create(destFilePath)
-			if err != nil {
-				return err
-			}
-			defer destFile.Close()
-			_, err = srcFile.Read(srcFileContent)
-			if err != nil {
-				return err
-			}
-			_, err = destFile.Write(srcFileContent)
-			if err != nil {
-				return err
+			log.Printf("[DEBUG] File processing goroutine %d/%d completed successfully", i+1, activeGoroutines)
+		case <-time.After(10 * time.Minute):
+			log.Printf("[ERROR] File processing timed out after 10 minutes")
+			return InstallMapResponse{
+				Status:  "error",
+				Message: "File processing timed out after 10 minutes",
 			}
 		}
 	}
-	return nil
+
+	log.Printf("[DEBUG] All file processing completed successfully")
+	return InstallMapResponse{
+		Status: "success",
+		Data:   &configData,
+	}
 }
 
 // GetVanillaMapCodes returns the city codes of maps included with the app.
