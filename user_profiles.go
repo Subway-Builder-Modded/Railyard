@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 
 	"railyard/internal/files"
@@ -12,6 +14,8 @@ type UserProfiles struct {
 	mu     sync.Mutex
 	loaded bool
 }
+
+var ErrProfilesNotLoaded = errors.New("profiles state not loaded")
 
 func NewUserProfiles() *UserProfiles {
 	return &UserProfiles{}
@@ -70,7 +74,24 @@ func (s *UserProfiles) LoadProfiles() error {
 }
 
 func (s *UserProfiles) GetActiveProfile() types.UserProfile {
+	profile, _ := s.ResolveActiveProfile()
+	return profile
+}
+
+// ResolveActiveProfile returns the active profile from loaded in-memory state.
+// Callers must ensure LoadProfiles has completed successfully first.
+func (s *UserProfiles) ResolveActiveProfile() (types.UserProfile, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.state.Profiles[s.state.ActiveProfileID]
+
+	if !s.loaded {
+		return types.UserProfile{}, ErrProfilesNotLoaded
+	}
+
+	profile, ok := s.state.Profiles[s.state.ActiveProfileID]
+	if !ok {
+		return types.UserProfile{}, fmt.Errorf("active profile %q missing from loaded state", s.state.ActiveProfileID)
+	}
+
+	return profile, nil
 }

@@ -72,17 +72,51 @@ func (a *App) startup(ctx context.Context) {
 	if _, err := a.Config.resolveConfig(); err != nil {
 		log.Printf("Warning: failed to resolve config on startup: %v", err)
 	}
+	activeProfile := resolveStartupProfile(a)
+	runStartupTasks(a, activeProfile)
+}
 
+func defaultStartupProfile() types.UserProfile {
+	initial := types.InitialProfilesState()
+	return initial.Profiles[initial.ActiveProfileID]
+}
+
+func resolveStartupProfile(a *App) types.UserProfile {
 	// Ensure user profiles are initialized on startup.
 	if err := a.Profiles.LoadProfiles(); err != nil {
-		// TODO: Surface this error to the user in the UI and allow them to "reset" their profile state and bootstrap to defaults
-		log.Printf("Warning: failed to resolve user profiles: %v", err)
+		// TODO: Surface this error to the user in the UI and allow them to "reset" their profile state and bootstrap to defaults.
+		log.Printf("Warning: failed to load user profiles, falling back to defaults for startup policy: %v", err)
 	}
 
-	// Initialize the registry (clone or update) on startup
-	if err := a.Registry.Initialize(); err != nil {
-		log.Printf("Warning: failed to initialize registry: %v", err)
+	activeProfile, err := a.Profiles.ResolveActiveProfile()
+	if err != nil {
+		log.Printf("Warning: failed to resolve active profile, falling back to defaults for startup policy: %v", err)
+		return defaultStartupProfile()
 	}
+	return activeProfile
+}
+
+func runStartupTasks(a *App, activeProfile types.UserProfile) {
+	if err := a.Registry.ensureLocalRepo(); err != nil {
+		log.Printf("Warning: failed to ensure local registry repository: %v", err)
+	}
+
+	if activeProfile.SystemPreferences.RefreshRegistryOnStartup {
+		if err := a.Registry.Refresh(); err != nil {
+			log.Printf("Warning: failed to refresh registry on startup: %v", err)
+		}
+	}
+
+	if activeProfile.SystemPreferences.AutoUpdateSubscriptions {
+		if err := a.syncSubscriptions(activeProfile); err != nil {
+			log.Printf("Warning: failed to sync subscriptions on startup: %v", err)
+		}
+	}
+}
+
+func (a *App) syncSubscriptions(profile types.UserProfile) error {
+	log.Printf("TODO: implement startup subscription sync for profile %q", profile.ID)
+	return nil
 }
 
 // shutdown is called when the app is shutting down
