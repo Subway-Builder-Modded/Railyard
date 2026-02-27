@@ -103,7 +103,7 @@ func defaultSubscriptions() Subscriptions {
 	}
 }
 
-func defaultProfile() UserProfile {
+func DefaultProfile() UserProfile {
 	return UserProfile{
 		ID:                DefaultProfileID,
 		UUID:              uuid.NewString(),
@@ -119,7 +119,7 @@ func InitialProfilesState() UserProfilesState {
 	return UserProfilesState{
 		ActiveProfileID: DefaultProfileID,
 		Profiles: map[string]UserProfile{
-			DefaultProfileID: defaultProfile(),
+			DefaultProfileID: DefaultProfile(),
 		},
 	}
 }

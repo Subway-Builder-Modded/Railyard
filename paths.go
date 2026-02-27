@@ -12,15 +12,12 @@ const (
 	RegistryDirName = "registry"
 	// ConfigFileName is the persisted app config file name.
 	ConfigFileName = "config.json"
-<<<<<<< HEAD
 	// InstalledModsFileName is the filename for storing installed mods info.
 	InstalledModsFileName = "installed_mods.json"
 	// InstalledMapsFileName is the filename for storing installed maps info.
 	InstalledMapsFileName = "installed_maps.json"
-=======
 	// UserProfilesFileName is the persisted user profiles file name.
 	UserProfilesFileName = "user_profiles.json"
->>>>>>> 1fa550c (merge)
 )
 
 // UserConfigRoot resolves the base user config directory with a home-directory fallback.

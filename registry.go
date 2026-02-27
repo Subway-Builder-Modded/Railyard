@@ -47,11 +47,21 @@ func NewRegistry() *Registry {
 	}
 }
 
-// Initialize clones the registry repo if it doesn't exist locally, or
-// fetches and hard-resets to origin/main if it does. This should be called
-// on app startup.
-func (r *Registry) Initialize() error {
-	return r.cloneOrUpdate()
+// Initialize ensures a valid local registry repo exists.
+// It does not force a remote refresh.
+func (r *Registry) initialize() error {
+	repo, err := git.PlainOpen(r.repoPath)
+	if err != nil {
+		// Directory doesn't exist or isn't a valid git repo -- (re)clone.
+		return r.forceClone()
+	}
+
+	// Existing repo is corrupt/unreadable; rebuild it.
+	if _, err := repo.Head(); err != nil {
+		return r.forceClone()
+	}
+
+	return nil
 }
 
 // Refresh forces a pull of the latest registry changes.

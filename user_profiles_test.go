@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"railyard/internal/types"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -21,8 +22,11 @@ func writeRawUserProfilesFile(t *testing.T, content string) {
 func TestLoadProfilesBootstrapsAndPersistsStateWhenMissing(t *testing.T) {
 	setEnv(t)
 
-	svc := NewUserProfiles()
-	require.NoError(t, svc.LoadProfiles())
+	svc := NewUserProfiles(NewMockLogger())
+	active, err := svc.LoadProfiles()
+	require.NoError(t, err)
+	require.Equal(t, types.DefaultProfileID, active.ID)
+	require.Equal(t, types.DefaultProfileName, active.Name)
 
 	persisted, err := readUserProfilesState()
 	require.NoError(t, err)
@@ -38,7 +42,7 @@ func TestLoadProfilesBootstrapsAndPersistsStateWhenMissing(t *testing.T) {
 func TestResolveActiveProfileFailsWhenNotLoaded(t *testing.T) {
 	setEnv(t)
 
-	svc := NewUserProfiles()
+	svc := NewUserProfiles(NewMockLogger())
 	_, err := svc.ResolveActiveProfile()
 	require.ErrorIs(t, err, ErrProfilesNotLoaded)
 }
@@ -54,8 +58,9 @@ func TestLoadProfilesReturnsErrorForInvalidState(t *testing.T) {
 	}
 	require.NoError(t, writeUserProfilesState(invalid))
 
-	svc := NewUserProfiles()
-	require.ErrorIs(t, svc.LoadProfiles(), types.ErrInvalidState)
+	svc := NewUserProfiles(NewMockLogger())
+	_, err := svc.LoadProfiles()
+	require.ErrorIs(t, err, types.ErrInvalidState)
 }
 
 func TestResolveActiveProfileReturnsLoadedActiveProfile(t *testing.T) {
@@ -67,13 +72,33 @@ func TestResolveActiveProfileReturnsLoadedActiveProfile(t *testing.T) {
 	state.Profiles[custom.ID] = custom
 	require.NoError(t, writeUserProfilesState(state))
 
-	svc := NewUserProfiles()
-	require.NoError(t, svc.LoadProfiles())
+	svc := NewUserProfiles(NewMockLogger())
+	loadedActive, err := svc.LoadProfiles()
+	require.NoError(t, err)
+	require.Equal(t, custom.ID, loadedActive.ID)
+	require.Equal(t, custom.Name, loadedActive.Name)
 
 	active, err := svc.ResolveActiveProfile()
 	require.NoError(t, err)
 	require.Equal(t, custom.ID, active.ID)
 	require.Equal(t, custom.Name, active.Name)
+}
+
+func TestQuarantineUserProfilesFileMovesSourceToBackup(t *testing.T) {
+	setEnv(t)
+	writeRawUserProfilesFile(t, "{}")
+
+	svc := NewUserProfiles(NewMockLogger())
+	success, backupPath := svc.quarantineUserProfiles()
+	require.True(t, success)
+	require.NotEmpty(t, backupPath)
+	require.True(t, strings.Contains(filepath.Base(backupPath), "user_profiles.invalid."))
+
+	_, err := os.Stat(backupPath)
+	require.NoError(t, err)
+
+	_, err = os.Stat(UserProfilesPath())
+	require.True(t, os.IsNotExist(err))
 }
 
 func newTestUserProfile(id string, name string) types.UserProfile {
