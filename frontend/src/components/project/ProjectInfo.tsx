@@ -2,9 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ExternalLink, MapPin, Users, Globe } from "lucide-react";
-import { main, types } from "../../../wailsjs/go/models";
-
-main
+import { types } from "../../../wailsjs/go/models";
 
 interface ProjectInfoProps {
   type: "mods" | "maps";
