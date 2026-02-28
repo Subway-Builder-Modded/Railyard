@@ -28,12 +28,12 @@ type ResolveConfigResult struct {
 	Validation ConfigPathValidation `json:"validation"`
 }
 
-type DialogResult string
+type SetConfigSource string
 
 const (
-	AutoDetected   DialogResult = "auto_detected"   // For when a path is automatically detected by the app
-	DialogSelected DialogResult = "dialog_selected" // For when a path is selected by the user through a dialog
-	Cancelled      DialogResult = "cancelled"       // For when user cancels the dialog
+	SourceAutoDetected   SetConfigSource = "auto_detected"   // For when a path is automatically detected by the app
+	SourceDialogSelected SetConfigSource = "dialog_selected" // For when a path is selected by the user through a dialog
+	SourceCancelled      SetConfigSource = "cancelled"       // For when user cancels the dialog
 )
 
 type SetConfigPathOptions struct {
@@ -42,7 +42,7 @@ type SetConfigPathOptions struct {
 
 type SetConfigPathResult struct {
 	ResolveConfigResult ResolveConfigResult `json:"resolveConfigResult"`
-	DialogResult        DialogResult        `json:"source"`
+	SetConfigSource     SetConfigSource     `json:"source"`
 	AutoDetectedPath    string              `json:"autoDetectedPath,omitempty"`
 }
 

@@ -209,7 +209,7 @@ func (s *Config) setConfigPathWithDialog(
 	if strings.TrimSpace(selectedPath) == "" {
 		return types.SetConfigPathResult{
 			ResolveConfigResult: s.GetConfig(),
-			DialogResult:        types.Cancelled,
+			SetConfigSource:     types.SourceCancelled,
 		}, nil
 	}
 
@@ -220,7 +220,7 @@ func (s *Config) setConfigPathWithDialog(
 
 	return types.SetConfigPathResult{
 		ResolveConfigResult: updated,
-		DialogResult:        types.DialogSelected,
+		SetConfigSource:     types.SourceDialogSelected,
 	}, nil
 }
 
@@ -246,7 +246,7 @@ func (s *Config) tryAutoDetectPath(
 
 	return types.SetConfigPathResult{
 		ResolveConfigResult: resolved,
-		DialogResult:        types.AutoDetected,
+		SetConfigSource:     types.SourceAutoDetected,
 		AutoDetectedPath:    detectedPath,
 	}, true
 }

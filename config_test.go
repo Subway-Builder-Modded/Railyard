@@ -75,7 +75,6 @@ func testCandidatePaths(t *testing.T) []string {
 		filePath,
 		dirPath,
 	}
-
 }
 
 func TestUpdateConfigWithPersist(t *testing.T) {
@@ -257,7 +256,7 @@ func TestOpenExecutableDialogAutoDetectSuccessDoesNotPersist(t *testing.T) {
 
 	result, err := h.cfg.OpenExecutableDialog(types.SetConfigPathOptions{AllowAutoDetect: true})
 	require.NoError(t, err)
-	require.Equal(t, types.AutoDetected, result.DialogResult)
+	require.Equal(t, types.SourceAutoDetected, result.SetConfigSource)
 	require.Equal(t, detectedPath, result.AutoDetectedPath)
 	require.Equal(t, detectedPath, result.ResolveConfigResult.Config.ExecutablePath)
 
@@ -281,7 +280,7 @@ func TestOpenMetroMakerDialogAutoDetectSuccessDoesNotPersist(t *testing.T) {
 
 	result, err := h.cfg.OpenMetroMakerDataFolderDialog(types.SetConfigPathOptions{AllowAutoDetect: true})
 	require.NoError(t, err)
-	require.Equal(t, types.AutoDetected, result.DialogResult)
+	require.Equal(t, types.SourceAutoDetected, result.SetConfigSource)
 	require.Equal(t, detectedPath, result.AutoDetectedPath)
 	require.Equal(t, detectedPath, result.ResolveConfigResult.Config.MetroMakerDataPath)
 
