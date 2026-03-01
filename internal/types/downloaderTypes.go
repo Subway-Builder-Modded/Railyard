@@ -1,7 +1,15 @@
 package types
 
+type Status string
+
+const (
+	ResponseSuccess Status = "success"
+	ResponseError   Status = "error"
+	ResponseWarn    Status = "warn"
+)
+
 type GenericResponse struct {
-	Status  string `json:"status"`
+	Status  Status `json:"status"`
 	Message string `json:"message"`
 }
 
