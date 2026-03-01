@@ -21,6 +21,21 @@ type ModManifest struct {
 	Update        UpdateConfig `json:"update"`
 }
 
+type InstalledModInfo struct {
+	ID      string `json:"id"`
+	Version string `json:"version"`
+}
+
+type InstalledMapInfo struct {
+	ID        string     `json:"id"`
+	Version   string     `json:"version"`
+	MapConfig ConfigData `json:"config"`
+}
+
+type InstalledModFile []InstalledModInfo
+
+type InstalledMapFile []InstalledMapInfo
+
 // MapManifest is the manifest schema for a map entry in the registry.
 type MapManifest struct {
 	SchemaVersion int          `json:"schema_version"`

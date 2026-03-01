@@ -30,6 +30,7 @@ func main() {
 			app.Registry,
 			app.Config,
 		},
+		OnShutdown: app.shutdown,
 	})
 
 	if err != nil {

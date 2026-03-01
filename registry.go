@@ -28,8 +28,12 @@ const registryRepoURL = "https://github.com/Subway-Builder-Modded/The-Railyard"
 
 // Registry manages the local clone of The Railyard registry repository.
 type Registry struct {
-	repoPath   string
-	httpClient *http.Client
+	repoPath      string
+	httpClient    *http.Client
+	mods          []types.ModManifest
+	maps          []types.MapManifest
+	installedMods []types.InstalledModInfo
+	installedMaps []types.InstalledMapInfo
 }
 
 // NewRegistry creates a new Registry instance with the platform-appropriate
@@ -55,6 +59,37 @@ func (r *Registry) Refresh() error {
 	return r.cloneOrUpdate()
 }
 
+func (r *Registry) WriteInstalledToDisk() error {
+	if err := files.WriteJSON[types.InstalledModFile](InstalledModsPath(), "installed mod file", r.installedMods); err != nil {
+		return fmt.Errorf("failed to write installed mods to disk: %w", err)
+	}
+	if err := files.WriteJSON[types.InstalledMapFile](InstalledMapsPath(), "installed map file", r.installedMaps); err != nil {
+		return fmt.Errorf("failed to write installed maps to disk: %w", err)
+	}
+	return nil
+}
+
+func (r *Registry) fetchFromDisk() error {
+	var err error
+	r.mods, err = r.getModsFromDisk()
+	if err != nil {
+		return err
+	}
+	r.maps, err = r.getMapsFromDisk()
+	if err != nil {
+		return err
+	}
+	r.installedMods, err = r.getInstalledModsFromDisk()
+	if err != nil {
+		return err
+	}
+	r.installedMaps, err = r.getInstalledMapsFromDisk()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // cloneOrUpdate handles clone-if-missing and fetch+reset-if-exists logic.
 func (r *Registry) cloneOrUpdate() error {
 	// Try to open the existing repo
@@ -69,6 +104,9 @@ func (r *Registry) cloneOrUpdate() error {
 	if err != nil {
 		// If fetch/reset fails the repo may be corrupted -- delete and re-clone
 		return r.forceClone()
+	}
+	if err := r.fetchFromDisk(); err != nil {
+		return fmt.Errorf("failed to load registry data from disk after update: %w", err)
 	}
 	return nil
 }
@@ -115,6 +153,21 @@ func (r *Registry) getCredentials() *githttp.BasicAuth {
 	return nil
 }
 
+func (r *Registry) AddInstalledMod(modID string, version string) {
+	r.installedMods = append(r.installedMods, types.InstalledModInfo{
+		ID:      modID,
+		Version: version,
+	})
+}
+
+func (r *Registry) AddInstalledMap(mapID string, version string, config types.ConfigData) {
+	r.installedMaps = append(r.installedMaps, types.InstalledMapInfo{
+		ID:        mapID,
+		Version:   version,
+		MapConfig: config,
+	})
+}
+
 // forceClone removes any existing directory and performs a fresh clone.
 func (r *Registry) forceClone() error {
 	// Remove existing directory if present
@@ -141,6 +194,9 @@ func (r *Registry) forceClone() error {
 	_, err := git.PlainClone(r.repoPath, false, cloneOpts)
 	if err != nil {
 		return fmt.Errorf("failed to clone registry repo: %w", err)
+	}
+	if err := r.fetchFromDisk(); err != nil {
+		return fmt.Errorf("failed to load registry data from disk after clone: %w", err)
 	}
 
 	return nil
@@ -189,7 +245,7 @@ func (r *Registry) fetchAndReset(repo *git.Repository) error {
 }
 
 // GetMods reads the mods index and returns all mod manifests.
-func (r *Registry) GetMods() ([]types.ModManifest, error) {
+func (r *Registry) getModsFromDisk() ([]types.ModManifest, error) {
 	indexPath := filepath.Join(r.repoPath, "mods", "index.json")
 	index, err := files.ReadJSON[types.IndexFile](indexPath, "mods index", files.JSONReadOptions{})
 	if err != nil {
@@ -209,8 +265,42 @@ func (r *Registry) GetMods() ([]types.ModManifest, error) {
 	return mods, nil
 }
 
+func (r *Registry) getInstalledModsFromDisk() ([]types.InstalledModInfo, error) {
+	if _, err := os.Stat(InstalledModsPath()); os.IsNotExist(err) {
+		return []types.InstalledModInfo{}, nil
+	}
+
+	return files.ReadJSON[[]types.InstalledModInfo](InstalledModsPath(), "installed mods file", files.JSONReadOptions{})
+}
+
+func (r *Registry) getInstalledMapsFromDisk() ([]types.InstalledMapInfo, error) {
+	if _, err := os.Stat(InstalledMapsPath()); os.IsNotExist(err) {
+		return []types.InstalledMapInfo{}, nil
+	}
+
+	return files.ReadJSON[[]types.InstalledMapInfo](InstalledMapsPath(), "installed maps file", files.JSONReadOptions{})
+}
+
+func (r *Registry) GetMods() []types.ModManifest {
+	return r.mods
+}
+
+func (r *Registry) GetMaps() []types.MapManifest {
+	return r.maps
+}
+
+func (r *Registry) GetMod(modID string) (*types.ModManifest, error) {
+	for _, m := range r.GetMods() {
+		if m.ID == modID {
+			return &m, nil
+		}
+	}
+
+	return nil, fmt.Errorf("mod with ID %q not found in registry", modID)
+}
+
 // GetMaps reads the maps index and returns all map manifests.
-func (r *Registry) GetMaps() ([]types.MapManifest, error) {
+func (r *Registry) getMapsFromDisk() ([]types.MapManifest, error) {
 	indexPath := filepath.Join(r.repoPath, "maps", "index.json")
 	index, indexErr := files.ReadJSON[types.IndexFile](indexPath, "maps index", files.JSONReadOptions{})
 	if indexErr != nil {
@@ -228,6 +318,16 @@ func (r *Registry) GetMaps() ([]types.MapManifest, error) {
 	}
 
 	return maps, nil
+}
+
+func (r *Registry) GetMap(mapID string) (*types.MapManifest, error) {
+	for _, m := range r.GetMaps() {
+		if m.ID == mapID {
+			return &m, nil
+		}
+	}
+
+	return nil, fmt.Errorf("map with ID %q not found in registry", mapID)
 }
 
 // GetGalleryImage reads an image file from the cloned registry repo and
@@ -396,18 +496,22 @@ func (r *Registry) getCustomVersions(updateURL string) ([]types.VersionInfo, err
 
 // GetInstalledMods returns the IDs of locally installed mods.
 // Currently stubbed to return an empty slice.
-func (r *Registry) GetInstalledMods() []string {
-	return []string{}
+func (r *Registry) GetInstalledMods() []types.InstalledModInfo {
+	return r.installedMods
 }
 
 // GetInstalledMaps returns the IDs of locally installed maps.
 // Currently stubbed to return an empty slice.
-func (r *Registry) GetInstalledMaps() []string {
-	return []string{}
+func (r *Registry) GetInstalledMaps() []types.InstalledMapInfo {
+	return r.installedMaps
 }
 
 // GetInstalledMapCodes returns the city codes of locally installed maps.
 // Currently stubbed to return an empty slice.
 func (r *Registry) GetInstalledMapCodes() []string {
-	return []string{}
+	codes := make([]string, 0, len(r.installedMaps))
+	for _, m := range r.installedMaps {
+		codes = append(codes, m.MapConfig.Code)
+	}
+	return codes
 }
