@@ -9,3 +9,11 @@ export function InstallMap(arg1, arg2) {
 export function InstallMod(arg1, arg2) {
   return window['go']['main']['Downloader']['InstallMod'](arg1, arg2);
 }
+
+export function UninstallMap(arg1) {
+  return window['go']['main']['Downloader']['UninstallMap'](arg1);
+}
+
+export function UninstallMod(arg1) {
+  return window['go']['main']['Downloader']['UninstallMod'](arg1);
+}

@@ -50,6 +50,14 @@ export function Refresh() {
   return window['go']['main']['Registry']['Refresh']();
 }
 
+export function RemoveInstalledMap(arg1) {
+  return window['go']['main']['Registry']['RemoveInstalledMap'](arg1);
+}
+
+export function RemoveInstalledMod(arg1) {
+  return window['go']['main']['Registry']['RemoveInstalledMod'](arg1);
+}
+
 export function WriteInstalledToDisk() {
   return window['go']['main']['Registry']['WriteInstalledToDisk']();
 }

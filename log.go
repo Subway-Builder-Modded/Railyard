@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"railyard/internal/types"
 	"sync"
 	"time"
 )
@@ -15,6 +16,7 @@ type Logger interface {
 	Info(msg string, attrs ...any)
 	Warn(msg string, attrs ...any)
 	Error(msg string, err error, attrs ...any)
+	LogResponse(msg string, response types.GenericResponse, attrs ...any)
 }
 
 // Global logger defaults
@@ -148,6 +150,21 @@ func (l *AppLogger) Error(msg string, err error, attrs ...any) {
 		attrs = append([]any{"error", err}, attrs...)
 	}
 	l.base.Error(msg, attrs...)
+}
+
+func (l *AppLogger) LogResponse(msg string, response types.GenericResponse, attrs ...any) {
+	baseAttrs := append([]any{"status", response.Status, "message", response.Message}, attrs...)
+
+	switch response.Status {
+	case types.ResponseSuccess:
+		l.Info(msg, baseAttrs...)
+	case types.ResponseWarn:
+		l.Warn(msg, baseAttrs...)
+	case types.ResponseError:
+		l.Error(msg, nil, baseAttrs...)
+	default:
+		l.Warn(msg, append(baseAttrs, "unknown_status", true)...)
+	}
 }
 
 func (l *AppLogger) flush() error {

@@ -16,8 +16,8 @@ type App struct {
 	Config     *Config
 	Downloader *Downloader
 	ctx        context.Context
-	Profiles *UserProfiles
-	Logger   *AppLogger
+	Profiles   *UserProfiles
+	Logger     *AppLogger
 }
 
 type MissingFilesError struct {
@@ -59,13 +59,13 @@ type HandleInstallResponse struct {
 func NewApp() *App {
 	config := NewConfig()
 	registry := NewRegistry()
-		logger := NewAppLogger()
+	logger := NewAppLogger()
 	return &App{
 		Registry:   registry,
 		Config:     config,
-		Downloader: NewDownloader(config, registry),
-		Profiles: NewUserProfiles(logger),
-		Logger:   logger,
+		Downloader: NewDownloader(config, registry, logger),
+		Profiles:   NewUserProfiles(logger),
+		Logger:     logger,
 	}
 }
 
@@ -105,8 +105,12 @@ func (a *App) shutdown(ctx context.Context) {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to flush app logs on shutdown: %v\n", err)
 	}
 
-		a.Config.SaveConfig()
-	a.Registry.WriteInstalledToDisk()
+	if _, err := a.Config.SaveConfig(); err != nil {
+		log.Printf("Warning: failed to save config on shutdown: %v", err)
+	}
+	if err := a.Registry.WriteInstalledToDisk(); err != nil {
+		log.Printf("Warning: failed to persist installed registry state on shutdown: %v", err)
+	}
 }
 
 func resolveStartupProfile(a *App) types.UserProfile {
@@ -166,4 +170,19 @@ func (a *App) syncSubscriptions(profileID string, operations []types.Subscriptio
 	// for map in modsToDelete => HandleUninstall(id, "mod")
 	// Compile errors from all operations and return a joined error
 	return nil
+}
+
+func (a *App) UpdateSubscriptions(req types.UpdateSubscriptionsRequest) (types.UpdateSubscriptionsResult, error) {
+	result, err := a.Profiles.UpdateSubscriptions(req)
+	if err != nil {
+		return types.UpdateSubscriptionsResult{}, err
+	}
+
+	if req.ForceSync && len(result.Operations) > 0 {
+		if err := a.syncSubscriptions(result.Profile.ID, result.Operations); err != nil {
+			return result, err
+		}
+	}
+
+	return result, nil
 }

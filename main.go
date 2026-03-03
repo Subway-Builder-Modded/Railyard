@@ -33,7 +33,6 @@ func main() {
 			app.Downloader,
 			app.Profiles,
 		},
-		OnShutdown: app.shutdown,
 	})
 
 	if err != nil {

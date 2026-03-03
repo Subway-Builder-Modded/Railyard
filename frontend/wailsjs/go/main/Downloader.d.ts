@@ -5,3 +5,7 @@ import {types} from '../models';
 export function InstallMap(arg1:string,arg2:string):Promise<types.MapExtractResponse>;
 
 export function InstallMod(arg1:string,arg2:string):Promise<types.GenericResponse>;
+
+export function UninstallMap(arg1:string):Promise<types.GenericResponse>;
+
+export function UninstallMod(arg1:string):Promise<types.GenericResponse>;

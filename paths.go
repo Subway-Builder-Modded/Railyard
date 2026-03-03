@@ -1,8 +1,13 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 )
 
 const (
@@ -18,6 +23,10 @@ const (
 	InstalledMapsFileName = "installed_maps.json"
 	// UserProfilesFileName is the persisted user profiles file name.
 	UserProfilesFileName = "user_profiles.json"
+	// LogFileName is the log file name.
+	LogFileName = "railyard.log"
+	// PrevLogFileName is the previous log file name.
+	PrevLogFileName = "railyard.old.log"
 )
 
 // UserConfigRoot resolves the base user config directory with a home-directory fallback.
@@ -58,8 +67,58 @@ func InstalledModsPath() string {
 
 func InstalledMapsPath() string {
 	return filepath.Join(AppDataRoot(), InstalledMapsFileName)
-	
+}
+
 // UserProfilesPath returns the default filesystem path for persisted user profiles.
 func UserProfilesPath() string {
 	return filepath.Join(AppDataRoot(), UserProfilesFileName)
+}
+
+func LogFilePath() string {
+	return filepath.Join(AppDataRoot(), LogFileName)
+}
+
+func PrevLogFilePath() string {
+	return filepath.Join(AppDataRoot(), PrevLogFileName)
+}
+
+// getQuarantinePath returns the "quarantined" path for a target file using the current unix timestamp.
+// This can be used to move invalid/corrupted files away from their expected location while still leaving them accessible for debugging
+// Example: "user_profiles.json" -> "user_profiles.invalid.<unix>.json".
+func getQuarantinePath(targetPath string) string {
+	dir := filepath.Dir(targetPath)
+	ext := filepath.Ext(targetPath)
+	base := strings.TrimSuffix(filepath.Base(targetPath), ext)
+	name := fmt.Sprintf("%s.invalid.%d%s", base, time.Now().UnixNano(), ext)
+	return filepath.Join(dir, name)
+}
+
+func QuarantineFile(sourcePath string, logger Logger) (success bool, backupPath string) {
+	path := getQuarantinePath(sourcePath)
+	if err := os.Rename(sourcePath, path); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return true, ""
+		}
+		if logger != nil {
+			logger.Error("Failed to quarantine file", err, "sourcePath", sourcePath, "backupPath", path)
+		}
+		return false, ""
+	}
+	if logger != nil {
+		logger.Warn("Quarantined file", "sourcePath", sourcePath, "backupPath", path)
+	}
+	return true, path
+}
+
+func moveLogFile() error {
+	if removeErr := os.Remove(PrevLogFilePath()); removeErr != nil && !errors.Is(removeErr, fs.ErrNotExist) {
+		return fmt.Errorf("failed to remove previous log file: %w", removeErr)
+	}
+	if err := os.Rename(LogFilePath(), PrevLogFilePath()); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("failed to rotate log file: %w", err)
+	}
+	return nil
 }

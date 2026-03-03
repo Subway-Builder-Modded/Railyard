@@ -21,15 +21,17 @@ type Downloader struct {
 	mapTilePath string
 	registry    *Registry
 	config      *Config
+	logger      Logger
 }
 
 // NewDownloader creates a new Downloader instance with necessary paths and references.
-func NewDownloader(config *Config, registry *Registry) *Downloader {
+func NewDownloader(config *Config, registry *Registry, logger Logger) *Downloader {
 	return &Downloader{
 		mapTilePath: path.Join(AppDataRoot(), "tiles"),
 		tempPath:    path.Join(AppDataRoot(), "temp"),
 		registry:    registry,
 		config:      config,
+		logger:      logger,
 	}
 }
 
@@ -38,54 +40,79 @@ func (d *Downloader) getModPath() string {
 	return path.Join(d.config.cfg.MetroMakerDataPath, "mods")
 }
 
-func throwError(message string, err error) types.GenericResponse {
-	return types.GenericResponse{
-		Status:  types.ResponseError,
-		Message: message + ": " + err.Error(),
+func (d *Downloader) withError(message string, err error) string {
+	if err == nil {
+		return message
 	}
+	return message + ": " + err.Error()
 }
 
-func throwErrorSimple(message string) types.GenericResponse {
-	return types.GenericResponse{
-		Status:  types.ResponseError,
-		Message: message,
+func (d *Downloader) newGenericResponse(status types.Status, message string, attrs ...any) types.GenericResponse {
+	response := types.GenericResponse{Status: status, Message: message}
+	if d.logger != nil {
+		d.logger.LogResponse("Downloader response", response, attrs...)
 	}
+	return response
 }
 
-func throwDownloadError(message string, err error) types.DownloadTempResponse {
-	return types.DownloadTempResponse{
-		GenericResponse: types.GenericResponse{
-			Status:  types.ResponseError,
-			Message: message + ": " + err.Error(),
-		},
+func (d *Downloader) newDownloadResponse(status types.Status, message string, path string, attrs ...any) types.DownloadTempResponse {
+	response := types.DownloadTempResponse{
+		GenericResponse: d.newGenericResponse(status, message, attrs...),
+		Path:            path,
 	}
+	return response
 }
 
-func throwDownloadErrorSimple(message string) types.DownloadTempResponse {
-	return types.DownloadTempResponse{
-		GenericResponse: types.GenericResponse{
-			Status:  types.ResponseError,
-			Message: message,
-		},
+func (d *Downloader) newMapExtractResponse(status types.Status, message string, config types.ConfigData, attrs ...any) types.MapExtractResponse {
+	response := types.MapExtractResponse{
+		GenericResponse: d.newGenericResponse(status, message, attrs...),
+		Config:          config,
 	}
+	return response
 }
 
-func throwMapExtractError(message string, err error) types.MapExtractResponse {
-	return types.MapExtractResponse{
-		GenericResponse: types.GenericResponse{
-			Status:  types.ResponseError,
-			Message: message + ": " + err.Error(),
-		},
-	}
+func (d *Downloader) throwError(message string, err error, attrs ...any) types.GenericResponse {
+	return d.newGenericResponse(types.ResponseError, d.withError(message, err), attrs...)
 }
 
-func throwMapExtractErrorSimple(message string) types.MapExtractResponse {
-	return types.MapExtractResponse{
-		GenericResponse: types.GenericResponse{
-			Status:  types.ResponseError,
-			Message: message,
-		},
-	}
+func (d *Downloader) throwErrorSimple(message string, attrs ...any) types.GenericResponse {
+	return d.newGenericResponse(types.ResponseError, message, attrs...)
+}
+
+func (d *Downloader) throwDownloadError(message string, err error, attrs ...any) types.DownloadTempResponse {
+	return d.newDownloadResponse(types.ResponseError, d.withError(message, err), "", attrs...)
+}
+
+func (d *Downloader) throwDownloadErrorSimple(message string, attrs ...any) types.DownloadTempResponse {
+	return d.newDownloadResponse(types.ResponseError, message, "", attrs...)
+}
+
+func (d *Downloader) throwMapExtractError(message string, err error, attrs ...any) types.MapExtractResponse {
+	return d.newMapExtractResponse(types.ResponseError, d.withError(message, err), types.ConfigData{}, attrs...)
+}
+
+func (d *Downloader) throwMapExtractErrorSimple(message string, attrs ...any) types.MapExtractResponse {
+	return d.newMapExtractResponse(types.ResponseError, message, types.ConfigData{}, attrs...)
+}
+
+func (d *Downloader) successResponse(message string, attrs ...any) types.GenericResponse {
+	return d.newGenericResponse(types.ResponseSuccess, message, attrs...)
+}
+
+func (d *Downloader) warnResponse(message string, attrs ...any) types.GenericResponse {
+	return d.newGenericResponse(types.ResponseWarn, message, attrs...)
+}
+
+func (d *Downloader) successDownloadResponse(message string, path string, attrs ...any) types.DownloadTempResponse {
+	return d.newDownloadResponse(types.ResponseSuccess, message, path, attrs...)
+}
+
+func (d *Downloader) successMapExtractResponse(message string, config types.ConfigData, attrs ...any) types.MapExtractResponse {
+	return d.newMapExtractResponse(types.ResponseSuccess, message, config, attrs...)
+}
+
+func (d *Downloader) warnMapExtractResponse(message string, config types.ConfigData, attrs ...any) types.MapExtractResponse {
+	return d.newMapExtractResponse(types.ResponseWarn, message, config, attrs...)
 }
 
 // getMapDataPath returns the filesystem path for installed map data.
@@ -122,20 +149,14 @@ func (d *Downloader) UninstallMod(modId string) types.GenericResponse {
 		}
 	}
 	if !foundMod {
-		return types.GenericResponse{
-			Status:  types.ResponseWarn,
-			Message: "Mod with ID " + modId + " is not currently installed. No action taken.",
-		}
+		return d.warnResponse("Mod with ID "+modId+" is not currently installed. No action taken.", "mod_id", modId)
 	}
 	modPath := path.Join(d.getModPath(), modId)
 	if err := os.RemoveAll(modPath); err != nil {
-		return throwError("Failed to remove mod files", err)
+		return d.throwError("Failed to remove mod files", err, "mod_id", modId)
 	}
 	d.registry.RemoveInstalledMod(modId)
-	return types.GenericResponse{
-		Status:  types.ResponseSuccess,
-		Message: "Mod uninstalled successfully",
-	}
+	return d.successResponse("Mod uninstalled successfully", "mod_id", modId)
 }
 
 func (d *Downloader) UninstallMap(mapId string) types.GenericResponse {
@@ -148,42 +169,36 @@ func (d *Downloader) UninstallMap(mapId string) types.GenericResponse {
 		}
 	}
 	if mapConfig == nil {
-		return types.GenericResponse{
-			Status:  types.ResponseWarn,
-			Message: "Map with ID " + mapId + " is not currently installed. No action taken.",
-		}
+		return d.warnResponse("Map with ID "+mapId+" is not currently installed. No action taken.", "map_id", mapId)
 	}
 
 	mapDataPath := path.Join(d.getMapDataPath(), mapConfig.Code)
 	if err := os.RemoveAll(mapDataPath); err != nil {
-		return throwError("Failed to remove map data files", err)
+		return d.throwError("Failed to remove map data files", err, "map_id", mapId)
 	}
 	tilePath := path.Join(d.getMapTilePath(), mapConfig.Code+".pmtiles")
 	if err := os.Remove(tilePath); err != nil {
-		return throwError("Failed to remove map tile files", err)
+		return d.throwError("Failed to remove map tile files", err, "map_id", mapId)
 	}
 	os.Remove(path.Join(d.getMapThumbnailPath(), mapConfig.Code+".svg")) // Doesn't matter if this fails, thumbnail is optional and may not exist
 	d.registry.RemoveInstalledMap(mapId)
-	return types.GenericResponse{
-		Status:  types.ResponseSuccess,
-		Message: "Map uninstalled successfully",
-	}
+	return d.successResponse("Map uninstalled successfully", "map_id", mapId)
 }
 
 // InstallMod handles the installation of a mod given its ID and version, including downloading, extracting, and updating the registry.
 func (d *Downloader) InstallMod(modId string, version string) types.GenericResponse {
 	if !d.config.GetConfig().Validation.IsValid() {
-		return throwErrorSimple("Cannot install mod because app config paths are not properly configured. " +
+		return d.throwErrorSimple("Cannot install mod because app config paths are not properly configured. " +
 			"Please set valid paths in the config before installing mods.")
 	}
 	modInfo, err := d.registry.GetMod(modId)
 	if err != nil {
-		return throwError("Failed to get mod info from registry", err)
+		return d.throwError("Failed to get mod info from registry", err, "mod_id", modId)
 	}
 
 	versions, err := d.registry.GetVersions(modInfo.Update.Type, modInfo.Update.URL)
 	if err != nil {
-		return throwError("Failed to get mod versions from registry", err)
+		return d.throwError("Failed to get mod versions from registry", err, "mod_id", modId)
 	}
 
 	var versionInfo *types.VersionInfo = nil
@@ -194,41 +209,38 @@ func (d *Downloader) InstallMod(modId string, version string) types.GenericRespo
 		}
 	}
 	if versionInfo == nil {
-		return throwErrorSimple("Specified version not found for mod")
+		return d.throwErrorSimple("Specified version not found for mod", "mod_id", modId, "version", version)
 	}
 
 	downloadResp := d.downloadTempZip(versionInfo.DownloadURL)
-	if downloadResp.Status != "success" {
+	if downloadResp.Status != types.ResponseSuccess {
 		os.Remove(downloadResp.Path)
-		return throwErrorSimple("Failed to download mod zip: " + downloadResp.Message)
+		return d.throwErrorSimple("Failed to download mod zip: "+downloadResp.Message, "mod_id", modId, "version", version)
 	}
 
 	extractResp := d.handleModExtract(downloadResp.Path, modId)
-	if extractResp.Status != "success" {
+	if extractResp.Status != types.ResponseSuccess {
 		os.Remove(downloadResp.Path)
-		return throwErrorSimple("Failed to extract mod zip: " + extractResp.Message)
+		return d.throwErrorSimple("Failed to extract mod zip: "+extractResp.Message, "mod_id", modId, "version", version)
 	}
 	os.Remove(downloadResp.Path)
 	d.registry.AddInstalledMod(modId, version)
-	return types.GenericResponse{
-		Status:  types.ResponseSuccess,
-		Message: "Mod installed successfully",
-	}
+	return d.successResponse("Mod installed successfully", "mod_id", modId, "version", version)
 }
 
 // InstallMap handles the installation of a map given its ID and version, including downloading, extracting, validating files, and updating the registry.
 func (d *Downloader) InstallMap(mapId string, version string) types.MapExtractResponse {
 	if !d.config.GetConfig().Validation.IsValid() {
-		return throwMapExtractErrorSimple("Invalid configuration")
+		return d.throwMapExtractErrorSimple("Invalid configuration", "map_id", mapId, "version", version)
 	}
 	mapInfo, err := d.registry.GetMap(mapId)
 	if err != nil {
-		return throwMapExtractError("Failed to get map info from registry", err)
+		return d.throwMapExtractError("Failed to get map info from registry", err, "map_id", mapId)
 	}
 
 	versions, err := d.registry.GetVersions(mapInfo.Update.Type, mapInfo.Update.URL)
 	if err != nil {
-		return throwMapExtractError("Failed to get map versions from registry", err)
+		return d.throwMapExtractError("Failed to get map versions from registry", err, "map_id", mapId)
 	}
 
 	var versionInfo *types.VersionInfo = nil
@@ -239,19 +251,19 @@ func (d *Downloader) InstallMap(mapId string, version string) types.MapExtractRe
 		}
 	}
 	if versionInfo == nil {
-		return throwMapExtractErrorSimple("Specified version not found for map")
+		return d.throwMapExtractErrorSimple("Specified version not found for map", "map_id", mapId, "version", version)
 	}
 
 	downloadResp := d.downloadTempZip(versionInfo.DownloadURL)
-	if downloadResp.Status != "success" {
+	if downloadResp.Status != types.ResponseSuccess {
 		os.Remove(downloadResp.Path)
-		return throwMapExtractErrorSimple("Failed to download map zip: " + downloadResp.Message)
+		return d.throwMapExtractErrorSimple("Failed to download map zip: "+downloadResp.Message, "map_id", mapId, "version", version)
 	}
 
 	extractResp := d.handleMapExtract(downloadResp.Path)
-	if extractResp.Status != "success" {
+	if extractResp.Status != types.ResponseSuccess {
 		os.Remove(downloadResp.Path)
-		return throwMapExtractErrorSimple("Failed to extract map zip: " + extractResp.Message)
+		return d.throwMapExtractErrorSimple("Failed to extract map zip: "+extractResp.Message, "map_id", mapId, "version", version)
 	}
 	os.Remove(downloadResp.Path)
 	d.registry.AddInstalledMap(mapId, version, extractResp.Config)
@@ -261,40 +273,40 @@ func (d *Downloader) InstallMap(mapId string, version string) types.MapExtractRe
 // downloadTempZip downloads a zip file from the given URL and saves it to a temporary location, returning the path or an error message.
 func (d *Downloader) downloadTempZip(url string) types.DownloadTempResponse {
 	if err := os.MkdirAll(d.tempPath, os.ModePerm); err != nil {
-		return throwDownloadError("Failed to create temp directory", err)
+		return d.throwDownloadError("Failed to create temp directory", err, "url", url)
 	}
 
 	file, err := os.CreateTemp(d.tempPath, "download-*.zip")
 	if err != nil {
-		return throwDownloadError("Failed to create temp file", err)
+		return d.throwDownloadError("Failed to create temp file", err, "url", url)
 	}
 	defer file.Close()
 	zip, err := http.Get(url)
 
-	if err != nil || zip.StatusCode != http.StatusOK {
-		return throwDownloadError("Failed to download file", err)
+	if err != nil {
+		return d.throwDownloadError("Failed to download file", err, "url", url)
+	}
+	defer zip.Body.Close()
+
+	if zip.StatusCode != http.StatusOK {
+		return d.throwDownloadErrorSimple("Failed to download file: unexpected status code", "url", url, "status_code", zip.StatusCode)
 	}
 
 	_, err = io.Copy(file, zip.Body)
 	if err != nil {
-		return throwDownloadError("Failed to save file", err)
+		return d.throwDownloadError("Failed to save file", err, "url", url)
 	}
 
-	return types.DownloadTempResponse{
-		GenericResponse: types.GenericResponse{
-			Status:  types.ResponseSuccess,
-			Message: "File downloaded successfully",
-		},
-		Path: file.Name(),
-	}
+	return d.successDownloadResponse("File downloaded successfully", file.Name(), "url", url)
 }
 
 // handleMapExtract processes the downloaded map zip file, validates required files, extracts them to the appropriate locations, and returns the map config or an error message.
 func (d *Downloader) handleMapExtract(filePath string) types.MapExtractResponse {
 	reader, err := zip.OpenReader(filePath)
 	if err != nil {
-		return throwMapExtractError("Failed to open zip file", err)
+		return d.throwMapExtractError("Failed to open zip file", err, "file_path", filePath)
 	}
+	defer reader.Close()
 
 	filesFound := map[string]types.FileFoundStruct{
 		"config":     {Found: false, FileObject: nil, Required: true},
@@ -331,41 +343,42 @@ func (d *Downloader) handleMapExtract(filePath string) types.MapExtractResponse 
 	}
 
 	if !requiredFilesPresent(filesFound) {
-		return throwMapExtractErrorSimple("Zip file is missing one or more required files")
+		return d.throwMapExtractErrorSimple("Zip file is missing one or more required files", "file_path", filePath)
 	}
 
 	var configData types.ConfigData
 	configReader, err := filesFound["config"].FileObject.Open()
 	if err != nil {
-		return throwMapExtractError("Failed to read config file", err)
+		return d.throwMapExtractError("Failed to read config file", err, "file_path", filePath)
 	}
+	defer configReader.Close()
 
 	configBytes, err := io.ReadAll(configReader)
 	if err != nil {
-		return throwMapExtractError("Failed to read config file", err)
+		return d.throwMapExtractError("Failed to read config file", err, "file_path", filePath)
 	}
 
 	configData, err = files.ParseJSON[types.ConfigData](configBytes, "config")
 	if err != nil {
-		return throwMapExtractError("Failed to parse config file", err)
+		return d.throwMapExtractError("Failed to parse config file", err, "file_path", filePath)
 	}
 
 	if slices.Contains(d.getVanillaMapCodes(), configData.Code) || slices.Contains(d.registry.GetInstalledMapCodes(), configData.Code) {
-		return throwMapExtractErrorSimple("Cannot install map because its code matches a vanilla map included with the game or an already installed map.")
+		return d.throwMapExtractErrorSimple("Cannot install map because its code matches a vanilla map included with the game or an already installed map.", "map_code", configData.Code)
 	}
 
 	// Create necessary directories first
 	destFolder := path.Join(d.getMapDataPath(), configData.Code)
 	if err := os.MkdirAll(destFolder, os.ModePerm); err != nil {
-		return throwMapExtractError("Failed to create destination folder", err)
+		return d.throwMapExtractError("Failed to create destination folder", err, "destination", destFolder)
 	}
 
 	if err := os.MkdirAll(d.mapTilePath, os.ModePerm); err != nil {
-		return throwMapExtractError("Failed to create tiles directory", err)
+		return d.throwMapExtractError("Failed to create tiles directory", err, "tiles_path", d.mapTilePath)
 	}
 
 	if err := os.MkdirAll(d.getMapThumbnailPath(), os.ModePerm); err != nil {
-		return throwMapExtractError("Failed to create thumbnail directory", err)
+		return d.throwMapExtractError("Failed to create thumbnail directory", err, "thumbnail_path", d.getMapThumbnailPath())
 	}
 
 	// Process files in parallel
@@ -408,29 +421,23 @@ func (d *Downloader) handleMapExtract(filePath string) types.MapExtractResponse 
 	// Check for any errors
 	if len(errChan) > 0 {
 		err := <-errChan
-		return throwMapExtractError("Failed to extract file", err)
+		return d.throwMapExtractError("Failed to extract file", err, "file_path", filePath)
 	}
 
-	return types.MapExtractResponse{
-		GenericResponse: types.GenericResponse{
-			Status:  types.ResponseSuccess,
-			Message: "Map extracted successfully",
-		},
-		Config: configData,
-	}
+	return d.successMapExtractResponse("Map extracted successfully", configData, "file_path", filePath, "map_code", configData.Code)
 }
 
 // handleModExtract processes the downloaded mod zip file, extracts it to the appropriate location, and returns a success or error message.
 func (d *Downloader) handleModExtract(filePath string, modId string) types.GenericResponse {
 	reader, err := zip.OpenReader(filePath)
 	if err != nil {
-		return throwError("Failed to open zip file", err)
+		return d.throwError("Failed to open zip file", err, "file_path", filePath, "mod_id", modId)
 	}
 	defer reader.Close()
 
 	destFolder := path.Join(d.getModPath(), modId)
 	if err := os.MkdirAll(destFolder, os.ModePerm); err != nil {
-		return throwError("Failed to create destination folder", err)
+		return d.throwError("Failed to create destination folder", err, "destination", destFolder, "mod_id", modId)
 	}
 
 	// First pass: create all directories
@@ -438,7 +445,7 @@ func (d *Downloader) handleModExtract(filePath string, modId string) types.Gener
 		if file.FileInfo().IsDir() {
 			destPath := path.Join(destFolder, file.Name)
 			if err := os.MkdirAll(destPath, os.ModePerm); err != nil {
-				return throwError("Failed to create directory", err)
+				return d.throwError("Failed to create directory", err, "destination", destPath, "mod_id", modId)
 			}
 		}
 	}
@@ -492,13 +499,10 @@ func (d *Downloader) handleModExtract(filePath string, modId string) types.Gener
 	// Check for any errors
 	if len(errChan) > 0 {
 		err := <-errChan
-		return throwError("Failed to extract file", err)
+		return d.throwError("Failed to extract file", err, "file_path", filePath, "mod_id", modId)
 	}
 
-	return types.GenericResponse{
-		Status:  types.ResponseSuccess,
-		Message: "Mod extracted successfully",
-	}
+	return d.successResponse("Mod extracted successfully", "file_path", filePath, "mod_id", modId)
 }
 
 // getVanillaMapCodes returns the city codes of maps included with the game.

@@ -30,6 +30,8 @@ func TestAppUpdateSubscriptionsForceSyncReturnsOperations(t *testing.T) {
 		ForceSync: true,
 	})
 	require.NoError(t, err)
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, "subscriptions updated", result.Message)
 	require.Len(t, result.Operations, 1)
 	require.True(t, result.Persisted)
 	require.Equal(t, types.DefaultProfileID, result.Profile.ID)
@@ -47,6 +49,8 @@ func TestAppUpdateSubscriptionsWithoutForceSyncReturnsOperations(t *testing.T) {
 		ForceSync: false,
 	})
 	require.NoError(t, err)
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, "subscriptions updated", result.Message)
 	require.Len(t, result.Operations, 1)
 	require.False(t, result.Persisted)
 }

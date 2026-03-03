@@ -135,6 +135,8 @@ func TestUpdateSubscriptionsSubscribeMapAddsOperationAndRuntimeOnlyByDefault(t *
 
 	result, err := svc.UpdateSubscriptions(req)
 	require.NoError(t, err)
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, "subscriptions updated", result.Message)
 	require.False(t, result.Persisted)
 	require.Equal(t, "1.2.3", result.Profile.Subscriptions.Maps["map-a"])
 	require.Len(t, result.Operations, 1)
@@ -163,6 +165,8 @@ func TestUpdateSubscriptionsSubscribeWithForceSyncPersistsState(t *testing.T) {
 
 	result, err := svc.UpdateSubscriptions(req)
 	require.NoError(t, err)
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, "subscriptions updated", result.Message)
 	require.True(t, result.Persisted)
 	require.Equal(t, "2.0.0", result.Profile.Subscriptions.Mods["mod-a"])
 	require.Len(t, result.Operations, 1)
@@ -188,6 +192,8 @@ func TestUpdateSubscriptionsRepeatedSubscribeSameVersionEmitsOperation(t *testin
 		},
 	})
 	require.NoError(t, err)
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, "subscriptions updated", result.Message)
 	require.Len(t, result.Operations, 1)
 	require.Equal(t, "map-a", result.Operations[0].AssetID)
 	require.Equal(t, types.Version("1.2.3"), result.Operations[0].Version)
@@ -209,6 +215,8 @@ func TestUpdateSubscriptionsUnsubscribeRemovesAndEmitsOperation(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, "subscriptions updated", result.Message)
 	require.Len(t, result.Operations, 1)
 	require.Equal(t, types.Version("3.1.0"), result.Operations[0].Version)
 	_, exists := result.Profile.Subscriptions.Mods["mod-a"]
@@ -227,6 +235,8 @@ func TestUpdateSubscriptionsUnsubscribeMissingEntryIsNoOp(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, "subscriptions updated", result.Message)
 	require.Empty(t, result.Operations)
 }
 
@@ -271,6 +281,8 @@ func TestUpdateSubscriptionsAcceptsOpaqueVersionString(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, "subscriptions updated", result.Message)
 	require.Equal(t, "not-semver", result.Profile.Subscriptions.Maps["map-x"])
 	require.Len(t, result.Operations, 1)
 	require.Equal(t, types.Version("not-semver"), result.Operations[0].Version)

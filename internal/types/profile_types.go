@@ -87,6 +87,7 @@ type SubscriptionOperation struct {
 }
 
 type UpdateSubscriptionsResult struct {
+	GenericResponse
 	Profile    UserProfile             `json:"profile"`
 	Persisted  bool                    `json:"persisted"`
 	Operations []SubscriptionOperation `json:"operations"`

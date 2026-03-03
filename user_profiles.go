@@ -172,11 +172,23 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 	}
 
 	s.setState(stateCopy)
-	return types.UpdateSubscriptionsResult{
+	result := types.UpdateSubscriptionsResult{
+		GenericResponse: types.GenericResponse{
+			Status:  types.ResponseSuccess,
+			Message: "subscriptions updated",
+		},
 		Profile:    profile,
 		Persisted:  req.ForceSync,
 		Operations: operations,
-	}, nil
+	}
+	s.logger.LogResponse(
+		"Updated subscriptions",
+		result.GenericResponse,
+		"profile_id", req.ProfileID,
+		"operation_count", len(operations),
+		"persisted", req.ForceSync,
+	)
+	return result, nil
 }
 
 func copyProfilesState(source types.UserProfilesState) types.UserProfilesState {

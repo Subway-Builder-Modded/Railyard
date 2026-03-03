@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"os"
+	"railyard/internal/types"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -97,4 +98,33 @@ func TestAppLoggerCanRestartAfterShutdown(t *testing.T) {
 	content := readLogContent(t)
 	require.Contains(t, content, "first meow")
 	require.Contains(t, content, "second meow")
+}
+
+func TestAppLoggerLogResponseMapsStatusToLevels(t *testing.T) {
+	setEnv(t)
+
+	logger := NewAppLogger()
+	require.NoError(t, logger.Start())
+
+	logger.LogResponse("ok response", types.GenericResponse{
+		Status:  types.ResponseSuccess,
+		Message: "all good",
+	})
+	logger.LogResponse("warn response", types.GenericResponse{
+		Status:  types.ResponseWarn,
+		Message: "heads up",
+	})
+	logger.LogResponse("error response", types.GenericResponse{
+		Status:  types.ResponseError,
+		Message: "something failed",
+	})
+	require.NoError(t, logger.Shutdown())
+
+	content := readLogContent(t)
+	require.Contains(t, content, "level=INFO")
+	require.Contains(t, content, "level=WARN")
+	require.Contains(t, content, "level=ERROR")
+	require.Contains(t, content, "status=success")
+	require.Contains(t, content, "status=warn")
+	require.Contains(t, content, "status=error")
 }
