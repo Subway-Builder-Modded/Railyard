@@ -1,19 +1,32 @@
 package main
 
 import (
+	"railyard/internal/profiles"
 	"railyard/internal/types"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
+func setEnv(t *testing.T) {
+	t.Helper()
+
+	root := t.TempDir()
+	t.Setenv("APPDATA", root)
+	t.Setenv("LOCALAPPDATA", root)
+	t.Setenv("ProgramFiles", root)
+	t.Setenv("ProgramFiles(x86)", root)
+	t.Setenv("XDG_CONFIG_HOME", root)
+	t.Setenv("HOME", root)
+}
+
 func newLoadedTestApp(t *testing.T) *App {
 	t.Helper()
 	setEnv(t)
 
 	app := NewApp()
-	require.NoError(t, writeUserProfilesState(types.InitialProfilesState()))
-	_, err := app.Profiles.loadProfiles()
+	require.NoError(t, profiles.WriteUserProfilesState(types.InitialProfilesState()))
+	_, err := app.Profiles.LoadProfiles()
 	require.NoError(t, err)
 	return app
 }
@@ -66,5 +79,5 @@ func TestAppUpdateSubscriptionsBubblesProfileError(t *testing.T) {
 		},
 		ForceSync: true,
 	})
-	require.ErrorIs(t, err, ErrProfileNotFound)
+	require.ErrorIs(t, err, profiles.ErrProfileNotFound)
 }

@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"railyard/internal/files"
+	"railyard/internal/paths"
 	"railyard/internal/types"
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -18,7 +19,7 @@ type Config struct {
 	// Mutex should be locked for all read/write operations
 	mu     sync.Mutex
 	ctx    context.Context
-	cfg    types.AppConfig
+	Cfg    types.AppConfig
 	loaded bool
 }
 
@@ -26,15 +27,15 @@ func NewConfig() *Config {
 	return &Config{}
 }
 
-func (s *Config) setContext(ctx context.Context) {
+func (s *Config) SetContext(ctx context.Context) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.ctx = ctx
 }
 
-func readAppConfig() (types.AppConfig, error) {
+func ReadAppConfig() (types.AppConfig, error) {
 	return files.ReadJSON[types.AppConfig](
-		ConfigPath(),
+		paths.ConfigPath(),
 		"app config",
 		files.JSONReadOptions{
 			AllowMissing: true,
@@ -43,8 +44,8 @@ func readAppConfig() (types.AppConfig, error) {
 	)
 }
 
-func writeAppConfig(cfg types.AppConfig) error {
-	return files.WriteJSON(ConfigPath(), "app config", cfg)
+func WriteAppConfig(cfg types.AppConfig) error {
+	return files.WriteJSON(paths.ConfigPath(), "app config", cfg)
 }
 
 func resolveConfigResultFromAppConfig(cfg types.AppConfig) types.ResolveConfigResult {
@@ -55,20 +56,20 @@ func resolveConfigResultFromAppConfig(cfg types.AppConfig) types.ResolveConfigRe
 	}
 }
 
-// resolveConfig returns the current config from disk, or empty defaults when missing.
+// ResolveConfig returns the current config from disk, or empty defaults when missing.
 // This should only be called once on app startup to initialize the in-memory config state
-func (s *Config) resolveConfig() (types.ResolveConfigResult, error) {
+func (s *Config) ResolveConfig() (types.ResolveConfigResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	diskCfg, err := readAppConfig()
+	diskCfg, err := ReadAppConfig()
 	if err != nil {
 		return types.ResolveConfigResult{}, err
 	}
 
-	s.cfg = diskCfg
+	s.Cfg = diskCfg
 	s.loaded = true
 
-	return resolveConfigResultFromAppConfig(s.cfg), nil
+	return resolveConfigResultFromAppConfig(s.Cfg), nil
 }
 
 // GetConfig returns the current in-memory config without re-reading from disk.
@@ -76,42 +77,42 @@ func (s *Config) GetConfig() types.ResolveConfigResult {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return resolveConfigResultFromAppConfig(s.cfg)
+	return resolveConfigResultFromAppConfig(s.Cfg)
 }
 
-func (s *Config) updateConfig(mutator func(*types.AppConfig), persist bool) (types.ResolveConfigResult, error) {
+func (s *Config) UpdateConfig(mutator func(*types.AppConfig), persist bool) (types.ResolveConfigResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	mutator(&s.cfg)
+	mutator(&s.Cfg)
 	s.loaded = true
 
 	if persist {
-		if err := writeAppConfig(s.cfg); err != nil {
+		if err := WriteAppConfig(s.Cfg); err != nil {
 			return types.ResolveConfigResult{}, err
 		}
 	}
 
-	return resolveConfigResultFromAppConfig(s.cfg), nil
+	return resolveConfigResultFromAppConfig(s.Cfg), nil
 }
 
-// updateExecutable updates and persists ExecutablePath to the runtime app config.
-func (s *Config) updateExecutable(executablePath string) (types.ResolveConfigResult, error) {
-	return s.updateConfig(func(cfg *types.AppConfig) {
+// UpdateExecutable updates and persists ExecutablePath to the runtime app config.
+func (s *Config) UpdateExecutable(executablePath string) (types.ResolveConfigResult, error) {
+	return s.UpdateConfig(func(cfg *types.AppConfig) {
 		cfg.ExecutablePath = strings.TrimSpace(executablePath)
 	}, false)
 }
 
-// updateMetroMakerDataFolder updates and persists metroMakerDataPath to the runtime app config.
-func (s *Config) updateMetroMakerDataFolder(metroMakerDataPath string) (types.ResolveConfigResult, error) {
-	return s.updateConfig(func(cfg *types.AppConfig) {
+// UpdateMetroMakerDataFolder updates and persists metroMakerDataPath to the runtime app config.
+func (s *Config) UpdateMetroMakerDataFolder(metroMakerDataPath string) (types.ResolveConfigResult, error) {
+	return s.UpdateConfig(func(cfg *types.AppConfig) {
 		cfg.MetroMakerDataPath = strings.TrimSpace(metroMakerDataPath)
 	}, false)
 }
 
 // SetConfig replaces the runtime app config with the provided object.
 func (s *Config) SetConfig(next types.AppConfig) (types.AppConfig, error) {
-	updated, err := s.updateConfig(func(cfg *types.AppConfig) {
+	updated, err := s.UpdateConfig(func(cfg *types.AppConfig) {
 		*cfg = types.AppConfig{
 			MetroMakerDataPath: strings.TrimSpace(next.MetroMakerDataPath),
 			ExecutablePath:     strings.TrimSpace(next.ExecutablePath),
@@ -131,7 +132,7 @@ func (s *Config) ClearConfig() (types.AppConfig, error) {
 
 // SaveConfig persists the current runtime config state to disk.
 func (s *Config) SaveConfig() (types.ResolveConfigResult, error) {
-	return s.updateConfig(func(*types.AppConfig) {}, true)
+	return s.UpdateConfig(func(*types.AppConfig) {}, true)
 }
 
 /* ===== Dialog Functions ===== */
@@ -142,21 +143,21 @@ func (s *Config) OpenMetroMakerDataFolderDialog(options types.SetConfigPathOptio
 	return s.setConfigPathWithDialog(
 		options,
 		func() (types.SetConfigPathResult, bool) {
-			return s.tryAutoDetectPath(
-				defaultMetroMakerDataFolderCandidates(),
+			return s.TryAutoDetectPath(
+				DefaultMetroMakerDataFolderCandidates(),
 				true,
-				s.updateMetroMakerDataFolder,
+				s.UpdateMetroMakerDataFolder,
 				func(v types.ConfigPathValidation) bool { return v.MetroMakerDataPathValid },
 			)
 		},
 		func(ctx context.Context) (string, error) {
 			return wruntime.OpenDirectoryDialog(ctx, wruntime.OpenDialogOptions{
 				Title:                "Select MetroMaker Data Folder",
-				DefaultDirectory:     AppDataRoot(),
+				DefaultDirectory:     paths.AppDataRoot(),
 				CanCreateDirectories: false,
 			})
 		},
-		s.updateMetroMakerDataFolder,
+		s.UpdateMetroMakerDataFolder,
 	)
 }
 
@@ -166,17 +167,17 @@ func (s *Config) OpenExecutableDialog(options types.SetConfigPathOptions) (types
 	return s.setConfigPathWithDialog(
 		options,
 		func() (types.SetConfigPathResult, bool) {
-			return s.tryAutoDetectPath(
-				defaultExecutableCandidates(),
+			return s.TryAutoDetectPath(
+				DefaultExecutableCandidates(),
 				false,
-				s.updateExecutable,
+				s.UpdateExecutable,
 				func(v types.ConfigPathValidation) bool { return v.ExecutablePathValid },
 			)
 		},
 		func(ctx context.Context) (string, error) {
 			return wruntime.OpenFileDialog(ctx, wruntime.OpenDialogOptions{
 				Title:            "Select Executable",
-				DefaultDirectory: defaultExecutableDialogDirectory(),
+				DefaultDirectory: DefaultExecutableDialogDirectory(),
 				Filters: []wruntime.FileFilter{
 					{
 						DisplayName: "All Files",
@@ -185,7 +186,7 @@ func (s *Config) OpenExecutableDialog(options types.SetConfigPathOptions) (types
 				},
 			})
 		},
-		s.updateExecutable,
+		s.UpdateExecutable,
 	)
 }
 
@@ -228,13 +229,13 @@ func (s *Config) setConfigPathWithDialog(
 
 /* ===== Auto-detection logic and helpers ===== */
 
-func (s *Config) tryAutoDetectPath(
+func (s *Config) TryAutoDetectPath(
 	candidates []string,
 	shouldBeDir bool,
 	updatePath func(path string) (types.ResolveConfigResult, error),
 	isPathValid func(types.ConfigPathValidation) bool,
 ) (types.SetConfigPathResult, bool) {
-	detectedPath, success := findDefaultPath(candidates, shouldBeDir)
+	detectedPath, success := FindDefaultPath(candidates, shouldBeDir)
 	if !success {
 		return types.SetConfigPathResult{}, false
 	}
@@ -254,8 +255,8 @@ func (s *Config) tryAutoDetectPath(
 	}, true
 }
 
-// findDefaultPath iterates through the provided candidates and returns the first path that exists and matches the expected type (file vs directory).
-func findDefaultPath(candidates []string, shouldBeDir bool) (detectedPath string, success bool) {
+// FindDefaultPath iterates through the provided candidates and returns the first path that exists and matches the expected type (file vs directory).
+func FindDefaultPath(candidates []string, shouldBeDir bool) (detectedPath string, success bool) {
 	for _, candidate := range candidates {
 		if candidate == "" || !filepath.IsAbs(candidate) {
 			continue
@@ -274,15 +275,15 @@ func findDefaultPath(candidates []string, shouldBeDir bool) (detectedPath string
 	return "", false
 }
 
-// defaultMetroMakerDataFolderCandidates returns the default locations for the metro maker data folder
-func defaultMetroMakerDataFolderCandidates() []string {
+// DefaultMetroMakerDataFolderCandidates returns the default locations for the metro maker data folder
+func DefaultMetroMakerDataFolderCandidates() []string {
 	return []string{
-		filepath.Join(UserConfigRoot(), "metro-maker4"),
+		filepath.Join(paths.UserConfigRoot(), "metro-maker4"),
 	}
 }
 
-// defaultExecutableCandidates returns known default locations for the executable, based on OS conventions and the common install patterns of applications on each platform.
-func defaultExecutableCandidates() []string {
+// DefaultExecutableCandidates returns known default locations for the executable, based on OS conventions and the common install patterns of applications on each platform.
+func DefaultExecutableCandidates() []string {
 	switch runtime.GOOS {
 	case "darwin":
 		homeDir, _ := os.UserHomeDir()
@@ -312,7 +313,7 @@ func defaultExecutableCandidates() []string {
 	}
 }
 
-func defaultExecutableDialogDirectory() string {
+func DefaultExecutableDialogDirectory() string {
 	switch runtime.GOOS {
 	case "darwin":
 		// For MacOS, the executable could also be within ~/Applications, but here we default to system-wide Applications
@@ -325,7 +326,7 @@ func defaultExecutableDialogDirectory() string {
 		if programFilesX86 := strings.TrimSpace(os.Getenv("ProgramFiles(x86)")); programFilesX86 != "" {
 			return programFilesX86
 		}
-		return UserConfigRoot()
+		return paths.UserConfigRoot()
 	case "linux":
 		// If Railyard is running as AppImage, default to the same directory; otherwise, default to /usr/bin
 		if appImage := strings.TrimSpace(os.Getenv("APPIMAGE")); appImage != "" {
@@ -333,6 +334,6 @@ func defaultExecutableDialogDirectory() string {
 		}
 		return "/usr/bin"
 	default:
-		return UserConfigRoot()
+		return paths.UserConfigRoot()
 	}
 }

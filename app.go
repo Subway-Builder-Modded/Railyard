@@ -8,8 +8,13 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strings"
 
+	"railyard/internal/config"
+	"railyard/internal/downloader"
+	"railyard/internal/logger"
+	"railyard/internal/paths"
+	"railyard/internal/profiles"
+	"railyard/internal/registry"
 	"railyard/internal/types"
 
 	"github.com/protomaps/go-pmtiles/pmtiles"
@@ -17,60 +22,25 @@ import (
 
 // App struct
 type App struct {
-	Registry   *Registry
-	Config     *Config
-	Downloader *Downloader
+	Registry   *registry.Registry
+	Config     *config.Config
+	Downloader *downloader.Downloader
 	ctx        context.Context
-	Profiles   *UserProfiles
-	Logger     *AppLogger
+	Profiles   *profiles.UserProfiles
+	Logger     *logger.AppLogger
 }
-
-type MissingFilesError struct {
-	Files []string
-}
-
-func (e *MissingFilesError) Error() string {
-	return "Missing required files: " + strings.Join(e.Files, ", ")
-}
-
-type MapAlreadyExistsError struct {
-	MapCode string
-}
-
-func (e *MapAlreadyExistsError) Error() string {
-	return "Map with code '" + e.MapCode + "' has already been installed or would overwrite a vanilla map."
-}
-
-type installMapResponse struct {
-	Status  string            `json:"status"`
-	Message string            `json:"message,omitempty"`
-	Data    *types.ConfigData `json:"data,omitempty"`
-}
-
-type installModResponse struct {
-	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
-}
-
-type HandleInstallResponse struct {
-	Status  string            `json:"status"`
-	Message string            `json:"message,omitempty"`
-	Data    *types.ConfigData `json:"data,omitempty"`
-}
-
-// CityInfo represents information about a single city
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	config := NewConfig()
-	registry := NewRegistry()
-	logger := NewAppLogger()
+	cfg := config.NewConfig()
+	reg := registry.NewRegistry()
+	l := logger.NewAppLogger()
 	return &App{
-		Registry:   registry,
-		Config:     config,
-		Downloader: NewDownloader(config, registry, logger),
-		Profiles:   NewUserProfiles(logger),
-		Logger:     logger,
+		Registry:   reg,
+		Config:     cfg,
+		Downloader: downloader.NewDownloader(cfg, reg, l),
+		Profiles:   profiles.NewUserProfiles(l),
+		Logger:     l,
 	}
 }
 
@@ -78,16 +48,16 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	a.Config.setContext(ctx)
-	if _, err := a.Config.resolveConfig(); err != nil {
+	a.Config.SetContext(ctx)
+	if _, err := a.Config.ResolveConfig(); err != nil {
 		log.Printf("Warning: failed to resolve config on startup: %v", err)
 	}
 
 	if a.Logger == nil {
-		a.Logger = NewAppLogger()
+		a.Logger = logger.NewAppLogger()
 	}
 
-	if err := moveLogFile(); err != nil {
+	if err := paths.MoveLogFile(); err != nil {
 		log.Printf("[WARN]: Failed to rotate startup log file: %v", err)
 	}
 
@@ -119,7 +89,7 @@ func (a *App) shutdown(ctx context.Context) {
 }
 
 func resolveStartupProfile(a *App) types.UserProfile {
-	if p, err := a.Profiles.loadProfiles(); err == nil {
+	if p, err := a.Profiles.LoadProfiles(); err == nil {
 		return p
 	} else {
 		return a.recoverProfiles(err)
@@ -127,7 +97,7 @@ func resolveStartupProfile(a *App) types.UserProfile {
 }
 
 func (a *App) recoverProfiles(cause error) types.UserProfile {
-	success, quarantinedPath := a.Profiles.quarantineUserProfiles()
+	success, quarantinedPath := a.Profiles.QuarantineUserProfiles()
 	if !success {
 		a.Logger.Error("Failed to quarantine user profiles", cause)
 		return types.DefaultProfile()
@@ -154,7 +124,7 @@ func runStartupRoutines(a *App) {
 	activeProfile := resolveStartupProfile(a)
 
 	// TODO: Backend should control registry state; frontend should not force initialization of the registry on startup.
-	if err := a.Registry.initialize(); err != nil {
+	if err := a.Registry.Initialize(); err != nil {
 		a.Logger.Warn("Failed to ensure local registry repository", "error", err)
 	}
 
@@ -167,13 +137,6 @@ func runStartupRoutines(a *App) {
 
 func (a *App) syncSubscriptions(profileID string, operations []types.SubscriptionOperation) error {
 	a.Logger.Info("TODO: implement subscription sync", "profile", profileID, "operations", len(operations))
-	// Pseudocode
-	// installedMods, installedMaps := a.Registry.GetInstalledMods(), a.Registry.GetInstalledMaps()
-	// for map in mapsToUpdate => HandleInstall(id, version, "map")
-	// for mod in modsToUpdate => HandleInstall(id, version, "mod")
-	// for map in mapsToDelete => HandleUninstall(id, "map")
-	// for map in modsToDelete => HandleUninstall(id, "mod")
-	// Compile errors from all operations and return a joined error
 	return nil
 }
 
@@ -217,21 +180,21 @@ func (a *App) startPMTilesServer() error {
 
 	channel := make(chan error, 1)
 
-	go func(logger *AppLogger, port int, errorChan chan error) {
-		pmtilesServer, err := pmtiles.NewServerWithBucket(pmtiles.NewFileBucket(path.Join(AppDataRoot(), "tiles")), "", log.New(logger.writer, "pmtiles: ", log.Default().Flags()), 128, "")
+	go func(l *logger.AppLogger, port int, errorChan chan error) {
+		pmtilesServer, err := pmtiles.NewServerWithBucket(pmtiles.NewFileBucket(path.Join(paths.AppDataRoot(), "tiles")), "", log.New(l.Writer, "pmtiles: ", log.Default().Flags()), 128, "")
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			statusCode := pmtilesServer.ServeHTTP(w, r)
-			logger.Info("Handled PMTiles request", "path", r.URL.Path, "status", statusCode)
+			l.Info("Handled PMTiles request", "path", r.URL.Path, "status", statusCode)
 		})
 		pmtilesServer.Start()
 		if err != nil {
-			logger.Error("Failed to create PMTiles server", err)
+			l.Error("Failed to create PMTiles server", err)
 			errorChan <- err
 			return
 		}
 		errorChan <- nil
-		logger.Error("PMTiles error: ", http.ListenAndServe(fmt.Sprintf(":%d", port), pmtiles.NewCors("*").Handler(mux)))
+		l.Error("PMTiles error: ", http.ListenAndServe(fmt.Sprintf(":%d", port), pmtiles.NewCors("*").Handler(mux)))
 	}(a.Logger, port, channel)
 	return <-channel
 }

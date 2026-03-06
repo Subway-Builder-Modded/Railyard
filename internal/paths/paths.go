@@ -1,4 +1,4 @@
-package main
+package paths
 
 import (
 	"errors"
@@ -82,10 +82,10 @@ func PrevLogFilePath() string {
 	return filepath.Join(AppDataRoot(), PrevLogFileName)
 }
 
-// getQuarantinePath returns the "quarantined" path for a target file using the current unix timestamp.
+// GetQuarantinePath returns the "quarantined" path for a target file using the current unix timestamp.
 // This can be used to move invalid/corrupted files away from their expected location while still leaving them accessible for debugging
 // Example: "user_profiles.json" -> "user_profiles.invalid.<unix>.json".
-func getQuarantinePath(targetPath string) string {
+func GetQuarantinePath(targetPath string) string {
 	dir := filepath.Dir(targetPath)
 	ext := filepath.Ext(targetPath)
 	base := strings.TrimSuffix(filepath.Base(targetPath), ext)
@@ -93,8 +93,13 @@ func getQuarantinePath(targetPath string) string {
 	return filepath.Join(dir, name)
 }
 
-func QuarantineFile(sourcePath string, logger Logger) (success bool, backupPath string) {
-	path := getQuarantinePath(sourcePath)
+// QuarantineFile moves a file to a quarantined path. If the source file is missing, it is treated as a no-op.
+// The logger parameter is optional and can be nil.
+func QuarantineFile(sourcePath string, logger interface {
+	Error(msg string, err error, attrs ...any)
+	Warn(msg string, attrs ...any)
+}) (success bool, backupPath string) {
+	path := GetQuarantinePath(sourcePath)
 	if err := os.Rename(sourcePath, path); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return true, ""
@@ -110,7 +115,8 @@ func QuarantineFile(sourcePath string, logger Logger) (success bool, backupPath 
 	return true, path
 }
 
-func moveLogFile() error {
+// MoveLogFile rotates the current log file to the previous log file path.
+func MoveLogFile() error {
 	if removeErr := os.Remove(PrevLogFilePath()); removeErr != nil && !errors.Is(removeErr, fs.ErrNotExist) {
 		return fmt.Errorf("failed to remove previous log file: %w", removeErr)
 	}

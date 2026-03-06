@@ -1,4 +1,4 @@
-package main
+package logger
 
 import (
 	"bufio"
@@ -7,9 +7,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"railyard/internal/types"
 	"sync"
 	"time"
+
+	"railyard/internal/paths"
+	"railyard/internal/types"
 )
 
 type Logger interface {
@@ -34,16 +36,16 @@ type AppLogger struct {
 	doneCh chan struct{}
 
 	file   *os.File
-	writer *bufio.Writer
+	Writer *bufio.Writer
 
 	base *slog.Logger
 }
 
-// loggerAtPath creates a new logger that writes to the provided file path
+// LoggerAtPath creates a new logger that writes to the provided file path
 // Useful for testing to isolate log output to a known temporary file
-func loggerAtPath(path string) *AppLogger {
+func LoggerAtPath(path string) *AppLogger {
 	if path == "" {
-		path = LogFilePath()
+		path = paths.LogFilePath()
 	}
 
 	l := &AppLogger{path: path}
@@ -57,7 +59,7 @@ func loggerAtPath(path string) *AppLogger {
 
 // NewAppLogger creates a new application-level logger that writes to the default log file path.
 func NewAppLogger() *AppLogger {
-	return loggerAtPath(LogFilePath())
+	return LoggerAtPath(paths.LogFilePath())
 }
 
 // Start initializes the logger's background flush routine. Must be called before any log writes will be persisted to disk.
@@ -78,7 +80,7 @@ func (l *AppLogger) Start() error {
 		return fmt.Errorf("Failed to open log file %q: %w", l.path, err)
 	}
 
-	l.file, l.writer = f, bufio.NewWriterSize(f, writeBufferSize)
+	l.file, l.Writer = f, bufio.NewWriterSize(f, writeBufferSize)
 	l.stopCh, l.doneCh = make(chan struct{}), make(chan struct{})
 
 	// Goroutine to periodically flush log buffer to disk until logger is shutdown
@@ -119,11 +121,11 @@ func (l *AppLogger) Shutdown() error {
 	defer l.mu.Unlock()
 
 	var flushErr error
-	if l.writer != nil {
-		if err := l.writer.Flush(); err != nil {
+	if l.Writer != nil {
+		if err := l.Writer.Flush(); err != nil {
 			flushErr = fmt.Errorf("Failed to flush log writer: %w", err)
 		}
-		l.writer = nil
+		l.Writer = nil
 	}
 
 	var closeErr error
@@ -171,11 +173,11 @@ func (l *AppLogger) flush() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	if l.writer == nil {
+	if l.Writer == nil {
 		return nil
 	}
 
-	if err := l.writer.Flush(); err != nil {
+	if err := l.Writer.Flush(); err != nil {
 		return fmt.Errorf("Failed to flush log writer: %w", err)
 	}
 
@@ -186,11 +188,11 @@ func (l *AppLogger) writeRaw(p []byte) (int, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	if l.writer == nil { // Drop log if writer is not initialized
+	if l.Writer == nil { // Drop log if writer is not initialized
 		return len(p), nil
 	}
 
-	n, err := l.writer.Write(p)
+	n, err := l.Writer.Write(p)
 	if err != nil {
 		return n, fmt.Errorf("Failed to write log buffer: %w", err)
 	}

@@ -1,18 +1,33 @@
-package main
+package profiles
 
 import (
 	"os"
 	"path/filepath"
-	"railyard/internal/types"
 	"strings"
 	"testing"
+
+	"railyard/internal/logger"
+	"railyard/internal/paths"
+	"railyard/internal/types"
 
 	"github.com/stretchr/testify/require"
 )
 
-func testUserProfilesLogger(t *testing.T) Logger {
+func setEnv(t *testing.T) {
 	t.Helper()
-	return loggerAtPath(filepath.Join(t.TempDir(), "user_profiles_test.log"))
+
+	root := t.TempDir()
+	t.Setenv("APPDATA", root)
+	t.Setenv("LOCALAPPDATA", root)
+	t.Setenv("ProgramFiles", root)
+	t.Setenv("ProgramFiles(x86)", root)
+	t.Setenv("XDG_CONFIG_HOME", root)
+	t.Setenv("HOME", root)
+}
+
+func testUserProfilesLogger(t *testing.T) logger.Logger {
+	t.Helper()
+	return logger.LoggerAtPath(filepath.Join(t.TempDir(), "user_profiles_test.log"))
 }
 
 func newUserProfilesService(t *testing.T) *UserProfiles {
@@ -22,10 +37,10 @@ func newUserProfilesService(t *testing.T) *UserProfiles {
 
 func newLoadedUserProfilesService(t *testing.T, state types.UserProfilesState) *UserProfiles {
 	t.Helper()
-	require.NoError(t, writeUserProfilesState(state))
+	require.NoError(t, WriteUserProfilesState(state))
 
 	svc := newUserProfilesService(t)
-	_, err := svc.loadProfiles()
+	_, err := svc.LoadProfiles()
 	require.NoError(t, err)
 	return svc
 }
@@ -33,21 +48,28 @@ func newLoadedUserProfilesService(t *testing.T, state types.UserProfilesState) *
 func writeRawUserProfilesFile(t *testing.T, content string) {
 	t.Helper()
 
-	path := UserProfilesPath()
+	path := paths.UserProfilesPath()
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+}
+
+func newTestUserProfile(id string, name string) types.UserProfile {
+	profile := types.DefaultProfile()
+	profile.ID = id
+	profile.Name = name
+	return profile
 }
 
 func TestLoadProfilesBootstrapsAndPersistsStateWhenMissing(t *testing.T) {
 	setEnv(t)
 
 	svc := newUserProfilesService(t)
-	active, err := svc.loadProfiles()
+	active, err := svc.LoadProfiles()
 	require.NoError(t, err)
 	require.Equal(t, types.DefaultProfileID, active.ID)
 	require.Equal(t, types.DefaultProfileName, active.Name)
 
-	persisted, err := readUserProfilesState()
+	persisted, err := ReadUserProfilesState()
 	require.NoError(t, err)
 	require.Equal(t, types.DefaultProfileID, persisted.ActiveProfileID)
 
@@ -75,10 +97,10 @@ func TestLoadProfilesReturnsErrorForInvalidState(t *testing.T) {
 			"custom": newTestUserProfile("custom", "Custom"),
 		},
 	}
-	require.NoError(t, writeUserProfilesState(invalid))
+	require.NoError(t, WriteUserProfilesState(invalid))
 
 	svc := newUserProfilesService(t)
-	_, err := svc.loadProfiles()
+	_, err := svc.LoadProfiles()
 	require.ErrorIs(t, err, types.ErrInvalidState)
 }
 
@@ -89,10 +111,10 @@ func TestResolveActiveProfileReturnsLoadedActiveProfile(t *testing.T) {
 	custom := newTestUserProfile("custom", "Custom")
 	state.ActiveProfileID = custom.ID
 	state.Profiles[custom.ID] = custom
-	require.NoError(t, writeUserProfilesState(state))
+	require.NoError(t, WriteUserProfilesState(state))
 
 	svc := newUserProfilesService(t)
-	loadedActive, err := svc.loadProfiles()
+	loadedActive, err := svc.LoadProfiles()
 	require.NoError(t, err)
 	require.Equal(t, custom.ID, loadedActive.ID)
 	require.Equal(t, custom.Name, loadedActive.Name)
@@ -108,7 +130,7 @@ func TestQuarantineUserProfilesFileMovesSourceToBackup(t *testing.T) {
 	writeRawUserProfilesFile(t, "{}")
 
 	svc := newUserProfilesService(t)
-	success, backupPath := svc.quarantineUserProfiles()
+	success, backupPath := svc.QuarantineUserProfiles()
 	require.True(t, success)
 	require.NotEmpty(t, backupPath)
 	require.True(t, strings.Contains(filepath.Base(backupPath), "user_profiles.invalid."))
@@ -116,7 +138,7 @@ func TestQuarantineUserProfilesFileMovesSourceToBackup(t *testing.T) {
 	_, err := os.Stat(backupPath)
 	require.NoError(t, err)
 
-	_, err = os.Stat(UserProfilesPath())
+	_, err = os.Stat(paths.UserProfilesPath())
 	require.True(t, os.IsNotExist(err))
 }
 
@@ -145,7 +167,7 @@ func TestUpdateSubscriptionsSubscribeMapAddsOperationAndRuntimeOnlyByDefault(t *
 	require.Equal(t, types.SubscriptionActionSubscribe, result.Operations[0].Action)
 	require.Equal(t, types.Version("1.2.3"), result.Operations[0].Version)
 
-	persisted, err := readUserProfilesState()
+	persisted, err := ReadUserProfilesState()
 	require.NoError(t, err)
 	require.Empty(t, persisted.Profiles[types.DefaultProfileID].Subscriptions.Maps)
 }
@@ -171,7 +193,7 @@ func TestUpdateSubscriptionsSubscribeWithForceSyncPersistsState(t *testing.T) {
 	require.Equal(t, "2.0.0", result.Profile.Subscriptions.Mods["mod-a"])
 	require.Len(t, result.Operations, 1)
 
-	persisted, err := readUserProfilesState()
+	persisted, err := ReadUserProfilesState()
 	require.NoError(t, err)
 	require.Equal(t, "2.0.0", persisted.Profiles[types.DefaultProfileID].Subscriptions.Mods["mod-a"])
 }
@@ -286,11 +308,4 @@ func TestUpdateSubscriptionsAcceptsOpaqueVersionString(t *testing.T) {
 	require.Equal(t, "not-semver", result.Profile.Subscriptions.Maps["map-x"])
 	require.Len(t, result.Operations, 1)
 	require.Equal(t, types.Version("not-semver"), result.Operations[0].Version)
-}
-
-func newTestUserProfile(id string, name string) types.UserProfile {
-	profile := types.DefaultProfile()
-	profile.ID = id
-	profile.Name = name
-	return profile
 }

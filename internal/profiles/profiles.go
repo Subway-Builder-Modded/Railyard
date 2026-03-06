@@ -1,4 +1,4 @@
-package main
+package profiles
 
 import (
 	"errors"
@@ -7,13 +7,15 @@ import (
 	"sync"
 
 	"railyard/internal/files"
+	"railyard/internal/logger"
+	"railyard/internal/paths"
 	"railyard/internal/types"
 	"railyard/internal/utils"
 )
 
 type UserProfiles struct {
 	state  types.UserProfilesState
-	logger Logger
+	Logger logger.Logger
 	mu     sync.Mutex
 	loaded bool
 }
@@ -28,9 +30,9 @@ var (
 	ErrActiveProfileMissing      = errors.New("active profile missing from loaded state")
 )
 
-func NewUserProfiles(logger Logger) *UserProfiles {
+func NewUserProfiles(l logger.Logger) *UserProfiles {
 	return &UserProfiles{
-		logger: logger,
+		Logger: l,
 	}
 }
 
@@ -39,13 +41,13 @@ func (s *UserProfiles) setState(state types.UserProfilesState) {
 	s.loaded = true
 }
 
-func writeUserProfilesState(state types.UserProfilesState) error {
-	return files.WriteJSON(UserProfilesPath(), "user profiles", state)
+func WriteUserProfilesState(state types.UserProfilesState) error {
+	return files.WriteJSON(paths.UserProfilesPath(), "user profiles", state)
 }
 
-func readUserProfilesState() (types.UserProfilesState, error) {
+func ReadUserProfilesState() (types.UserProfilesState, error) {
 	return files.ReadJSON[types.UserProfilesState](
-		UserProfilesPath(),
+		paths.UserProfilesPath(),
 		"user profiles",
 		files.JSONReadOptions{
 			AllowMissing: true,
@@ -54,8 +56,8 @@ func readUserProfilesState() (types.UserProfilesState, error) {
 	)
 }
 
-// loadProfiles loads profile state from disk and validates it, bootstrapping to defaults if missing or empty
-func (s *UserProfiles) loadProfiles() (activeProfile types.UserProfile, err error) {
+// LoadProfiles loads profile state from disk and validates it, bootstrapping to defaults if missing or empty
+func (s *UserProfiles) LoadProfiles() (activeProfile types.UserProfile, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.logRequest("loadProfiles", "loaded", s.loaded)
@@ -63,16 +65,16 @@ func (s *UserProfiles) loadProfiles() (activeProfile types.UserProfile, err erro
 		return s.resolveActiveProfile()
 	}
 
-	state, err := readUserProfilesState()
+	state, err := ReadUserProfilesState()
 	if err != nil {
 		return types.UserProfile{}, err
 	}
 
 	// If no profiles exist on disk, initialize with default profile
 	if len(state.Profiles) == 0 {
-		s.logger.Warn("No existing profiles found, bootstrapping with default profile")
+		s.Logger.Warn("No existing profiles found, bootstrapping with default profile")
 		bootstrapped := types.InitialProfilesState()
-		if err := writeUserProfilesState(bootstrapped); err != nil {
+		if err := WriteUserProfilesState(bootstrapped); err != nil {
 			return types.UserProfile{}, err
 		}
 		s.setState(bootstrapped)
@@ -95,28 +97,28 @@ func (s *UserProfiles) ResetUserProfiles() error {
 
 	defaultState := types.InitialProfilesState()
 	s.setState(defaultState)
-	return writeUserProfilesState(defaultState)
+	return WriteUserProfilesState(defaultState)
 }
 
-// quarantineUserProfiles moves the user profiles file to a "quarantined" path in the same directory
+// QuarantineUserProfiles moves the user profiles file to a "quarantined" path in the same directory
 // If the source file is missing, it is treated as a no-op.
-func (s *UserProfiles) quarantineUserProfiles() (success bool, backupPath string) {
+func (s *UserProfiles) QuarantineUserProfiles() (success bool, backupPath string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.logRequest("quarantineUserProfiles")
 
-	return QuarantineFile(UserProfilesPath(), s.logger)
+	return paths.QuarantineFile(paths.UserProfilesPath(), s.Logger)
 }
 
 // GetActiveProfile returns the active profile from loaded in-memory state.
-// Callers must ensure loadProfiles has completed successfully first.
+// Callers must ensure LoadProfiles has completed successfully first.
 func (s *UserProfiles) GetActiveProfile() (activeProfile types.UserProfile, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.logRequest("GetActiveProfile")
 	profile, resolveErr := s.resolveActiveProfile()
 	if resolveErr != nil {
-		s.logger.Error("Failed to get active profile", resolveErr, "active_profile_id", s.state.ActiveProfileID)
+		s.Logger.Error("Failed to get active profile", resolveErr, "active_profile_id", s.state.ActiveProfileID)
 		return types.UserProfile{}, resolveErr
 	}
 	return profile, nil
@@ -135,7 +137,6 @@ func (s *UserProfiles) resolveActiveProfile() (activeProfile types.UserProfile, 
 }
 
 // UpdateSubscriptions mutates the runtime state of the specified profile's subscriptions
-// The `forceSync` flag control whether the updated state is immediately persisted to disk in an atomic write.
 func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest) (types.UpdateSubscriptionsResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -145,7 +146,7 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 	profile, ok := stateCopy.Profiles[req.ProfileID]
 	if !ok {
 		profileErr := fmt.Errorf("%w: %q", ErrProfileNotFound, req.ProfileID)
-		s.logger.Error("Profile not found", profileErr, "profile_id", req.ProfileID)
+		s.Logger.Error("Profile not found", profileErr, "profile_id", req.ProfileID)
 		return types.UpdateSubscriptionsResult{}, profileErr
 	}
 
@@ -156,7 +157,7 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 	for assetID, item := range req.Assets {
 		operation, opErr := applySubscriptionMutation(&profile, req.Action, strings.TrimSpace(assetID), item)
 		if opErr != nil {
-			s.logger.Error("Failed to apply subscription mutation", opErr, "asset_id", assetID, "asset_type", item.Type, "action", req.Action)
+			s.Logger.Error("Failed to apply subscription mutation", opErr, "asset_id", assetID, "asset_type", item.Type, "action", req.Action)
 			return types.UpdateSubscriptionsResult{}, opErr
 		}
 		if operation != nil {
@@ -166,7 +167,7 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 
 	stateCopy.Profiles[req.ProfileID] = profile
 	if req.ForceSync {
-		if err := writeUserProfilesState(stateCopy); err != nil {
+		if err := WriteUserProfilesState(stateCopy); err != nil {
 			return types.UpdateSubscriptionsResult{}, err
 		}
 	}
@@ -181,7 +182,7 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 		Persisted:  req.ForceSync,
 		Operations: operations,
 	}
-	s.logger.LogResponse(
+	s.Logger.LogResponse(
 		"Updated subscriptions",
 		result.GenericResponse,
 		"profile_id", req.ProfileID,
@@ -257,5 +258,5 @@ func mutateSubscriptionMap(
 // logRequest is a helper for consistent structured logging of service method calls and parameters
 func (s *UserProfiles) logRequest(method string, attrs ...any) {
 	base := []any{"service", serviceName}
-	s.logger.Info(fmt.Sprintf("Handling method: %s", method), append(base, attrs...)...)
+	s.Logger.Info(fmt.Sprintf("Handling method: %s", method), append(base, attrs...)...)
 }
