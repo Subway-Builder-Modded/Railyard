@@ -1,5 +1,8 @@
+import { useState, useEffect, useMemo } from "react";
 import { useRoute, Link } from "wouter";
 import { useRegistryStore } from "@/stores/registry-store";
+import { GetVersions } from "../../wailsjs/go/registry/Registry";
+import { types } from "../../wailsjs/go/models";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -29,6 +32,40 @@ export function ProjectPage() {
       : type === "maps"
         ? maps.find((m) => m.id === id)
         : undefined;
+
+  const [versions, setVersions] = useState<types.VersionInfo[]>([]);
+  const [versionsLoading, setVersionsLoading] = useState(true);
+  const [versionsError, setVersionsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!item) return;
+    const source = item.update.type === "github" ? item.update.repo : item.update.url;
+    if (!source) {
+      setVersionsLoading(false);
+      setVersionsError("No update source configured");
+      return;
+    }
+    let cancelled = false;
+    setVersionsLoading(true);
+    setVersionsError(null);
+    GetVersions(item.update.type, source)
+      .then((v) => {
+        if (!cancelled) {
+          setVersions(v || []);
+          setVersionsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setVersionsError(err instanceof Error ? err.message : String(err));
+          setVersionsLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [item?.update.type, item?.update.repo, item?.update.url]);
+
+  const latestVersion = versions[0];
+  const gallery = useMemo(() => item?.gallery || [], [item?.gallery]);
 
   if (!item || !type) {
     return (
@@ -62,13 +99,13 @@ export function ProjectPage() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <ProjectHero type={type} id={item.id} gallery={item.gallery || []} />
+      <ProjectHero type={type} id={item.id} gallery={gallery} />
 
-      <ProjectInfo type={type} item={item} />
+      <ProjectInfo type={type} item={item} latestVersion={latestVersion} versionsLoading={versionsLoading} />
 
       <Separator />
 
-      <VersionsTable type={type} update={item.update} />
+      <VersionsTable type={type} itemId={item.id} update={item.update} versions={versions} loading={versionsLoading} error={versionsError} />
     </div>
   );
 }

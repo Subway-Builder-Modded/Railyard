@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GetGalleryImage } from '../../wailsjs/go/main/Registry';
+import { GetGalleryImage } from '../../wailsjs/go/registry/Registry';
 
 export function useGalleryImage(type: "mods" | "maps", id: string, imagePath?: string) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);

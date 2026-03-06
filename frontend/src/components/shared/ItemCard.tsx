@@ -2,23 +2,31 @@ import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { GalleryImage } from "./GalleryImage";
-import { Users } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Users, CheckCircle } from "lucide-react";
 import { types } from "../../../wailsjs/go/models";
 
 interface ItemCardProps {
   type: "mods" | "maps";
   item: types.ModManifest | types.MapManifest;
+  installedVersion?: string;
 }
 
 function isMapManifest(item: types.ModManifest | types.MapManifest): item is types.MapManifest {
   return 'city_code' in item;
 }
 
-export function ItemCard({ type, item }: ItemCardProps) {
+export function ItemCard({ type, item, installedVersion }: ItemCardProps) {
   return (
     <Link href={`/project/${type}/${item.id}`}>
-      <Card className="overflow-hidden cursor-pointer transition-colors hover:bg-accent/50 h-full flex flex-col">
-        <div className="aspect-video overflow-hidden">
+      <Card className={cn("overflow-hidden cursor-pointer transition-colors hover:bg-accent/50 h-full flex flex-col", installedVersion && "border-l-2 border-l-primary")}>
+        <div className="relative aspect-video overflow-hidden">
+          {installedVersion && (
+            <Badge className="absolute top-2 right-2 z-10 gap-1">
+              <CheckCircle className="h-3 w-3" />
+              {installedVersion}
+            </Badge>
+          )}
           <GalleryImage
             type={type}
             id={item.id}

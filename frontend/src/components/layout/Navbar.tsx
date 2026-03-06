@@ -1,17 +1,41 @@
 import { Link, useLocation } from "wouter";
-import { RefreshCw, TrainTrack } from "lucide-react";
+import { Play, Square, RefreshCw, TrainTrack } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRegistryStore } from "@/stores/registry-store";
+import { useConfigStore } from "@/stores/config-store";
+import { useGameStore } from "@/stores/game-store";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/search", label: "Browse" },
+  { href: "/logs", label: "Logs" },
+  { href: "/settings", label: "Settings" },
 ] as const;
 
 export function Navbar() {
   const [location] = useLocation();
-  const { refresh, loading } = useRegistryStore();
+  const { refresh, loading, refreshing } = useRegistryStore();
+  const canLaunch = useConfigStore((s) => s.validation?.executablePathValid);
+  const { running, launch, stop } = useGameStore();
+
+  const handleLaunch = async () => {
+    try {
+      await launch();
+    } catch (err) {
+      toast.error(String(err) || "Failed to launch game.");
+    }
+  };
+
+  const handleStop = async () => {
+    try {
+      await stop();
+    } catch (err) {
+      toast.error(String(err) || "Failed to stop game.");
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
@@ -27,7 +51,7 @@ export function Navbar() {
                 key={href}
                 href={href}
                 className={cn(
-                  "text-sm transition-colors hover:text-foreground",
+                  "text-sm transition-colors hover:text-foreground flex items-center gap-1.5",
                   location === href
                     ? "text-foreground font-medium"
                     : "text-muted-foreground"
@@ -38,9 +62,43 @@ export function Navbar() {
             ))}
           </nav>
         </div>
-        <Button variant="ghost" size="icon" onClick={refresh} disabled={loading}>
-          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-        </Button>
+        <div className="flex items-center gap-1">
+          {running ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleStop}
+              className="text-destructive hover:text-destructive"
+            >
+              <Square className="h-4 w-4 mr-1.5" />
+              Running
+            </Button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLaunch}
+                    disabled={!canLaunch}
+                  >
+                    <Play className="h-4 w-4 mr-1.5" />
+                    Launch
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!canLaunch && (
+                <TooltipContent>
+                  Configure game executable in Settings first
+                </TooltipContent>
+              )}
+            </Tooltip>
+          )}
+          <Button variant="ghost" size="icon" onClick={refresh} disabled={loading || refreshing}>
+            <RefreshCw className={cn("h-4 w-4", (loading || refreshing) && "animate-spin")} />
+          </Button>
+        </div>
       </div>
     </header>
   );

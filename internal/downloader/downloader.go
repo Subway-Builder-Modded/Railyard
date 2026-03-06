@@ -148,6 +148,9 @@ func (d *Downloader) UninstallMod(modId string) types.GenericResponse {
 		return d.throwError("Failed to remove mod files", err, "mod_id", modId)
 	}
 	d.Registry.RemoveInstalledMod(modId)
+	if err := d.Registry.WriteInstalledToDisk(); err != nil {
+		d.Logger.Warn("Failed to persist installed state after uninstalling mod", "error", err)
+	}
 	return d.successResponse("Mod uninstalled successfully", "mod_id", modId)
 }
 
@@ -174,6 +177,9 @@ func (d *Downloader) UninstallMap(mapId string) types.GenericResponse {
 	}
 	os.Remove(path.Join(d.getMapThumbnailPath(), mapConfig.Code+".svg")) // Doesn't matter if this fails, thumbnail is optional and may not exist
 	d.Registry.RemoveInstalledMap(mapId)
+	if err := d.Registry.WriteInstalledToDisk(); err != nil {
+		d.Logger.Warn("Failed to persist installed state after uninstalling map", "error", err)
+	}
 	return d.successResponse("Map uninstalled successfully", "map_id", mapId)
 }
 
@@ -188,7 +194,11 @@ func (d *Downloader) InstallMod(modId string, version string) types.GenericRespo
 		return d.throwError("Failed to get mod info from registry", err, "mod_id", modId)
 	}
 
-	versions, err := d.Registry.GetVersions(modInfo.Update.Type, modInfo.Update.URL)
+	source := modInfo.Update.URL
+	if modInfo.Update.Type == "github" {
+		source = modInfo.Update.Repo
+	}
+	versions, err := d.Registry.GetVersions(modInfo.Update.Type, source)
 	if err != nil {
 		return d.throwError("Failed to get mod versions from registry", err, "mod_id", modId)
 	}
@@ -217,6 +227,9 @@ func (d *Downloader) InstallMod(modId string, version string) types.GenericRespo
 	}
 	os.Remove(downloadResp.Path)
 	d.Registry.AddInstalledMod(modId, version)
+	if err := d.Registry.WriteInstalledToDisk(); err != nil {
+		d.Logger.Warn("Failed to persist installed state after installing mod", "error", err)
+	}
 	return d.successResponse("Mod installed successfully", "mod_id", modId, "version", version)
 }
 
@@ -230,7 +243,11 @@ func (d *Downloader) InstallMap(mapId string, version string) types.MapExtractRe
 		return d.throwMapExtractError("Failed to get map info from registry", err, "map_id", mapId)
 	}
 
-	versions, err := d.Registry.GetVersions(mapInfo.Update.Type, mapInfo.Update.URL)
+	source := mapInfo.Update.URL
+	if mapInfo.Update.Type == "github" {
+		source = mapInfo.Update.Repo
+	}
+	versions, err := d.Registry.GetVersions(mapInfo.Update.Type, source)
 	if err != nil {
 		return d.throwMapExtractError("Failed to get map versions from registry", err, "map_id", mapId)
 	}
@@ -259,6 +276,9 @@ func (d *Downloader) InstallMap(mapId string, version string) types.MapExtractRe
 	}
 	os.Remove(downloadResp.Path)
 	d.Registry.AddInstalledMap(mapId, version, extractResp.Config)
+	if err := d.Registry.WriteInstalledToDisk(); err != nil {
+		d.Logger.Warn("Failed to persist installed state after installing map", "error", err)
+	}
 	return extractResp
 }
 

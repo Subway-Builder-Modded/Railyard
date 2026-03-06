@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -8,41 +7,40 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, FileText, ArrowDownToLine } from "lucide-react";
-import { GetVersions } from "../../../wailsjs/go/main/Registry";
+import { Download, FileText, ArrowDownToLine, Loader2, CheckCircle } from "lucide-react";
+import { useInstalledStore } from "@/stores/installed-store";
 import { types } from "../../../wailsjs/go/models";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorBanner } from "@/components/shared/ErrorBanner";
+import { toast } from "sonner";
 
 interface VersionsTableProps {
-  type: string
+  type: "mods" | "maps";
+  itemId: string;
   update: types.UpdateConfig;
+  versions: types.VersionInfo[];
+  loading: boolean;
+  error: string | null;
 }
 
-export function VersionsTable({ update }: VersionsTableProps) {
-  const [versions, setVersions] = useState<types.VersionInfo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function VersionsTable({ type, itemId, update, versions, loading, error }: VersionsTableProps) {
+  const { getInstalledVersion, installMod, installMap, isOperating } = useInstalledStore();
+  const installedVersion = getInstalledVersion(itemId);
 
-  useEffect(() => {
-    const source = update.type === "github" ? update.repo : update.url;
-    if (!source) {
-      setLoading(false);
-      setError("No update source configured");
-      return;
+  const handleInstall = async (version: string) => {
+    try {
+      if (type === "mods") {
+        await installMod(itemId, version);
+      } else {
+        await installMap(itemId, version);
+      }
+      toast.success(`Installed ${version} successfully.`);
+    } catch {
+      toast.error(`Failed to install ${version}.`);
     }
-
-    GetVersions(update.type, source)
-      .then((v) => {
-        setVersions(v || []);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : String(err));
-        setLoading(false);
-      });
-  }, [update]);
+  };
 
   if (loading) {
     return (
@@ -101,43 +99,51 @@ export function VersionsTable({ update }: VersionsTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {versions.map((v) => (
-              <TableRow key={v.version}>
-                <TableCell className="font-mono font-medium">
-                  {v.version}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDate(v.date)}
-                </TableCell>
-                {update.type === "custom" && (
-                  <TableCell className="text-muted-foreground font-mono text-xs">
-                    {v.game_version}
+            {versions.map((v) => {
+              const isThisInstalled = installedVersion === v.version;
+              const isInstalling = isOperating(itemId);
+
+              return (
+                <TableRow key={v.version}>
+                  <TableCell className="font-mono font-medium">
+                    {v.version}
                   </TableCell>
-                )}
-                <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
-                  {v.changelog}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
-                    <ArrowDownToLine className="h-3 w-3" />
-                    {v.downloads.toLocaleString()}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {v.download_url && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a
-                        href={v.download_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Download className="h-4 w-4" />
-                      </a>
-                    </Button>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(v.date)}
+                  </TableCell>
+                  {update.type === "custom" && (
+                    <TableCell className="text-muted-foreground font-mono text-xs">
+                      {v.game_version}
+                    </TableCell>
                   )}
-                </TableCell>
-              </TableRow>
-            ))}
+                  <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
+                    {v.changelog}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <ArrowDownToLine className="h-3 w-3" />
+                      {v.downloads.toLocaleString()}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {isThisInstalled ? (
+                      <Badge variant="secondary" className="gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        Installed
+                      </Badge>
+                    ) : isInstalling ? (
+                      <Button variant="outline" size="sm" disabled>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => handleInstall(v.version)}>
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>

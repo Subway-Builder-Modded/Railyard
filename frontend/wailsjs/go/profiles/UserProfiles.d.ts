@@ -4,6 +4,10 @@ import {types} from '../models';
 
 export function GetActiveProfile():Promise<types.UserProfile>;
 
+export function LoadProfiles():Promise<types.UserProfile>;
+
+export function QuarantineUserProfiles():Promise<boolean|string>;
+
 export function ResetUserProfiles():Promise<void>;
 
 export function UpdateSubscriptions(arg1:types.UpdateSubscriptionsRequest):Promise<types.UpdateSubscriptionsResult>;

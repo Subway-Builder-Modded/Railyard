@@ -3,7 +3,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { GetGalleryImage } from "../../../wailsjs/go/main/Registry";
+import { GetGalleryImage } from "../../../wailsjs/go/registry/Registry";
 
 interface ProjectHeroProps {
   type: "mods" | "maps";

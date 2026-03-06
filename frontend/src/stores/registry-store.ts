@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { types } from '../../wailsjs/go/models';
-import { GetMods, GetMaps, Refresh } from '../../wailsjs/go/main/Registry';
+import { GetMods, GetMaps, Refresh } from '../../wailsjs/go/registry/Registry';
 
 interface RegistryState {
   mods: types.ModManifest[];

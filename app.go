@@ -1,13 +1,19 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
+	"runtime"
+	"strings"
+	"sync"
 
 	"railyard/internal/config"
 	"railyard/internal/downloader"
@@ -18,6 +24,7 @@ import (
 	"railyard/internal/types"
 
 	"github.com/protomaps/go-pmtiles/pmtiles"
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -28,6 +35,9 @@ type App struct {
 	ctx        context.Context
 	Profiles   *profiles.UserProfiles
 	Logger     *logger.AppLogger
+
+	gameMu  sync.Mutex
+	gameCmd *exec.Cmd
 }
 
 // NewApp creates a new App application struct
@@ -156,15 +166,115 @@ func (a *App) UpdateSubscriptions(req types.UpdateSubscriptionsRequest) (types.U
 }
 
 func (a *App) LaunchGame() error {
-	//TODO: Implement game launch logic, map mod generation
-	var err error
+	a.gameMu.Lock()
+	if a.gameCmd != nil && a.gameCmd.ProcessState == nil {
+		a.gameMu.Unlock()
+		return fmt.Errorf("game is already running")
+	}
+	a.gameMu.Unlock()
 
-	if err = a.startPMTilesServer(); err != nil {
+	cfg := a.Config.GetConfig()
+	if !cfg.Validation.ExecutablePathValid {
+		return fmt.Errorf("game executable path is not configured or invalid")
+	}
+
+	if err := a.startPMTilesServer(); err != nil {
 		a.Logger.Warn("Failed to start PMTiles server", "error", err)
 		return err
 	}
 
+	exePath := cfg.Config.ExecutablePath
+	a.Logger.Info("Launching game", "path", exePath)
+
+	var cmd *exec.Cmd
+	if runtime.GOOS == "darwin" && (strings.HasSuffix(exePath, ".app") || strings.Contains(exePath, ".app/")) {
+		// On macOS, resolve .app bundle to the inner executable and launch via shell
+		// to handle Electron stub executables that lack valid magic bytes
+		innerExe := exePath
+		if strings.HasSuffix(exePath, ".app") {
+			// Derive inner binary from Info.plist CFBundleExecutable convention
+			bundleName := strings.TrimSuffix(path.Base(exePath), ".app")
+			innerExe = path.Join(exePath, "Contents", "MacOS", bundleName)
+		}
+		cmd = exec.Command("/bin/sh", "-c", `ELECTRON_ENABLE_LOGGING=1 exec "$0"`, innerExe)
+	} else {
+		cmd = exec.Command(exePath)
+		cmd.Dir = path.Dir(exePath)
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		a.Logger.Error("Failed to launch game", err)
+		return fmt.Errorf("failed to launch game: %w", err)
+	}
+
+	a.gameMu.Lock()
+	a.gameCmd = cmd
+	a.gameMu.Unlock()
+
+	wailsruntime.EventsEmit(a.ctx, "game:status", "running")
+
+	// Stream stdout/stderr to frontend
+	go a.streamGameOutput(stdout, "stdout")
+	go a.streamGameOutput(stderr, "stderr")
+
+	// Wait for process exit in background
+	go func() {
+		err := cmd.Wait()
+		a.gameMu.Lock()
+		a.gameCmd = nil
+		a.gameMu.Unlock()
+
+		exitCode := 0
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				exitCode = exitErr.ExitCode()
+			}
+			a.Logger.Warn("Game exited with error", "error", err)
+		} else {
+			a.Logger.Info("Game exited normally")
+		}
+		wailsruntime.EventsEmit(a.ctx, "game:exit", exitCode)
+		wailsruntime.EventsEmit(a.ctx, "game:status", "stopped")
+	}()
+
 	return nil
+}
+
+func (a *App) streamGameOutput(r io.Reader, stream string) {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := scanner.Text()
+		wailsruntime.EventsEmit(a.ctx, "game:log", map[string]string{
+			"stream": stream,
+			"line":   line,
+		})
+	}
+}
+
+func (a *App) IsGameRunning() bool {
+	a.gameMu.Lock()
+	defer a.gameMu.Unlock()
+	return a.gameCmd != nil && a.gameCmd.ProcessState == nil
+}
+
+func (a *App) StopGame() error {
+	a.gameMu.Lock()
+	cmd := a.gameCmd
+	a.gameMu.Unlock()
+
+	if cmd == nil || cmd.ProcessState != nil {
+		return fmt.Errorf("game is not running")
+	}
+	return cmd.Process.Kill()
 }
 
 func (a *App) startPMTilesServer() error {
