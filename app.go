@@ -64,6 +64,14 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.Config.SetContext(ctx)
+	a.Downloader.OnExtractProgress = func(itemId string, extracted int64, total int64) {
+		fmt.Println("Extract progress:", itemId, extracted, total)
+		wailsruntime.EventsEmit(ctx, "extract:progress", map[string]interface{}{
+			"itemId":          itemId,
+			"amountExtracted": extracted,
+			"total":           total,
+		})
+	}
 	a.Downloader.OnProgress = func(itemId string, received int64, total int64) {
 		wailsruntime.EventsEmit(ctx, "download:progress", map[string]interface{}{
 			"itemId":   itemId,

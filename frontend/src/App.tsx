@@ -16,6 +16,7 @@ import { SearchPage } from "@/pages/SearchPage";
 import { ProjectPage } from "@/pages/ProjectPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { LogsPage } from "@/pages/LogsPage";
+import { ExtractNotification } from "./components/layout/ExtractNotification";
 
 function App() {
   useTheme();
@@ -72,6 +73,7 @@ function App() {
         </Switch>
       </Layout>
       <DownloadNotification />
+      <ExtractNotification />
       <Toaster />
     </TooltipProvider>
   );

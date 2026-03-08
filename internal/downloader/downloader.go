@@ -20,14 +20,16 @@ import (
 // ProgressFunc is a callback for reporting download progress.
 // itemId identifies what is being downloaded, received is bytes downloaded so far, total is the total size (-1 if unknown).
 type ProgressFunc func(itemId string, received int64, total int64)
+type ExtractProgressFunc func(itemId string, extracted int64, total int64)
 
 type Downloader struct {
-	tempPath    string
-	mapTilePath string
-	Registry    *registry.Registry
-	Config      *config.Config
-	Logger      logger.Logger
-	OnProgress  ProgressFunc
+	tempPath          string
+	mapTilePath       string
+	Registry          *registry.Registry
+	Config            *config.Config
+	Logger            logger.Logger
+	OnProgress        ProgressFunc
+	OnExtractProgress ExtractProgressFunc
 }
 
 // NewDownloader creates a new Downloader instance with necessary paths and references.

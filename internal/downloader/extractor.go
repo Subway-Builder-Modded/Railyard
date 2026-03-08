@@ -26,6 +26,13 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 		return d.throwError("Failed to create destination folder", err, "destination", destFolder, "mod_id", modId)
 	}
 
+	fileCount := 0
+	for _, file := range reader.File {
+		if !file.FileInfo().IsDir() {
+			fileCount++
+		}
+	}
+
 	// First pass: create all directories
 	for _, file := range reader.File {
 		if file.FileInfo().IsDir() {
@@ -40,6 +47,10 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(reader.File))
 
+	if d.OnExtractProgress != nil {
+		d.OnExtractProgress(modId, 0, int64(fileCount))
+	}
+	installCounter := 0
 	for _, file := range reader.File {
 		if !file.FileInfo().IsDir() {
 			wg.Add(1)
@@ -70,6 +81,10 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 				defer srcFile.Close()
 
 				_, err = io.Copy(destFile, srcFile)
+				installCounter++
+				if d.OnExtractProgress != nil {
+					d.OnExtractProgress(modId, int64(installCounter), int64(fileCount))
+				}
 				if err != nil {
 					errChan <- err
 					return
@@ -135,6 +150,13 @@ func extractMap(d *Downloader, filePath string) types.MapExtractResponse {
 		return d.throwMapExtractErrorSimple("Zip file is missing one or more required files", "file_path", filePath)
 	}
 
+	filesCount := 0
+	for key, fileStruct := range filesFound {
+		if fileStruct.Found && key != "config" {
+			filesCount++
+		}
+	}
+
 	var configData types.ConfigData
 	configReader, err := filesFound["config"].FileObject.Open()
 	if err != nil {
@@ -150,6 +172,10 @@ func extractMap(d *Downloader, filePath string) types.MapExtractResponse {
 	configData, err = files.ParseJSON[types.ConfigData](configBytes, "config")
 	if err != nil {
 		return d.throwMapExtractError("Failed to parse config file", err, "file_path", filePath)
+	}
+
+	if configData.ThumbnailBbox != nil && !filesFound["thumbnail"].Found {
+		filesCount++
 	}
 
 	if d.isMapCodeTaken(configData.Code) {
@@ -174,6 +200,10 @@ func extractMap(d *Downloader, filePath string) types.MapExtractResponse {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(filesFound))
 
+	extractCount := 0
+	if d.OnExtractProgress != nil {
+		d.OnExtractProgress(configData.Code, int64(extractCount), int64(filesCount))
+	}
 	for key, fileStruct := range filesFound {
 		if !fileStruct.Found || key == "config" {
 			continue
@@ -193,12 +223,24 @@ func extractMap(d *Downloader, filePath string) types.MapExtractResponse {
 			switch key {
 			case "tiles":
 				extractFileMap(path.Join(d.mapTilePath, configData.Code+".pmtiles"), srcFile, errChan, false)
+				if d.OnExtractProgress != nil {
+					extractCount++
+					d.OnExtractProgress(configData.Code, int64(extractCount), int64(filesCount))
+				}
 
 			case "thumbnail":
 				extractFileMap(path.Join(d.getMapThumbnailPath(), configData.Code+".svg"), srcFile, errChan, false)
+				if d.OnExtractProgress != nil {
+					extractCount++
+					d.OnExtractProgress(configData.Code, int64(extractCount), int64(filesCount))
+				}
 
 			default:
 				extractFileMap(path.Join(destFolder, path.Base(fileStruct.FileObject.Name)+".gz"), srcFile, errChan, true)
+				if d.OnExtractProgress != nil {
+					extractCount++
+					d.OnExtractProgress(configData.Code, int64(extractCount), int64(filesCount))
+				}
 			}
 		}(key, fileStruct)
 	}
@@ -226,6 +268,10 @@ func extractMap(d *Downloader, filePath string) types.MapExtractResponse {
 		thumbnailPath := path.Join(d.getMapThumbnailPath(), configData.Code+".svg")
 		if err := os.WriteFile(thumbnailPath, []byte(thumbnailData), os.ModePerm); err != nil {
 			return d.warnMapExtractResponse("Failed to save generated thumbnail, but map was extracted successfully. You can try generating the thumbnail later from the map details page.", configData, "file_path", filePath, "map_code", configData.Code, "thumbnail_path", thumbnailPath)
+		}
+		extractCount++
+		if d.OnExtractProgress != nil {
+			d.OnExtractProgress(configData.Code, int64(extractCount), int64(filesCount))
 		}
 	}
 
