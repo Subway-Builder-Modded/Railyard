@@ -11,6 +11,7 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"sync"
 
 	"railyard/internal/config"
 	"railyard/internal/logger"
@@ -34,17 +35,130 @@ type Downloader struct {
 	Logger            logger.Logger
 	OnProgress        ProgressFunc
 	OnExtractProgress ExtractProgressFunc
+
+	downloadMu       sync.Mutex
+	downloadCond     *sync.Cond
+	queue            []*downloadOperation
+	queuedOperations map[string]*downloadOperation
+}
+
+type downloadOperation struct {
+	key  string
+	run  func() operationResult
+	completed chan operationResult
+}
+
+type operationResult struct {
+	genericResponse    types.GenericResponse
+	mapExtractResponse types.MapExtractResponse
+}
+
+// operationAction is an internal type to categorize all possible download actions within the queue
+type operationAction string
+
+const (
+	operationActionInstall   operationAction = "install"
+	operationActionUninstall operationAction = "uninstall"
+)
+
+func isValidOperationAction(action operationAction) bool {
+	switch action {
+	case operationActionInstall, operationActionUninstall:
+		return true
+	default:
+		return false
+	}
 }
 
 // NewDownloader creates a new Downloader instance with necessary paths and references.
 func NewDownloader(cfg *config.Config, reg *registry.Registry, l logger.Logger) *Downloader {
-	return &Downloader{
+	d := &Downloader{
 		mapTilePath: path.Join(paths.AppDataRoot(), "tiles"),
 		tempPath:    path.Join(paths.AppDataRoot(), "temp"),
 		Registry:    reg,
 		Config:      cfg,
 		Logger:      l,
 	}
+	d.startQueue()
+	return d
+}
+
+// startQueue initializes the download queue and starts the worker goroutine if it hasn't been started yet.
+func (d *Downloader) startQueue() {
+	d.downloadMu.Lock()
+	defer d.downloadMu.Unlock()
+	// Ensure the queue is started only once
+	if d.downloadCond != nil {
+		return
+	}
+	d.downloadCond = sync.NewCond(&d.downloadMu)
+	d.queuedOperations = make(map[string]*downloadOperation)
+	go d.runQueue()
+}
+
+// runQueue processes download operations sequentially, ensuring that only one operation is present in the queue at a time.
+func (d *Downloader) runQueue() {
+	for {
+		// Lock the queue and wait for an operation to be added if the queue is empty
+		d.downloadMu.Lock()
+		for len(d.queue) == 0 {
+			d.downloadCond.Wait()
+		}
+		op := d.queue[0]
+		d.queue = d.queue[1:]
+		// Unlock to allow other operations to be enqueued during runs
+		d.downloadMu.Unlock()
+
+		result := op.run()
+
+		// Lock the queue again to perform state mutation
+		d.downloadMu.Lock()
+		// Remove the completed operation from the queue
+		delete(d.queuedOperations, op.key)
+		d.downloadMu.Unlock()
+
+		op.completed <- result
+		close(op.completed)
+	}
+}
+
+// enqueueOperation adds a new operation to the queue.
+// If another operation with the same key is already queued or running, the duplicate is dropped.
+func (d *Downloader) enqueueOperation(key string, run func() operationResult) (operationResult, bool) {
+	d.startQueue()
+
+	d.downloadMu.Lock()
+	if _, ok := d.queuedOperations[key]; ok {
+		d.downloadMu.Unlock()
+		return operationResult{}, true
+	}
+
+	op := &downloadOperation{
+		key:  key,
+		run:  run,
+		completed: make(chan operationResult, 1),
+	}
+	d.queue = append(d.queue, op)
+	d.queuedOperations[key] = op
+	d.downloadCond.Signal()
+	d.downloadMu.Unlock()
+
+	return <-op.completed, false
+}
+
+// operationKey generates a unique key for a given operation based on its action, asset type, asset ID, and version.
+func (d *Downloader) operationKey(action operationAction, assetType types.AssetType, assetID string, version string) string {
+	if !isValidOperationAction(action) {
+		// Hard panic here as this is an issue with implementation
+		panic(fmt.Sprintf("invalid downloader operation action: %q", action))
+	}
+
+	return strings.Join([]string{
+		strings.TrimSpace(string(action)),
+		string(assetType),
+		strings.TrimSpace(assetID),
+		strings.TrimSpace(version),
+	}, "|")
 }
 
 // getModPath returns the filesystem path for installed mods.
@@ -143,6 +257,18 @@ func (d *Downloader) getMapThumbnailPath() string {
 }
 
 func (d *Downloader) UninstallMod(modId string) types.GenericResponse {
+	// No version is specified for uninstall operations since mod version is irrelevant
+	key := d.operationKey(operationActionUninstall, types.AssetTypeMod, modId, "")
+	result, deduped := d.enqueueOperation(key, func() operationResult {
+		return operationResult{genericResponse: d.uninstallModNow(modId)}
+	})
+	if deduped {
+		return d.warnResponse("Duplicate request skipped: uninstall already queued", "asset_type", types.AssetTypeMod, "asset_id", modId)
+	}
+	return result.genericResponse
+}
+
+func (d *Downloader) uninstallModNow(modId string) types.GenericResponse {
 	installedMods := d.Registry.GetInstalledMods()
 	foundMod := false
 	for _, mod := range installedMods {
@@ -166,6 +292,18 @@ func (d *Downloader) UninstallMod(modId string) types.GenericResponse {
 }
 
 func (d *Downloader) UninstallMap(mapId string) types.GenericResponse {
+	// No version is specified for uninstall operations since map version is irrelevant
+	key := d.operationKey(operationActionUninstall, types.AssetTypeMap, mapId, "")
+	result, deduped := d.enqueueOperation(key, func() operationResult {
+		return operationResult{genericResponse: d.uninstallMapNow(mapId)}
+	})
+	if deduped {
+		return d.warnResponse("Duplicate request skipped: uninstall already queued", "asset_type", types.AssetTypeMap, "asset_id", mapId)
+	}
+	return result.genericResponse
+}
+
+func (d *Downloader) uninstallMapNow(mapId string) types.GenericResponse {
 	installedMaps := d.Registry.GetInstalledMaps()
 	var mapConfig *types.ConfigData = nil
 	for _, m := range installedMaps {
@@ -196,6 +334,18 @@ func (d *Downloader) UninstallMap(mapId string) types.GenericResponse {
 
 // InstallMod handles the installation of a mod given its ID and version, including downloading, extracting, and updating the registry.
 func (d *Downloader) InstallMod(modId string, version string) types.GenericResponse {
+	key := d.operationKey(operationActionInstall, types.AssetTypeMod, modId, version)
+	result, deduped := d.enqueueOperation(key, func() operationResult {
+		return operationResult{genericResponse: d.installModNow(modId, version)}
+	})
+	if deduped {
+		return d.warnResponse("Duplicate request skipped: install already queued", "asset_type", types.AssetTypeMod, "asset_id", modId, "version", version)
+	}
+	return result.genericResponse
+}
+
+// installModNow handles the installation of a mod given its ID and version, including downloading, extracting, and updating the registry.
+func (d *Downloader) installModNow(modId string, version string) types.GenericResponse {
 	d.Logger.Info("InstallMod started", "mod_id", modId, "version", version)
 	if !d.Config.GetConfig().Validation.IsValid() {
 		return d.throwErrorSimple("Cannot install mod because app config paths are not properly configured. " +
@@ -262,6 +412,18 @@ func (d *Downloader) InstallMod(modId string, version string) types.GenericRespo
 
 // InstallMap handles the installation of a map given its ID and version, including downloading, extracting, validating files, and updating the registry.
 func (d *Downloader) InstallMap(mapId string, version string) types.MapExtractResponse {
+	key := d.operationKey(operationActionInstall, types.AssetTypeMap, mapId, version)
+	result, deduped := d.enqueueOperation(key, func() operationResult {
+		return operationResult{mapExtractResponse: d.installMapNow(mapId, version)}
+	})
+	if deduped {
+		return d.warnMapExtractResponse("Duplicate request skipped: install already queued", types.ConfigData{}, "asset_type", types.AssetTypeMap, "asset_id", mapId, "version", version)
+	}
+	return result.mapExtractResponse
+}
+
+// installMapNow handles the installation of a map given its ID and version, including downloading, extracting, validating files, and updating the registry.
+func (d *Downloader) installMapNow(mapId string, version string) types.MapExtractResponse {
 	d.Logger.Info("InstallMap started", "map_id", mapId, "version", version)
 	if !d.Config.GetConfig().Validation.IsValid() {
 		return d.throwMapExtractErrorSimple("Invalid configuration", "map_id", mapId, "version", version)
