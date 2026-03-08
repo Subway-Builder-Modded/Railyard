@@ -6,10 +6,17 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
+	"sync"
 
 	"railyard/internal/types"
 )
+
+// modManifestDeps is the minimal schema needed to extract dependencies from a mod's manifest.json.
+type modManifestDeps struct {
+	Dependencies map[string]string `json:"dependencies"`
+}
 
 // GetVersions fetches available versions for a mod or map.
 // updateType must be "github" or "custom".
@@ -62,24 +69,69 @@ func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
 	versions := make([]types.VersionInfo, 0, len(releases))
 	for _, rel := range releases {
 		v := types.VersionInfo{
-			Version:   rel.TagName,
-			Name:      rel.Name,
-			Changelog: rel.Body,
-			Date:      rel.PublishedAt,
+			Version:    rel.TagName,
+			Name:       rel.Name,
+			Changelog:  rel.Body,
+			Date:       rel.PublishedAt,
+			Prerelease: rel.Prerelease,
 		}
 		for _, asset := range rel.Assets {
 			v.Downloads += asset.DownloadCount
 			if asset.Name == "manifest.json" {
 				v.Manifest = asset.BrowserDownloadURL
 			}
-		}
-		if len(rel.Assets) > 0 {
-			v.DownloadURL = rel.Assets[0].BrowserDownloadURL
+			if v.DownloadURL == "" && path.Ext(asset.Name) == ".zip" {
+				v.DownloadURL = asset.BrowserDownloadURL
+			}
 		}
 		versions = append(versions, v)
 	}
 
+	// Fetch manifest.json assets in parallel to extract game_version
+	r.enrichGameVersions(versions)
+
 	return versions, nil
+}
+
+// enrichGameVersions fetches manifest.json URLs in parallel and populates GameVersion
+// from dependencies["subway-builder"]. Errors are silently ignored per-version.
+func (r *Registry) enrichGameVersions(versions []types.VersionInfo) {
+	var wg sync.WaitGroup
+	for i := range versions {
+		if versions[i].Manifest == "" {
+			continue
+		}
+		wg.Add(1)
+		go func(v *types.VersionInfo) {
+			defer wg.Done()
+			req, err := http.NewRequest("GET", v.Manifest, nil)
+			if err != nil {
+				return
+			}
+			req.Header.Set("User-Agent", "Railyard-Desktop-App")
+			req.Header.Set("Accept", "application/octet-stream")
+			resp, err := r.httpClient.Do(req)
+			if err != nil {
+				return
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				return
+			}
+			body, err := io.ReadAll(io.LimitReader(resp.Body, 256*1024))
+			if err != nil {
+				return
+			}
+			var manifest modManifestDeps
+			if err := json.Unmarshal(body, &manifest); err != nil {
+				return
+			}
+			if sbRange, ok := manifest.Dependencies["subway-builder"]; ok {
+				v.GameVersion = sbRange
+			}
+		}(&versions[i])
+	}
+	wg.Wait()
 }
 
 func (r *Registry) getCustomVersions(updateURL string) ([]types.VersionInfo, error) {

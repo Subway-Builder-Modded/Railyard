@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"sync/atomic"
 
 	"railyard/internal/files"
 	"railyard/internal/types"
@@ -50,7 +51,7 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 	if d.OnExtractProgress != nil {
 		d.OnExtractProgress(modId, 0, int64(fileCount))
 	}
-	installCounter := 0
+	var installCounter atomic.Int64
 	for _, file := range reader.File {
 		if !file.FileInfo().IsDir() {
 			wg.Add(1)
@@ -81,9 +82,8 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 				defer srcFile.Close()
 
 				_, err = io.Copy(destFile, srcFile)
-				installCounter++
 				if d.OnExtractProgress != nil {
-					d.OnExtractProgress(modId, int64(installCounter), int64(fileCount))
+					d.OnExtractProgress(modId, installCounter.Add(1), int64(fileCount))
 				}
 				if err != nil {
 					errChan <- err

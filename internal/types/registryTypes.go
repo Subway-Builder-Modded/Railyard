@@ -75,6 +75,7 @@ type VersionInfo struct {
 	SHA256      string `json:"sha256"`
 	Downloads   int    `json:"downloads"`
 	Manifest    string `json:"manifest,omitempty"`
+	Prerelease  bool   `json:"prerelease"`
 }
 
 // GithubRelease maps fields from the GitHub Releases API response.
@@ -82,6 +83,7 @@ type GithubRelease struct {
 	TagName     string        `json:"tag_name"`
 	Name        string        `json:"name"`
 	Body        string        `json:"body"`
+	Prerelease  bool          `json:"prerelease"`
 	PublishedAt string        `json:"published_at"`
 	Assets      []GithubAsset `json:"assets"`
 }

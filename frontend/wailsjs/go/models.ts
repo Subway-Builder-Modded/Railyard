@@ -587,6 +587,7 @@ export namespace types {
 	    sha256: string;
 	    downloads: number;
 	    manifest?: string;
+	    prerelease: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new VersionInfo(source);
@@ -603,6 +604,7 @@ export namespace types {
 	        this.sha256 = source["sha256"];
 	        this.downloads = source["downloads"];
 	        this.manifest = source["manifest"];
+	        this.prerelease = source["prerelease"];
 	    }
 	}
 

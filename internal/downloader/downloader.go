@@ -1,12 +1,16 @@
 package downloader
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"path"
 	"slices"
+	"strings"
 
 	"railyard/internal/config"
 	"railyard/internal/logger"
@@ -227,6 +231,11 @@ func (d *Downloader) InstallMod(modId string, version string) types.GenericRespo
 		return d.throwErrorSimple("Failed to download mod zip: "+downloadResp.Message, "mod_id", modId, "version", version)
 	}
 
+	if err := d.verifySHA256(downloadResp.Path, versionInfo.SHA256); err != nil {
+		os.Remove(downloadResp.Path)
+		return d.throwError("SHA-256 integrity check failed", err, "mod_id", modId, "version", version)
+	}
+
 	extractResp := d.handleModExtract(downloadResp.Path, modId)
 	if extractResp.Status != types.ResponseSuccess {
 		os.Remove(downloadResp.Path)
@@ -274,6 +283,11 @@ func (d *Downloader) InstallMap(mapId string, version string) types.MapExtractRe
 	if downloadResp.Status != types.ResponseSuccess {
 		os.Remove(downloadResp.Path)
 		return d.throwMapExtractErrorSimple("Failed to download map zip: "+downloadResp.Message, "map_id", mapId, "version", version)
+	}
+
+	if err := d.verifySHA256(downloadResp.Path, versionInfo.SHA256); err != nil {
+		os.Remove(downloadResp.Path)
+		return d.throwMapExtractError("SHA-256 integrity check failed", err, "map_id", mapId, "version", version)
 	}
 
 	extractResp := d.handleMapExtract(downloadResp.Path)
@@ -345,6 +359,31 @@ func (d *Downloader) downloadTempZip(url string, itemId string) types.DownloadTe
 	}
 
 	return d.successDownloadResponse("File downloaded successfully", file.Name(), "url", url)
+}
+
+// verifySHA256 checks the SHA-256 hash of a downloaded file against an expected hash.
+// If expectedHash is empty, the check is skipped (GitHub releases rely on GitHub's own integrity).
+func (d *Downloader) verifySHA256(filePath string, expectedHash string) error {
+	if expectedHash == "" {
+		return nil
+	}
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file for hash verification: %w", err)
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return fmt.Errorf("failed to compute SHA-256: %w", err)
+	}
+
+	actual := hex.EncodeToString(h.Sum(nil))
+	if !strings.EqualFold(actual, expectedHash) {
+		return fmt.Errorf("expected %s, got %s", expectedHash, actual)
+	}
+	return nil
 }
 
 // getVanillaMapCodes returns the city codes of maps included with the game.

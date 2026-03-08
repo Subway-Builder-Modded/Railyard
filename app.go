@@ -170,6 +170,49 @@ func runStartupRoutines(a *App) {
 	}
 }
 
+// GetGameVersion attempts to detect the installed Subway Builder version.
+// Returns empty string if detection fails.
+func (a *App) GetGameVersion() string {
+	cfg := a.Config.GetConfig()
+	if !cfg.Validation.ExecutablePathValid {
+		return ""
+	}
+	exePath := cfg.Config.ExecutablePath
+
+	var candidates []string
+	if runtime.GOOS == "darwin" {
+		// macOS: exe is at <app>/Contents/MacOS/<name>, resources at <app>/Contents/Resources/app/package.json
+		macosDir := path.Dir(exePath)
+		contentsDir := path.Dir(macosDir)
+		candidates = append(candidates,
+			path.Join(contentsDir, "Resources", "app", "package.json"),
+		)
+	} else {
+		// Windows/Linux: exe is alongside resources/ directory
+		exeDir := path.Dir(exePath)
+		candidates = append(candidates,
+			path.Join(exeDir, "resources", "app", "package.json"),
+		)
+	}
+
+	for _, candidate := range candidates {
+		data, err := os.ReadFile(candidate)
+		if err != nil {
+			continue
+		}
+		var pkg struct {
+			Version string `json:"version"`
+		}
+		if err := json.Unmarshal(data, &pkg); err != nil {
+			continue
+		}
+		if pkg.Version != "" {
+			return pkg.Version
+		}
+	}
+	return ""
+}
+
 func (a *App) LaunchGame() error {
 	a.gameMu.Lock()
 	if a.gameCmd != nil && a.gameCmd.ProcessState == nil {
