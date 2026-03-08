@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { types } from '../../wailsjs/go/models';
 import { GetInstalledMods, GetInstalledMaps } from '../../wailsjs/go/registry/Registry';
-import { InstallMod, InstallMap, UninstallMod, UninstallMap } from '../../wailsjs/go/downloader/Downloader';
+import { GetActiveProfile, UpdateSubscriptions } from '../../wailsjs/go/profiles/UserProfiles';
 
 interface InstalledState {
   installedMods: types.InstalledModInfo[];
@@ -13,16 +13,42 @@ interface InstalledState {
   initialized: boolean;
 
   initialize: () => Promise<void>;
-  installMod: (id: string, version: string) => Promise<types.GenericResponse>;
-  installMap: (id: string, version: string) => Promise<types.MapExtractResponse>;
-  uninstallMod: (id: string) => Promise<types.GenericResponse>;
-  uninstallMap: (id: string) => Promise<types.GenericResponse>;
+  installMod: (id: string, version: string) => Promise<types.UpdateSubscriptionsResult>;
+  installMap: (id: string, version: string) => Promise<types.UpdateSubscriptionsResult>;
+  uninstallMod: (id: string) => Promise<types.UpdateSubscriptionsResult>;
+  uninstallMap: (id: string) => Promise<types.UpdateSubscriptionsResult>;
   isInstalled: (id: string) => boolean;
   getInstalledVersion: (id: string) => string | null;
   isOperating: (id: string) => boolean;
 }
 
-export const useInstalledStore = create<InstalledState>((set, get) => ({
+export const useInstalledStore = create<InstalledState>((set, get) => {
+  const applySubscriptionMutation = async (
+    id: string,
+    version: string,
+    assetType: "map" | "mod",
+    action: "subscribe" | "unsubscribe",
+  ) => {
+    const profile = await GetActiveProfile();
+    const request = new types.UpdateSubscriptionsRequest({
+      profileId: profile.id,
+      assets: {
+        [id]: new types.SubscriptionUpdateItem({
+          version,
+          type: assetType,
+        }),
+      },
+      action,
+      forceSync: true,
+    });
+    const result = await UpdateSubscriptions(request);
+    if (result.status !== "success") {
+      throw new Error(result.message || "Subscription update failed");
+    }
+    return result;
+  };
+
+  return ({
   installedMods: [],
   installedMaps: [],
   installing: new Set<string>(),
@@ -45,10 +71,7 @@ export const useInstalledStore = create<InstalledState>((set, get) => ({
   installMod: async (id: string, version: string) => {
     set({ installing: new Set([...get().installing, id]), error: null });
     try {
-      const response = await InstallMod(id, version);
-      if (response.status !== "success") {
-        throw new Error(response.message || "Install failed");
-      }
+      const response = await applySubscriptionMutation(id, version, "mod", "subscribe");
       const [mods, maps] = await Promise.all([GetInstalledMods(), GetInstalledMaps()]);
       const next = new Set(get().installing);
       next.delete(id);
@@ -65,10 +88,7 @@ export const useInstalledStore = create<InstalledState>((set, get) => ({
   installMap: async (id: string, version: string) => {
     set({ installing: new Set([...get().installing, id]), error: null });
     try {
-      const response = await InstallMap(id, version);
-      if (response.status !== "success") {
-        throw new Error(response.message || "Install failed");
-      }
+      const response = await applySubscriptionMutation(id, version, "map", "subscribe");
       const [mods, maps] = await Promise.all([GetInstalledMods(), GetInstalledMaps()]);
       const next = new Set(get().installing);
       next.delete(id);
@@ -85,10 +105,7 @@ export const useInstalledStore = create<InstalledState>((set, get) => ({
   uninstallMod: async (id: string) => {
     set({ uninstalling: new Set([...get().uninstalling, id]), error: null });
     try {
-      const response = await UninstallMod(id);
-      if (response.status !== "success") {
-        throw new Error(response.message || "Uninstall failed");
-      }
+      const response = await applySubscriptionMutation(id, "", "mod", "unsubscribe");
       const [mods, maps] = await Promise.all([GetInstalledMods(), GetInstalledMaps()]);
       const next = new Set(get().uninstalling);
       next.delete(id);
@@ -105,10 +122,7 @@ export const useInstalledStore = create<InstalledState>((set, get) => ({
   uninstallMap: async (id: string) => {
     set({ uninstalling: new Set([...get().uninstalling, id]), error: null });
     try {
-      const response = await UninstallMap(id);
-      if (response.status !== "success") {
-        throw new Error(response.message || "Uninstall failed");
-      }
+      const response = await applySubscriptionMutation(id, "", "map", "unsubscribe");
       const [mods, maps] = await Promise.all([GetInstalledMods(), GetInstalledMaps()]);
       const next = new Set(get().uninstalling);
       next.delete(id);
@@ -139,4 +153,5 @@ export const useInstalledStore = create<InstalledState>((set, get) => ({
   isOperating: (id: string) => {
     return get().installing.has(id) || get().uninstalling.has(id);
   },
-}));
+  });
+});

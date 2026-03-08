@@ -3,11 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useInstalledStore } from "@/stores/installed-store";
-import { useProfileStore } from "@/stores/profile-store";
 import { UninstallDialog } from "@/components/dialogs/UninstallDialog";
 import { InstallErrorDialog } from "@/components/dialogs/InstallErrorDialog";
 import { toast } from "sonner";
-import { ExternalLink, MapPin, Users, Globe, Bell, BellOff, Loader2, Trash2, CheckCircle, Download } from "lucide-react";
+import { ExternalLink, MapPin, Users, Globe, Loader2, Trash2, CheckCircle, Download } from "lucide-react";
 import { BrowserOpenURL } from "../../../wailsjs/runtime/runtime";
 import { types } from "../../../wailsjs/go/models";
 
@@ -28,11 +27,9 @@ export function ProjectInfo({ type, item, latestVersion, versionsLoading }: Proj
   const [uninstallOpen, setUninstallOpen] = useState(false);
   const [installError, setInstallError] = useState<{ version: string; message: string } | null>(null);
   const { installMod, installMap, getInstalledVersion, isOperating } = useInstalledStore();
-  const { isSubscribed, updateSubscription } = useProfileStore();
 
   const installedVersion = getInstalledVersion(item.id);
   const installing = isOperating(item.id);
-  const subscribed = isSubscribed(type, item.id);
   const hasUpdate = installedVersion && latestVersion && installedVersion !== latestVersion.version;
 
   const handleInstall = async (version: string) => {
@@ -48,17 +45,6 @@ export function ProjectInfo({ type, item, latestVersion, versionsLoading }: Proj
     }
   };
 
-  const handleSubscribe = async () => {
-    try {
-      const action = subscribed ? "unsubscribe" : "subscribe";
-      const version = latestVersion?.version || installedVersion || "";
-      await updateSubscription(type, item.id, action, version);
-      toast.success(subscribed ? `Unsubscribed from ${item.name}.` : `Subscribed to ${item.name}.`);
-    } catch {
-      toast.error("Failed to update subscription.");
-    }
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
@@ -68,11 +54,6 @@ export function ProjectInfo({ type, item, latestVersion, versionsLoading }: Proj
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          <Button variant="outline" size="sm" onClick={handleSubscribe}>
-            {subscribed ? <BellOff className="h-4 w-4 mr-1.5" /> : <Bell className="h-4 w-4 mr-1.5" />}
-            {subscribed ? "Unsubscribe" : "Subscribe"}
-          </Button>
-
           {versionsLoading ? (
             <Button size="sm" disabled>
               <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
