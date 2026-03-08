@@ -1,5 +1,11 @@
 package types
 
+import (
+	"strings"
+
+	"golang.org/x/mod/semver"
+)
+
 type Status string
 
 const (
@@ -40,6 +46,28 @@ func IsValidAssetType(assetType AssetType) bool {
 }
 
 type Version string
+
+func IsValidSemverVersion(version Version) bool {
+	value := strings.TrimSpace(string(version))
+	if value == "" {
+		return false
+	}
+	if strings.ContainsAny(value, "-+") {
+		return false
+	}
+	if !strings.HasPrefix(value, "v") {
+		value = "v" + value
+	}
+	if !semver.IsValid(value) {
+		return false
+	}
+
+	core := value[1:]
+	if idx := strings.IndexAny(core, "-+"); idx >= 0 {
+		core = core[:idx]
+	}
+	return strings.Count(core, ".") == 2
+}
 
 // MissingFilesError is returned when required files are missing from an archive.
 type MissingFilesError struct {

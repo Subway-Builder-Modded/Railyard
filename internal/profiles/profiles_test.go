@@ -567,9 +567,18 @@ func TestUpdateSubscriptionsRejectsInvalidRequests(t *testing.T) {
 		},
 	})
 	require.ErrorIs(t, err, ErrInvalidAssetType)
+
+	_, err = svc.UpdateSubscriptions(types.UpdateSubscriptionsRequest{
+		ProfileID: types.DefaultProfileID,
+		Action:    types.SubscriptionActionSubscribe,
+		Assets: map[string]types.SubscriptionUpdateItem{
+			"asset": {Type: types.AssetTypeMap, Version: types.Version("not-semver")},
+		},
+	})
+	require.ErrorIs(t, err, ErrInvalidVersion)
 }
 
-func TestUpdateSubscriptionsAcceptsOpaqueVersionString(t *testing.T) {
+func TestUpdateSubscriptionsAcceptsSemverVersionString(t *testing.T) {
 	setEnv(t)
 	svc := loadedUserProfilesService(t, types.InitialProfilesState())
 
@@ -577,15 +586,15 @@ func TestUpdateSubscriptionsAcceptsOpaqueVersionString(t *testing.T) {
 		ProfileID: types.DefaultProfileID,
 		Action:    types.SubscriptionActionSubscribe,
 		Assets: map[string]types.SubscriptionUpdateItem{
-			"map-x": {Type: types.AssetTypeMap, Version: types.Version("not-semver")},
+			"map-x": {Type: types.AssetTypeMap, Version: types.Version("1.2.3")},
 		},
 	})
 	require.NoError(t, err)
 	require.Equal(t, types.ResponseSuccess, result.Status)
 	require.Equal(t, "subscriptions updated", result.Message)
-	require.Equal(t, "not-semver", result.Profile.Subscriptions.Maps["map-x"])
+	require.Equal(t, "1.2.3", result.Profile.Subscriptions.Maps["map-x"])
 	require.Len(t, result.Operations, 1)
-	require.Equal(t, types.Version("not-semver"), result.Operations[0].Version)
+	require.Equal(t, types.Version("1.2.3"), result.Operations[0].Version)
 }
 
 func TestSyncSubscriptions(t *testing.T) {

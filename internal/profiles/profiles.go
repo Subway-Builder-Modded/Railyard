@@ -30,6 +30,7 @@ var (
 	ErrProfileNotFound           = errors.New("profile not found")
 	ErrInvalidSubscriptionAction = errors.New("invalid subscription action")
 	ErrInvalidAssetType          = errors.New("invalid asset type")
+	ErrInvalidVersion            = errors.New("invalid version")
 	ErrProfilesNotLoaded         = errors.New("profiles state not loaded")
 	ErrActiveProfileMissing      = errors.New("active profile missing from loaded state")
 )
@@ -256,6 +257,9 @@ func mutateSubscriptionMap(
 	switch action {
 	case types.SubscriptionActionSubscribe:
 		versionText := strings.TrimSpace(string(item.Version))
+		if !types.IsValidSemverVersion(types.Version(versionText)) {
+			return nil, fmt.Errorf("%w: %q", ErrInvalidVersion, versionText)
+		}
 		target[assetID] = versionText
 		return &types.SubscriptionOperation{
 			AssetID: assetID,
