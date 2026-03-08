@@ -16,7 +16,7 @@
 - **Map Thumbnails**: Auto-generated SVG thumbnails rendered from PMTiles vector data.
 - **Live Logs**: Stream and view game console output in real time.
 
-**Download from GitHub Releases to install**
+To download and install Railyard, visit the [download page](https://subwaybuildermodded.com/railyard).
 
 ## Development prerequisites
 
