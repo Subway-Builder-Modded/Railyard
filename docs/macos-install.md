@@ -4,7 +4,7 @@ Railyard is not currently signed with an Apple Developer certificate, so macOS G
 
 ## Install from DMG
 
-1. Download the latest `railyard-macos-universal.dmg` from the [Releases](https://github.com/Subway-Builder-Modded/Railyard/releases) page.
+1. Download the latest `railyard-macos-universal.dmg` from the [Releases](https://github.com/subway-builder-modded/railyard/releases) page.
 2. Open the DMG and drag **Railyard** into your **Applications** folder.
 
 ## First launch
@@ -41,7 +41,7 @@ Then open Railyard normally.
 
 If you prefer not to use the DMG:
 
-1. Download `railyard-macos-universal.zip` from the [Releases](https://github.com/Subway-Builder-Modded/Railyard/releases) page.
+1. Download `railyard-macos-universal.zip` from the [Releases](https://github.com/subway-builder-modded/railyard/releases) page.
 2. Extract the ZIP (double-click it in Finder).
 3. Move `railyard.app` to your **Applications** folder.
 4. Follow the **First launch** steps above.
