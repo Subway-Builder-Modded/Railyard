@@ -90,7 +90,7 @@ export function SearchPage() {
                 </>
               )}
             </p>
-            <SortSelect value={sort} onChange={setSort} />
+            <SortSelect value={sort} onChange={setSort} tab={type} />
           </div>
 
           {/* Cards / empty / loading */}
