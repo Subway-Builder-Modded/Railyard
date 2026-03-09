@@ -27,6 +27,11 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 		return d.throwError("Failed to create destination folder", err, "destination", destFolder, "mod_id", modId)
 	}
 
+	requiredFiles := map[string]types.FileFoundStruct{
+		"manifest":        {Found: false, FileObject: nil, Required: true},
+		"manifest_target": {Found: false, FileObject: nil, Required: true},
+	}
+
 	fileCount := 0
 	for _, file := range reader.File {
 		if !file.FileInfo().IsDir() {
@@ -42,6 +47,31 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 				return d.throwError("Failed to create directory", err, "destination", destPath, "mod_id", modId)
 			}
 		}
+		if file.Name == "manifest.json" {
+			requiredFiles["manifest"] = types.FileFoundStruct{Found: true, FileObject: file, Required: true}
+		}
+	}
+
+	rawManifestReader, err := requiredFiles["manifest"].FileObject.Open()
+	if err != nil {
+		return d.throwError("Failed to read manifest file", err, "file_path", filePath, "mod_id", modId)
+	}
+
+	rawManifestBytes, err := io.ReadAll(rawManifestReader)
+	if err != nil {
+		return d.throwError("Failed to read manifest file", err, "file_path", filePath, "mod_id", modId)
+	}
+
+	manifestData, err := files.ParseJSON[types.MetroMakerModManifest](rawManifestBytes, "manifest.json")
+	for _, file := range reader.File {
+		if file.Name == manifestData.Main {
+			requiredFiles["manifest_target"] = types.FileFoundStruct{Found: true, FileObject: file, Required: true}
+			break
+		}
+	}
+
+	if !requiredFilesPresent(requiredFiles) {
+		return d.throwErrorSimple("Zip file is missing one or more required files", "file_path", filePath, "mod_id", modId)
 	}
 
 	// Second pass: extract files in parallel
