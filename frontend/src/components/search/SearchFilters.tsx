@@ -48,7 +48,7 @@ export function SearchFilters({
           onChange={onTagsChange}
         />
         <div className="flex-1" />
-        <SortSelect value={sort} onChange={onSortChange} />
+        <SortSelect value={sort} onChange={onSortChange} tab={type} />
       </div>
     </div>
   );
