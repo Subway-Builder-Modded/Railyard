@@ -52,6 +52,10 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 		}
 	}
 
+	if !requiredFiles["manifest"].Found {
+		return d.throwErrorSimple("Zip file is missing manifest.json", "file_path", filePath, "mod_id", modId)
+	}
+
 	rawManifestReader, err := requiredFiles["manifest"].FileObject.Open()
 	if err != nil {
 		return d.throwError("Failed to read manifest file", err, "file_path", filePath, "mod_id", modId)
