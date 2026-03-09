@@ -9,6 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"railyard/internal/constants"
 	"railyard/internal/files"
 	"railyard/internal/types"
 	"railyard/internal/utils"
@@ -47,7 +48,7 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 				return d.throwError("Failed to create directory", err, "destination", destPath, "mod_id", modId)
 			}
 		}
-		if file.Name == "manifest.json" {
+		if file.Name == constants.MANIFEST_FILE_NAME {
 			requiredFiles["manifest"] = types.FileFoundStruct{Found: true, FileObject: file, Required: true}
 		}
 	}
