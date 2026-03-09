@@ -9,6 +9,7 @@ import (
 	"path"
 	"railyard/internal/constants"
 	"railyard/internal/files"
+	"railyard/internal/logger"
 	"railyard/internal/types"
 	"runtime"
 	"strings"
@@ -59,8 +60,29 @@ func launchElevated(exePath string, args string, workingDir string) error {
 	return nil
 }
 
-func CheckForUpdates(ctx context.Context, progressFunc types.ProgressFunc) error {
-	versions, err := PullReleases()
+func deleteOldTempInstallers() error {
+	files, err := os.ReadDir(os.TempDir())
+	if err != nil {
+		return fmt.Errorf("failed to read temp directory: %w", err)
+	}
+
+	for _, file := range files {
+		if strings.HasPrefix(file.Name(), "railyard-installer-") {
+			err := os.Remove(path.Join(os.TempDir(), file.Name()))
+			if err != nil {
+				fmt.Printf("Failed to delete old installer %s: %v\n", file.Name(), err)
+			}
+		}
+	}
+	return nil
+}
+
+func CheckForUpdates(ctx context.Context, progressFunc types.ProgressFunc, log logger.Logger) error {
+	err := deleteOldTempInstallers()
+	if err != nil {
+		fmt.Printf("Error cleaning up old installers: %v\n", err)
+	}
+	versions, err := pullReleases(log)
 	if err != nil {
 		fmt.Printf("Error checking for updates: %v\n", err)
 		return err
@@ -98,7 +120,7 @@ func CheckForUpdates(ctx context.Context, progressFunc types.ProgressFunc) error
 					fmt.Printf("No suitable installer found for this platform in version %s\n", v.Version)
 					return fmt.Errorf("no suitable installer found for this platform in version %s", v.Version)
 				}
-				err = DownloadAndRunInstaller(downloadURL, ctx, progressFunc)
+				err = downloadAndRunInstaller(downloadURL, ctx, progressFunc)
 				if err != nil {
 					fmt.Printf("Error downloading or running installer: %v\n", err)
 					return err
@@ -110,7 +132,7 @@ func CheckForUpdates(ctx context.Context, progressFunc types.ProgressFunc) error
 	return nil
 }
 
-func DownloadAndRunInstaller(downloadURL string, ctx context.Context, downloadProgress types.ProgressFunc) error {
+func downloadAndRunInstaller(downloadURL string, ctx context.Context, downloadProgress types.ProgressFunc) error {
 	resp, err := http.Get(downloadURL)
 	if err != nil {
 		return fmt.Errorf("failed to download installer from %q: %w", downloadURL, err)
@@ -216,7 +238,7 @@ func VersionIsNewerThanInstalled(version string) bool {
 	return false
 }
 
-func PullReleases() ([]types.RailyardVersionInfo, error) {
+func pullReleases(log logger.Logger) ([]types.RailyardVersionInfo, error) {
 	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/releases", constants.RAILYARD_REPO)
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
@@ -269,7 +291,30 @@ func PullReleases() ([]types.RailyardVersionInfo, error) {
 				v.WindowsARMDownloadURL = asset.BrowserDownloadURL
 			}
 		}
+		if len(returnMissingDownloads(v)) != 0 {
+			log.Warn("Release %s is missing downloads for: %s", v.Version, strings.Join(returnMissingDownloads(v), ", "))
+		}
 		versions = append(versions, v)
 	}
 	return versions, nil
+}
+
+func returnMissingDownloads(version types.RailyardVersionInfo) []string {
+	missing := []string{}
+	if version.LinuxDownloadURL == "" {
+		missing = append(missing, "linux")
+	}
+
+	if version.MacOSDownloadURL == "" {
+		missing = append(missing, "macos")
+	}
+
+	if version.WindowsX64DownloadURL == "" {
+		missing = append(missing, "windows-x64")
+	}
+
+	if version.WindowsARMDownloadURL == "" {
+		missing = append(missing, "windows-arm")
+	}
+	return missing
 }

@@ -149,7 +149,10 @@ func (a *App) recoverProfiles(cause error) types.UserProfile {
 }
 
 func runStartupRoutines(a *App) {
-	// TODO: Handle auto-update of application version...
+	// TODO: Handle auto-update of application version...'
+	if a.Config.Cfg.CheckForUpdatesOnLaunch {
+		updater.CheckForUpdates(a.ctx, a.Downloader.OnProgress, a.Logger)
+	}
 
 	activeProfile := resolveStartupProfile(a)
 
@@ -168,10 +171,6 @@ func runStartupRoutines(a *App) {
 	// TODO: Make this configurable within the profile itself
 	if err := a.Profiles.SyncSubscriptions(activeProfile.ID); err != nil {
 		a.Logger.Warn("Failed to sync profile subscriptions on startup", "error", err, "profile_id", activeProfile.ID)
-	}
-
-	if a.Config.Cfg.CheckForUpdatesOnLaunch {
-		updater.CheckForUpdates(a.ctx, a.Downloader.OnProgress)
 	}
 }
 
