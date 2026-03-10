@@ -100,7 +100,7 @@ jobs:
       - name: Build Linux (amd64)
         run: |
           echo $VERSION > internal/constants/version.txt
-          wails build -platform linux/amd64
+          wails build -platform linux/amd64 -tags webkit2_41
 
       - name: Create AppImage
         run: |
