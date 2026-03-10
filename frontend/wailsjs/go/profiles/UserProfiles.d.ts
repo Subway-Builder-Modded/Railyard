@@ -20,4 +20,4 @@ export function UpdateAllSubscriptionsToLatest(arg1:string):Promise<types.Update
 
 export function UpdateSubscriptions(arg1:types.UpdateSubscriptionsRequest):Promise<types.UpdateSubscriptionsResult>;
 
-export function UpdateUIPreferences(arg1:types.ThemeMode,arg2:types.PageSize):Promise<types.UserProfileResult>;
+export function UpdateUIPreferences(arg1:types.UIPreferences):Promise<types.UserProfileResult>;
