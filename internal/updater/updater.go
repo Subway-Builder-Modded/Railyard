@@ -12,6 +12,7 @@ import (
 	"railyard/internal/logger"
 	"railyard/internal/types"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -174,7 +175,6 @@ func downloadAndRunInstaller(downloadURL string, ctx context.Context, downloadPr
 
 func VersionIsNewerThanInstalled(version string) bool {
 	installed := constants.RAILYARD_VERSION
-	// Strip leading "v" if present for comparison
 	installed = strings.TrimPrefix(installed, "v")
 	version = strings.TrimPrefix(version, "v")
 
@@ -192,7 +192,9 @@ func VersionIsNewerThanInstalled(version string) bool {
 	versionParts := strings.Split(version, ".")
 
 	for i := 0; i < len(installedParts) && i < len(versionParts); i++ {
-		if versionParts[i] > installedParts[i] {
+		versionPart, err1 := strconv.Atoi(versionParts[i])
+		installedPart, err2 := strconv.Atoi(installedParts[i])
+		if err1 == nil && err2 == nil && versionPart > installedPart {
 			return true
 		}
 	}
