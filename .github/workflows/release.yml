@@ -45,7 +45,7 @@ jobs:
 
       - name: Build macOS (universal)
         run: |
-          echo $VERSION > internal/constants/version.txt
+          echo -e $VERSION > internal/constants/version.txt
           wails build -platform darwin/universal
           cd build/bin
           ditto -c -k --sequesterRsrc --keepParent railyard.app railyard-${VERSION}-macos-universal.zip
@@ -111,15 +111,15 @@ jobs:
       - name: Build Linux (amd64 current)
         if: ${{matrix.type == 'current'}}
         run: |
-          echo $TYPE > internal/constants/linux_type.txt
-          echo $VERSION > internal/constants/version.txt
+          echo -e $TYPE > internal/constants/linux_type.txt
+          echo -e $VERSION > internal/constants/version.txt
           wails build -platform linux/amd64 -tags webkit2_41
           
       - name: Build Linux (amd64 legacy)
         if: ${{matrix.type == 'legacy'}}
         run: |
-          echo $TYPE > internal/constants/linux_type.txt
-          echo $VERSION > internal/constants/version.txt
+          echo -e $TYPE > internal/constants/linux_type.txt
+          echo -e $VERSION > internal/constants/version.txt
           wails build -platform linux/amd64
 
       - name: Create AppImage
