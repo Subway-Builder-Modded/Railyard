@@ -38,7 +38,7 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 	}
 
 	for _, file := range reader.File {
-		if file.Name == constants.MANIFEST_FILE_NAME {
+		if file.Name == constants.MANIFEST_JSON {
 			requiredFiles["manifest"] = types.FileFoundStruct{Found: true, FileObject: file, Required: true}
 		}
 	}
@@ -57,7 +57,7 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 		return d.throwError("Failed to read manifest file", err, "file_path", filePath, "mod_id", modId)
 	}
 
-	manifestData, err := files.ParseJSON[types.MetroMakerModManifest](rawManifestBytes, constants.MANIFEST_FILE_NAME)
+	manifestData, err := files.ParseJSON[types.MetroMakerModManifest](rawManifestBytes, constants.MANIFEST_JSON)
 	for _, file := range reader.File {
 		if file.Name == manifestData.Main {
 			requiredFiles["manifest_target"] = types.FileFoundStruct{Found: true, FileObject: file, Required: true}

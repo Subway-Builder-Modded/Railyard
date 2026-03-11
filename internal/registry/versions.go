@@ -14,8 +14,6 @@ import (
 	"railyard/internal/types"
 )
 
-const DOWNLOADS_JSON = "downloads.json"
-
 // modManifestDeps is the minimal schema needed to extract dependencies from a mod's manifest.json.
 type modManifestDeps struct {
 	Dependencies map[string]string `json:"dependencies"`
@@ -80,7 +78,7 @@ func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
 		}
 		for _, asset := range rel.Assets {
 			v.Downloads += asset.DownloadCount
-			if asset.Name == "manifest.json" {
+			if asset.Name == constants.MANIFEST_JSON {
 				v.Manifest = asset.BrowserDownloadURL
 			}
 			if v.DownloadURL == "" && path.Ext(asset.Name) == ".zip" {

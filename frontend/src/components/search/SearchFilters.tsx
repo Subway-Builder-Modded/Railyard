@@ -8,8 +8,8 @@ import type { SortOption } from "@/lib/constants";
 interface SearchFiltersProps {
   query: string;
   onQueryChange: (query: string) => void;
-  type: "all" | "mods" | "maps";
-  onTypeChange: (type: "all" | "mods" | "maps") => void;
+  type: "mods" | "maps";
+  onTypeChange: (type: "mods" | "maps") => void;
   availableTags: string[];
   selectedTags: string[];
   onTagsChange: (tags: string[]) => void;

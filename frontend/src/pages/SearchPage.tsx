@@ -16,27 +16,18 @@ export function SearchPage() {
 
   const allTags = useMemo(() => {
     const modTags = mods.flatMap((m) => m.tags ?? []);
-    const mapTags = maps.flatMap((m) => m.tags ?? []);
-    return [...new Set([...modTags, ...mapTags])].sort();
-  }, [mods, maps]);
+    return [...new Set(modTags)].sort();
+  }, [mods]);
 
-  const {
-    items,
-    page,
-    totalPages,
-    totalResults,
-    query,
-    type,
-    selectedTags,
-    sort,
-    perPage,
-    setQuery,
-    setType,
-    setSelectedTags,
-    setSort,
-    setPage,
-    setPerPage,
-  } = useFilteredItems({ mods, maps });
+  const specialDemandTags = useMemo(() => {
+    const dynamicTags = maps.flatMap((m) => m.special_demand ?? []);
+    return [...new Set(dynamicTags)].sort();
+  }, [maps]);
+
+  const { items, page, totalPages, totalResults, filters, setFilters, setPage } = useFilteredItems({
+    mods,
+    maps,
+  });
 
   const modCount = mods.length;
   const mapCount = maps.length;
@@ -53,19 +44,21 @@ export function SearchPage() {
 
       {error && <ErrorBanner message={error} />}
 
-      {/* Search bar — full width at top */}
-      <SearchBar query={query} onQueryChange={setQuery} />
+      {/* Search bar - full width at top */}
+      <SearchBar
+        query={filters.query}
+        onQueryChange={(value) => setFilters((prev) => ({ ...prev, query: value }))}
+      />
 
       {/* Two-column layout: sidebar + results */}
       <div className="flex gap-6 items-start">
         {/* Sidebar */}
         <aside className="w-52 shrink-0">
           <SidebarFilters
-            type={type}
-            onTypeChange={setType}
+            filters={filters}
+            onFiltersChange={setFilters}
             availableTags={allTags}
-            selectedTags={selectedTags}
-            onTagsChange={setSelectedTags}
+            availableSpecialDemand={specialDemandTags}
             modCount={modCount}
             mapCount={mapCount}
           />
@@ -82,27 +75,31 @@ export function SearchPage() {
                 <>
                   <span className="font-medium text-foreground">{totalResults}</span>{" "}
                   result{totalResults !== 1 ? "s" : ""}
-                  {query && (
+                  {filters.query && (
                     <span className="ml-1">
-                      for <span className="italic">"{query}"</span>
+                      for <span className="italic">"{filters.query}"</span>
                     </span>
                   )}
                 </>
               )}
             </p>
-            <SortSelect value={sort} onChange={setSort} tab={type} />
+            <SortSelect
+              value={filters.sort}
+              onChange={(value) => setFilters((prev) => ({ ...prev, sort: value }))}
+              tab={filters.type}
+            />
           </div>
 
           {/* Cards / empty / loading */}
           {loading ? (
-            <CardSkeletonGrid count={perPage} />
+            <CardSkeletonGrid count={filters.perPage} />
           ) : items.length === 0 ? (
             <EmptyState
               icon={SearchX}
               title="No results found"
               description={
-                query
-                  ? `No items match "${query}"`
+                filters.query
+                  ? `No items match "${filters.query}"`
                   : "No items match the current filters"
               }
             />
@@ -110,20 +107,16 @@ export function SearchPage() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {items.map(({ type: itemType, item }) => (
-                  <ItemCard
-                    key={`${itemType}-${item.id}`}
-                    type={itemType}
-                    item={item}
-                  />
+                  <ItemCard key={`${itemType}-${item.id}`} type={itemType} item={item} />
                 ))}
               </div>
               <Pagination
                 page={page}
                 totalPages={totalPages}
                 totalResults={totalResults}
-                perPage={perPage}
+                perPage={filters.perPage}
                 onPageChange={setPage}
-                onPerPageChange={setPerPage}
+                onPerPageChange={(value) => setFilters((prev) => ({ ...prev, perPage: value }))}
               />
             </>
           )}

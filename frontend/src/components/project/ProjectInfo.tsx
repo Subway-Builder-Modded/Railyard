@@ -18,6 +18,7 @@ import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import { BrowserOpenURL } from "../../../wailsjs/runtime/runtime";
 import { types } from "../../../wailsjs/go/models";
+import { formatSourceQuality } from "@/lib/map-filter-values";
 
 interface ProjectInfoProps {
   type: "mods" | "maps";
@@ -42,6 +43,11 @@ export function ProjectInfo({ type, item, latestVersion, latestCompatibleVersion
 
   const installedVersion = getInstalledVersion(item.id);
   const installing = isOperating(item.id);
+  const detailBadges = isMapManifest(item)
+    ? [item.location, formatSourceQuality(item.source_quality), item.level_of_detail, ...(item.special_demand ?? [])].filter(
+        (value): value is string => Boolean(value)
+      )
+    : item.tags ?? [];
   // Use the latest compatible version for install/update buttons
   const effectiveVersion = latestCompatibleVersion ?? latestVersion;
   const hasUpdate = installedVersion && effectiveVersion && installedVersion !== effectiveVersion.version;
@@ -187,11 +193,11 @@ export function ProjectInfo({ type, item, latestVersion, latestCompatibleVersion
         </Markdown>
       </div>
 
-      {item.tags && item.tags.length > 0 && (
+      {detailBadges.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {item.tags.map((tag) => (
-            <Badge key={tag} variant="secondary">
-              {tag}
+          {detailBadges.map((badge) => (
+            <Badge key={badge} variant="secondary">
+              {badge}
             </Badge>
           ))}
         </div>

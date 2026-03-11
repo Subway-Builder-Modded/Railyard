@@ -1,61 +1,53 @@
 import { cn } from "@/lib/utils";
-import { LayoutGrid, Package, MapPin, Tag, X } from "lucide-react";
+import {
+  MapPin,
+  Package,
+  Tag,
+  GraduationCap,
+  BadgeCheck,
+  Layers3,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-} from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { type ComponentType, type Dispatch, type SetStateAction } from "react";
+import {
+  formatSourceQuality,
+  LEVEL_OF_DETAIL_VALUES,
+  LOCATION_TAGS,
+  SOURCE_QUALITY_VALUES,
+} from "@/lib/map-filter-values";
+import { type SearchFilterState } from "@/stores/search-store";
+
+const FILTER_SECTION_TITLE_CLASS =
+  "text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1";
+const FILTER_SECTION_OPTION_CLASS =
+  "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors";
+const FILTER_SECTION_CLEAR_CLASS =
+  "mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors";
 
 interface SidebarFiltersProps {
-  type: "all" | "mods" | "maps";
-  onTypeChange: (type: "all" | "mods" | "maps") => void;
+  filters: SearchFilterState;
+  onFiltersChange: Dispatch<SetStateAction<SearchFilterState>>;
   availableTags: string[];
-  selectedTags: string[];
-  onTagsChange: (tags: string[]) => void;
+  availableSpecialDemand: string[];
   modCount: number;
   mapCount: number;
 }
 
 const typeOptions = [
-  { value: "all" as const, label: "All", icon: LayoutGrid },
-  { value: "mods" as const, label: "Mods", icon: Package },
   { value: "maps" as const, label: "Maps", icon: MapPin },
+  { value: "mods" as const, label: "Mods", icon: Package },
 ];
 
 export function SidebarFilters({
-  type,
-  onTypeChange,
+  filters,
+  onFiltersChange,
   availableTags,
-  selectedTags,
-  onTagsChange,
+  availableSpecialDemand,
   modCount,
   mapCount,
 }: SidebarFiltersProps) {
-  const [tagsOpen, setTagsOpen] = useState(false);
-
-  const toggleTag = (tag: string) => {
-    onTagsChange(
-      selectedTags.includes(tag)
-        ? selectedTags.filter((t) => t !== tag)
-        : [...selectedTags, tag]
-    );
-  };
-
-  const counts: Record<string, number> = {
-    all: modCount + mapCount,
+  const counts: Record<"mods" | "maps", number> = {
     mods: modCount,
     maps: mapCount,
   };
@@ -64,21 +56,21 @@ export function SidebarFilters({
     <div className="space-y-5">
       {/* Type filter */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">
-          Type
-        </p>
+        <FilterSectionTitle title="Type" />
         <nav className="space-y-0.5" aria-label="Content type filter">
           {typeOptions.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
-              onClick={() => onTypeChange(value)}
+              onClick={() =>
+                onFiltersChange((prev) => ({ ...prev, type: value }))
+              }
               className={cn(
                 "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-sm transition-colors",
-                type === value
+                filters.type === value
                   ? "bg-accent text-accent-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60",
               )}
-              aria-current={type === value ? "true" : undefined}
+              aria-current={filters.type === value ? "true" : undefined}
             >
               <span className="flex items-center gap-2">
                 <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -87,7 +79,9 @@ export function SidebarFilters({
               <span
                 className={cn(
                   "text-xs tabular-nums",
-                  type === value ? "text-foreground" : "text-muted-foreground"
+                  filters.type === value
+                    ? "text-foreground"
+                    : "text-muted-foreground",
                 )}
               >
                 {counts[value]}
@@ -97,78 +91,159 @@ export function SidebarFilters({
         </nav>
       </div>
 
-      <Separator />
+      {filters.type !== "maps" && (
+        <>
+          <Separator />
+          <ChecklistFilterSection
+            title="Tag"
+            icon={Tag}
+            values={availableTags}
+            selected={filters.mod.tags}
+            onChange={(values) =>
+              onFiltersChange((prev) => ({
+                ...prev,
+                mod: { ...prev.mod, tags: values },
+              }))
+            }
+            emptyLabel="No tags available"
+          />
+        </>
+      )}
 
-      {/* Tags filter */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">
-          Tags
-        </p>
-        <Popover open={tagsOpen} onOpenChange={setTagsOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-between text-sm font-normal"
-            >
-              <span className="flex items-center gap-2">
-                <Tag className="h-3.5 w-3.5 text-muted-foreground" />
-                {selectedTags.length > 0
-                  ? `${selectedTags.length} selected`
-                  : "Filter by tag"}
-              </span>
-              {selectedTags.length > 0 && (
-                <Badge variant="secondary" className="h-4 px-1 text-xs">
-                  {selectedTags.length}
-                </Badge>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56 p-0" align="start">
-            <Command>
-              <CommandInput placeholder="Search tags..." />
-              <CommandList>
-                <CommandEmpty>No tags found.</CommandEmpty>
-                <CommandGroup>
-                  {availableTags.map((tag) => (
-                    <CommandItem key={tag} onSelect={() => toggleTag(tag)}>
-                      <Checkbox
-                        checked={selectedTags.includes(tag)}
-                        className="mr-2"
-                        aria-hidden="true"
-                      />
-                      {tag}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-
-        {/* Active tag chips */}
-        {selectedTags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {selectedTags.map((tag) => (
-              <Badge
-                key={tag}
-                variant="secondary"
-                className="gap-1 cursor-pointer pr-1"
-                onClick={() => toggleTag(tag)}
-              >
-                {tag}
-                <X className="h-2.5 w-2.5" aria-label={`Remove ${tag} filter`} />
-              </Badge>
-            ))}
-            <button
-              onClick={() => onTagsChange([])}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Clear all
-            </button>
-          </div>
-        )}
-      </div>
+      {filters.type !== "mods" && (
+        <>
+          <Separator />
+          <ChecklistFilterSection
+            title="Location"
+            icon={MapPin}
+            values={[...LOCATION_TAGS]}
+            selected={filters.map.locations}
+            onChange={(values) =>
+              onFiltersChange((prev) => ({
+                ...prev,
+                map: { ...prev.map, locations: values },
+              }))
+            }
+          />
+          <ChecklistFilterSection
+            title="Source Quality"
+            icon={BadgeCheck}
+            values={[...SOURCE_QUALITY_VALUES]}
+            formatValue={formatSourceQuality}
+            selected={filters.map.sourceQuality}
+            onChange={(values) =>
+              onFiltersChange((prev) => ({
+                ...prev,
+                map: { ...prev.map, sourceQuality: values },
+              }))
+            }
+          />
+          <ChecklistFilterSection
+            title="Level of Detail"
+            icon={Layers3}
+            values={[...LEVEL_OF_DETAIL_VALUES]}
+            selected={filters.map.levelOfDetail}
+            onChange={(values) =>
+              onFiltersChange((prev) => ({
+                ...prev,
+                map: { ...prev.map, levelOfDetail: values },
+              }))
+            }
+          />
+          <ChecklistFilterSection
+            title="Special Demand"
+            icon={GraduationCap}
+            values={availableSpecialDemand}
+            selected={filters.map.specialDemand}
+            onChange={(values) =>
+              onFiltersChange((prev) => ({
+                ...prev,
+                map: { ...prev.map, specialDemand: values },
+              }))
+            }
+            emptyLabel="No special demand tags available"
+          />
+        </>
+      )}
     </div>
+  );
+}
+
+interface FilterSectionProperties {
+  title: string;
+  values: string[];
+  selected: string[];
+  icon: ComponentType<{ className?: string }>;
+  onChange: (values: string[]) => void;
+  emptyLabel?: string;
+  formatValue?: (value: string) => string;
+}
+
+function ChecklistFilterSection({
+  title,
+  icon: Icon,
+  values,
+  selected,
+  onChange,
+  emptyLabel = "No options available",
+  formatValue = (value) => value,
+}: FilterSectionProperties) {
+  const toggle = (value: string) => {
+    onChange(
+      selected.includes(value)
+        ? selected.filter((v) => v !== value)
+        : [...selected, value],
+    );
+  };
+
+  return (
+    <div>
+      <FilterSectionTitle title={title} icon={Icon} />
+      {values.length === 0 ? (
+        <p className="text-xs text-muted-foreground px-1">{emptyLabel}</p>
+      ) : (
+        <div className="space-y-1">
+          {values.map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => toggle(value)}
+              className={FILTER_SECTION_OPTION_CLASS}
+            >
+              <Checkbox checked={selected.includes(value)} aria-hidden="true" />
+              <span>{formatValue(value)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {selected.length > 0 && (
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className={FILTER_SECTION_CLEAR_CLASS}
+        >
+          Clear {title.toLowerCase()}
+        </button>
+      )}
+    </div>
+  );
+}
+
+interface TitleProperties {
+  title: string;
+  icon?: ComponentType<{ className?: string }>;
+}
+
+function FilterSectionTitle({ title, icon: Icon }: TitleProperties) {
+  return (
+    <p
+      className={cn(
+        FILTER_SECTION_TITLE_CLASS,
+        Icon && "flex items-center gap-1.5",
+      )}
+    >
+      {Icon && <Icon className="h-3.5 w-3.5" />}
+      {title}
+    </p>
   );
 }
