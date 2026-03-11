@@ -102,12 +102,12 @@ func (a *App) startup(ctx context.Context) {
 	activeProfile := resolveStartupProfile(a)
 	a.Logger.Info("Active user profile loaded on startup", "profile_id", activeProfile.ID)
 
-	if a.Config.Cfg.CheckForUpdatesOnLaunch {
-		updater.CheckForUpdates(a.ctx, a.Downloader.OnProgress, a.Logger)
-	}
-
 	if err := a.Registry.Initialize(); err != nil {
 		a.Logger.Warn("Failed to ensure local registry repository", "error", err)
+	}
+
+	if a.Config.Cfg.CheckForUpdatesOnLaunch {
+		updater.CheckForUpdates(a.ctx, a.Downloader.OnProgress, a.Logger)
 	}
 
 	// Registry must be initialized + startup profile ready so that initial Frontend state is viable.
