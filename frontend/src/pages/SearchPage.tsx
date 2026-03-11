@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useRegistryStore } from "@/stores/registry-store";
 import { useFilteredItems } from "@/hooks/use-filtered-items";
 import { SearchBar } from "@/components/search/SearchBar";
@@ -11,25 +11,45 @@ import { Pagination } from "@/components/shared/Pagination";
 import { SortSelect } from "@/components/search/SortSelect";
 import { SearchX } from "lucide-react";
 import { useInstalledStore } from "@/stores/installed-store";
+import { createRandomSeed } from "@/stores/search-store";
 
 export function SearchPage() {
-  const { mods, maps, loading, error } = useRegistryStore();
-  const {installedMaps, installedMods} = useInstalledStore();
+  const {
+    mods,
+    maps,
+    loading,
+    error,
+    modDownloadTotals,
+    mapDownloadTotals,
+    ensureDownloadTotals,
+  } = useRegistryStore();
+  const { installedMaps, installedMods } = useInstalledStore();
   const installedItems = useMemo(() => {
-    const items: Array<{ type: "mods" | "maps"; item: typeof mods[number] | typeof maps[number]; installedVersion: string }> = [];
+    const items: Array<{
+      type: "mods" | "maps";
+      item: (typeof mods)[number] | (typeof maps)[number];
+      installedVersion: string;
+    }> = [];
     for (const installed of installedMods) {
       const manifest = mods.find((m) => m.id === installed.id);
-      if (manifest) items.push({ type: "mods", item: manifest, installedVersion: installed.version });
+      if (manifest)
+        items.push({
+          type: "mods",
+          item: manifest,
+          installedVersion: installed.version,
+        });
     }
     for (const installed of installedMaps) {
       const manifest = maps.find((m) => m.id === installed.id);
-      if (manifest) items.push({ type: "maps", item: manifest, installedVersion: installed.version });
+      if (manifest)
+        items.push({
+          type: "maps",
+          item: manifest,
+          installedVersion: installed.version,
+        });
     }
     return items;
   }, [mods, maps, installedMods, installedMaps]);
-  const manifests = useMemo(() => {
-    return installedItems.map((i) => i.item);
-  }, [installedItems]);
 
   const allTags = useMemo(() => {
     const modTags = mods.flatMap((m) => m.tags ?? []);
@@ -41,9 +61,23 @@ export function SearchPage() {
     return [...new Set(dynamicTags)].sort();
   }, [maps]);
 
-  const { items, page, totalPages, totalResults, filters, setFilters, setPage } = useFilteredItems({
+  useEffect(() => {
+    ensureDownloadTotals();
+  }, [ensureDownloadTotals]);
+
+  const {
+    items,
+    page,
+    totalPages,
+    totalResults,
+    filters,
+    setFilters,
+    setPage,
+  } = useFilteredItems({
     mods,
     maps,
+    modDownloadTotals,
+    mapDownloadTotals,
   });
 
   const modCount = mods.length;
@@ -53,7 +87,9 @@ export function SearchPage() {
     <div className="space-y-5">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground text-balance">Browse</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground text-balance">
+          Browse
+        </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
           Discover and install maps and mods for Subway Builder.
         </p>
@@ -64,7 +100,9 @@ export function SearchPage() {
       {/* Search bar - full width at top */}
       <SearchBar
         query={filters.query}
-        onQueryChange={(value) => setFilters((prev) => ({ ...prev, query: value }))}
+        onQueryChange={(value) =>
+          setFilters((prev) => ({ ...prev, query: value }))
+        }
       />
 
       {/* Two-column layout: sidebar + results */}
@@ -90,7 +128,9 @@ export function SearchPage() {
                 <span className="inline-block h-4 w-24 bg-muted rounded animate-pulse" />
               ) : (
                 <>
-                  <span className="font-medium text-foreground">{totalResults}</span>{" "}
+                  <span className="font-medium text-foreground">
+                    {totalResults}
+                  </span>{" "}
                   result{totalResults !== 1 ? "s" : ""}
                   {filters.query && (
                     <span className="ml-1">
@@ -102,7 +142,14 @@ export function SearchPage() {
             </p>
             <SortSelect
               value={filters.sort}
-              onChange={(value) => setFilters((prev) => ({ ...prev, sort: value }))}
+              onChange={(value) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  sort: value,
+                  randomSeed:
+                    value.field === "random" ? createRandomSeed() : prev.randomSeed,
+                }))
+              }
               tab={filters.type}
             />
           </div>
@@ -123,17 +170,22 @@ export function SearchPage() {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {items.map(({ type: itemType, item }) => {
-                  if (manifests.indexOf(item) !== -1) {
-                    return (
-                      <ItemCard key={`${itemType}-${item.id}`} type={itemType} item={item} installedVersion={installedItems.find((i) => i.item === item)?.installedVersion} />
-                    );
-                  } else {
-                    return (
-                      <ItemCard key={`${itemType}-${item.id}`} type={itemType} item={item} />
-                    );
-                  }
-                })}
+                {items.map(({ type: itemType, item }) => (
+                  <ItemCard
+                    key={`${itemType}-${item.id}`}
+                    type={itemType}
+                    item={item}
+                    installedVersion={
+                      installedItems.find((i) => i.item === item)
+                        ?.installedVersion
+                    }
+                    totalDownloads={
+                      itemType === "mods"
+                        ? (modDownloadTotals[item.id] ?? 0)
+                        : (mapDownloadTotals[item.id] ?? 0)
+                    }
+                  />
+                ))}
               </div>
               <Pagination
                 page={page}
@@ -141,7 +193,9 @@ export function SearchPage() {
                 totalResults={totalResults}
                 perPage={filters.perPage}
                 onPageChange={setPage}
-                onPerPageChange={(value) => setFilters((prev) => ({ ...prev, perPage: value }))}
+                onPerPageChange={(value) =>
+                  setFilters((prev) => ({ ...prev, perPage: value }))
+                }
               />
             </>
           )}

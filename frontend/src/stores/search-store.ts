@@ -1,12 +1,13 @@
 import { create } from "zustand";
-import { type PerPage, type SortOption } from "@/lib/constants";
+import { DEFAULT_SORT_STATE, type PerPage, type SortState } from "@/lib/constants";
 
 export type TypeFilter = "mods" | "maps";
 
 export interface SearchFilterState {
   query: string;
   type: TypeFilter;
-  sort: SortOption;
+  sort: SortState;
+  randomSeed: number;
   perPage: PerPage;
   mod: {
     tags: string[];
@@ -28,10 +29,15 @@ interface SearchState {
   setPage: (page: number) => void;
 }
 
+export function createRandomSeed(): number {
+  return Math.floor(Math.random() * 2_147_483_647);
+}
+
 const defaultSearchFilters: SearchFilterState = {
   query: "",
   type: "maps",
-  sort: "name-asc",
+  sort: DEFAULT_SORT_STATE,
+  randomSeed: createRandomSeed(),
   perPage: 12,
   mod: {
     tags: [],
