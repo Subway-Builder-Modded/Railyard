@@ -3,6 +3,26 @@ import { createRoot } from "react-dom/client";
 import "./style.css";
 import App from "./App";
 
+// ── Disable browser zoom (Ctrl +/-, Ctrl 0, Ctrl scroll) ──
+document.addEventListener("keydown", (e) => {
+  if (
+    (e.ctrlKey || e.metaKey) &&
+    (e.key === "+" || e.key === "-" || e.key === "=" || e.key === "0")
+  ) {
+    e.preventDefault();
+  }
+});
+
+document.addEventListener(
+  "wheel",
+  (e) => {
+    if (e.ctrlKey) {
+      e.preventDefault();
+    }
+  },
+  { passive: false },
+);
+
 const container = document.getElementById("root");
 
 const root = createRoot(container!);

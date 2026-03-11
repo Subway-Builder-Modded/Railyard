@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { types } from '../../wailsjs/go/models';
 import { GetInstalledMods, GetInstalledMaps } from '../../wailsjs/go/registry/Registry';
 import { GetActiveProfile, UpdateSubscriptions } from '../../wailsjs/go/profiles/UserProfiles';
+import { useDownloadQueueStore } from './download-queue-store';
 
 interface InstalledState {
   installedMods: types.InstalledModInfo[];
@@ -83,6 +84,7 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
   },
 
   installMod: async (id: string, version: string) => {
+    useDownloadQueueStore.getState().enqueue();
     set({ installing: new Set([...get().installing, id]), error: null });
     try {
       const response = await applySubscriptionMutation(id, version, "mod", "subscribe");
@@ -90,16 +92,19 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
       const next = new Set(get().installing);
       next.delete(id);
       set({ installing: next, installedMods: mods || [], installedMaps: maps || [] });
+      useDownloadQueueStore.getState().complete();
       return response;
     } catch (err) {
       const next = new Set(get().installing);
       next.delete(id);
       set({ installing: next, error: err instanceof Error ? err.message : String(err) });
+      useDownloadQueueStore.getState().complete();
       throw err;
     }
   },
 
   installMap: async (id: string, version: string) => {
+    useDownloadQueueStore.getState().enqueue();
     set({ installing: new Set([...get().installing, id]), error: null });
     try {
       const response = await applySubscriptionMutation(id, version, "map", "subscribe");
@@ -107,11 +112,13 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
       const next = new Set(get().installing);
       next.delete(id);
       set({ installing: next, installedMods: mods || [], installedMaps: maps || [] });
+      useDownloadQueueStore.getState().complete();
       return response;
     } catch (err) {
       const next = new Set(get().installing);
       next.delete(id);
       set({ installing: next, error: err instanceof Error ? err.message : String(err) });
+      useDownloadQueueStore.getState().complete();
       throw err;
     }
   },

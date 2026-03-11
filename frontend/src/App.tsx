@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Route, Switch } from "wouter";
-import { Loader2 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { Layout } from "@/components/layout/Layout";
 import { SetupScreen } from "@/components/setup/SetupScreen";
+import { MultiStepLoader } from "@/components/layout/MultiStepLoader";
 import { useRegistryStore } from "@/stores/registry-store";
 import { useConfigStore } from "@/stores/config-store";
 import { useInstalledStore } from "@/stores/installed-store";
@@ -38,7 +38,10 @@ function App() {
   const initProfile = useProfileStore((s) => s.initialize);
 
   const initRegistry = useRegistryStore((s) => s.initialize);
+  const registryInitialized = useRegistryStore((s) => s.initialized);
   const initInstalled = useInstalledStore((s) => s.initialize);
+  const installedInitialized = useInstalledStore((s) => s.initialized);
+  const profileInitialized = useProfileStore((s) => s.initialized);
   const initGame = useGameStore((s) => s.initialize);
 
   useEffect(() => {
@@ -97,17 +100,40 @@ function App() {
     initInstalled,
   ]);
 
-  // FIXME: Rudimentary frontend placeholder.
-  // Gate: show loading until config is ready
-  if (!startupReady || !configInitialized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Starting app...</span>
-        </div>
-      </div>
-    );
+  // Build loading states based on current initialization progress
+  const showRegistrySteps = configInitialized && isConfigured && setupCompleted;
+  const loadingStates = [
+    { text: "Starting backend services" },
+    { text: "Loading configuration" },
+    { text: "Applying theme preferences" },
+    { text: "Loading user profile" },
+    ...(showRegistrySteps
+      ? [
+          { text: "Connecting to registry" },
+          { text: "Loading installed content" },
+        ]
+      : []),
+  ];
+
+  let currentStep = 0;
+  if (startupReady) currentStep = 1;
+  if (startupReady && configInitialized) currentStep = 2;
+  if (startupReady && configInitialized) currentStep = 3;
+  if (startupReady && configInitialized && profileInitialized) {
+    currentStep = 3;
+    if (showRegistrySteps) {
+      currentStep = 4;
+      if (registryInitialized) currentStep = 5;
+      if (registryInitialized && installedInitialized) currentStep = 6;
+    }
+  }
+
+  const baseLoading = !startupReady || !configInitialized || !profileInitialized;
+  const registryLoading =
+    showRegistrySteps && (!registryInitialized || !installedInitialized);
+
+  if (baseLoading || registryLoading) {
+    return <MultiStepLoader loadingStates={loadingStates} currentStep={currentStep} />;
   }
 
   // Gate: show setup if not configured OR setup not completed

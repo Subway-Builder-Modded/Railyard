@@ -124,6 +124,11 @@
   * {
     @apply border-border outline-ring/50;
     }
+  html,
+  body,
+  #root {
+    @apply min-h-screen bg-background text-foreground;
+    }
   body {
     @apply bg-background text-foreground;
     }

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useProfileStore } from "@/stores/profile-store";
 
 export function useTheme() {
-  const theme = useProfileStore((s) => s.profile?.uiPreferences?.theme ?? "dark");
+  const theme = useProfileStore((s) => s.profile?.uiPreferences?.theme ?? "system");
 
   useEffect(() => {
     const root = document.documentElement;

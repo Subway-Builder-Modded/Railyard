@@ -19,6 +19,7 @@ import rehypeRaw from "rehype-raw";
 import { BrowserOpenURL } from "../../../wailsjs/runtime/runtime";
 import { types } from "../../../wailsjs/go/models";
 import { formatSourceQuality } from "@/lib/map-filter-values";
+import { useDownloadQueueStore } from "@/stores/download-queue-store";
 
 interface ProjectInfoProps {
   type: "mods" | "maps";
@@ -61,7 +62,9 @@ export function ProjectInfo({ type, item, latestVersion, latestCompatibleVersion
       } else {
         await installMap(item.id, version);
       }
-      toast.success(`${item.name} ${version} installed successfully.`);
+      const { completed, total } = useDownloadQueueStore.getState();
+      const queueText = total > 1 ? ` (${completed}/${total} Downloaded)` : "";
+      toast.success(`${item.name} ${version} installed successfully.${queueText}`);
     } catch (err) {
       setInstallError({ version, message: err instanceof Error ? err.message : String(err) });
     }

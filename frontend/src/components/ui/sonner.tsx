@@ -10,6 +10,9 @@ function Toaster({ ...props }: ToasterProps) {
     <Sonner
       theme={theme}
       className="toaster group"
+      expand
+      gap={8}
+      visibleToasts={5}
       toastOptions={{
         classNames: {
           toast:

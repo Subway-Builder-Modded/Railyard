@@ -25,6 +25,7 @@ import { InstallErrorDialog } from "@/components/dialogs/InstallErrorDialog";
 import { PrereleaseConfirmDialog } from "@/components/dialogs/PrereleaseConfirmDialog";
 import { isCompatible } from "@/lib/semver";
 import { toast } from "sonner";
+import { useDownloadQueueStore } from "@/stores/download-queue-store";
 
 interface VersionsTableProps {
   type: "mods" | "maps";
@@ -50,7 +51,9 @@ export function VersionsTable({ type, itemId, itemName, versions, loading, error
       } else {
         await installMap(itemId, version);
       }
-      toast.success(`Installed ${version} successfully.`);
+      const { completed, total } = useDownloadQueueStore.getState();
+      const queueText = total > 1 ? ` (${completed}/${total} Downloaded)` : "";
+      toast.success(`Installed ${version} successfully.${queueText}`);
     } catch (err) {
       setInstallError({ version, message: err instanceof Error ? err.message : String(err) });
     }

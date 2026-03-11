@@ -39,18 +39,22 @@ export function InstallErrorDialog({ open, onOpenChange, itemName, version, erro
             Failed to install <span className="font-semibold text-foreground">{itemName}</span> {version}
           </DialogDescription>
         </DialogHeader>
-        <div className="relative">
-          <pre className="rounded-md bg-muted p-4 text-xs font-mono whitespace-pre-wrap break-all max-h-60 overflow-y-auto">
+        <div className="space-y-0">
+          <div className="flex items-center justify-between rounded-t-md border border-b-0 border-border bg-muted px-3 py-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Error Details</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={handleCopy}
+            >
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              {copied ? "Copied" : "Copy"}
+            </Button>
+          </div>
+          <pre className="rounded-b-md border border-t-0 border-border bg-muted/50 p-4 text-xs font-mono whitespace-pre-wrap break-all max-h-60 overflow-y-auto">
             {error}
           </pre>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-2 right-2 h-7 w-7"
-            onClick={handleCopy}
-          >
-            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-          </Button>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

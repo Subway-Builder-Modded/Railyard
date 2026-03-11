@@ -58,12 +58,16 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   },
 
   updateSubscription: async (type, id, action, version) => {
-    const profile = get().profile;
-    if (!profile) return;
+    // Always resolve a fresh profile to avoid stale IDs from cached state
+    const activeResult = await GetActiveProfile();
+    if (activeResult.status !== "success") {
+      throw new Error(activeResult.message || "Failed to resolve active profile");
+    }
+    const freshProfile = activeResult.profile;
 
     const assetType = type === "mods" ? "mod" : "map";
     const request = new types.UpdateSubscriptionsRequest({
-      profileId: profile.id,
+      profileId: freshProfile.id,
       assets: { [id]: new types.SubscriptionUpdateItem({ version, type: assetType }) },
       action,
       forceSync: true,
