@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { type ComponentType, type Dispatch, type SetStateAction } from "react";
 import {
+  formatSourceQuality,
   LEVEL_OF_DETAIL_VALUES,
   LOCATION_TAGS,
   SOURCE_QUALITY_VALUES,
@@ -128,6 +129,7 @@ export function SidebarFilters({
             title="Source Quality"
             icon={BadgeCheck}
             values={[...SOURCE_QUALITY_VALUES]}
+            formatValue={formatSourceQuality}
             selected={filters.map.sourceQuality}
             onChange={(values) =>
               onFiltersChange((prev) => ({
@@ -174,6 +176,7 @@ interface FilterSectionProperties {
   icon: ComponentType<{ className?: string }>;
   onChange: (values: string[]) => void;
   emptyLabel?: string;
+  formatValue?: (value: string) => string;
 }
 
 function ChecklistFilterSection({
@@ -183,6 +186,7 @@ function ChecklistFilterSection({
   selected,
   onChange,
   emptyLabel = "No options available",
+  formatValue = (value) => value,
 }: FilterSectionProperties) {
   const toggle = (value: string) => {
     onChange(
@@ -207,7 +211,7 @@ function ChecklistFilterSection({
               className={FILTER_SECTION_OPTION_CLASS}
             >
               <Checkbox checked={selected.includes(value)} aria-hidden="true" />
-              <span>{value}</span>
+              <span>{formatValue(value)}</span>
             </button>
           ))}
         </div>

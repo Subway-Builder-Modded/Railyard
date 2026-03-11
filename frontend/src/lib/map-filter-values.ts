@@ -22,6 +22,16 @@ export const SOURCE_QUALITY_VALUES = [
   "high-quality",
 ] as const;
 
+const SOURCE_QUALITY_LABELS: Record<string, string> = {
+  "low-quality": "low-data-quality",
+  "medium-quality": "medium-data-quality",
+  "high-quality": "high-data-quality",
+};
+
+export function formatSourceQuality(value: string): string {
+  return SOURCE_QUALITY_LABELS[value] ?? value;
+}
+
 export const LEVEL_OF_DETAIL_VALUES = [
   "low-detail",
   "medium-detail",

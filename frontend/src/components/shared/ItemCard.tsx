@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { GalleryImage } from "./GalleryImage";
 import { cn } from "@/lib/utils";
 import { Users, CheckCircle, Package, MapPin } from "lucide-react";
+import { formatSourceQuality } from "@/lib/map-filter-values";
 import { types } from "../../../wailsjs/go/models";
 
 interface ItemCardProps {
@@ -18,7 +19,7 @@ function isMapManifest(item: types.ModManifest | types.MapManifest): item is typ
 export function ItemCard({ type, item, installedVersion }: ItemCardProps) {
   const isMap = isMapManifest(item);
   const mapBadges = isMap
-    ? [item.location, item.source_quality, item.level_of_detail, ...(item.special_demand ?? [])].filter(
+    ? [item.location, formatSourceQuality(item.source_quality), item.level_of_detail, ...(item.special_demand ?? [])].filter(
         (value): value is string => Boolean(value)
       )
     : [];
