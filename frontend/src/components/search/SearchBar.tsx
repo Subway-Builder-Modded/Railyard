@@ -1,6 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SEARCH_BAR_PLACEHOLDER } from "@/lib/search";
 
 interface SearchBarProps {
   query: string;
@@ -12,7 +13,7 @@ export function SearchBar({ query, onQueryChange }: SearchBarProps) {
     <div className="relative">
       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
       <Input
-        placeholder="Search by name, author, tags..."
+        placeholder={SEARCH_BAR_PLACEHOLDER}
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         className="pl-10 pr-10 h-10 bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring"

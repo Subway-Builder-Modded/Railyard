@@ -4,6 +4,7 @@ import { GalleryImage } from "./GalleryImage";
 import { cn } from "@/lib/utils";
 import { Users, CheckCircle, Package, MapPin } from "lucide-react";
 import { formatSourceQuality } from "@/lib/map-filter-values";
+import { MAX_CARD_BADGES } from "@/lib/search";
 import { types } from "../../../wailsjs/go/models";
 
 interface ItemCardProps {
@@ -104,14 +105,14 @@ export function ItemCard({ type, item, installedVersion }: ItemCardProps) {
 
             {badges.length > 0 && (
               <div className="flex flex-wrap justify-end gap-1">
-                {badges.slice(0, 3).map((badge) => (
+                {badges.slice(0, MAX_CARD_BADGES).map((badge) => (
                   <Badge key={badge} variant="secondary" className="text-xs px-1.5 py-0">
                     {badge}
                   </Badge>
                 ))}
-                {badges.length > 3 && (
+                {badges.length > MAX_CARD_BADGES && (
                   <Badge variant="outline" className="text-xs px-1.5 py-0">
-                    +{badges.length - 3}
+                    +{badges.length - MAX_CARD_BADGES}
                   </Badge>
                 )}
               </div>

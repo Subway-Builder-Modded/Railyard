@@ -16,6 +16,7 @@ import {
   LOCATION_TAGS,
   SOURCE_QUALITY_VALUES,
 } from "@/lib/map-filter-values";
+import { SEARCH_FILTER_EMPTY_LABELS } from "@/lib/search";
 import { type SearchFilterState } from "@/stores/search-store";
 
 const FILTER_SECTION_TITLE_CLASS =
@@ -105,7 +106,7 @@ export function SidebarFilters({
                 mod: { ...prev.mod, tags: values },
               }))
             }
-            emptyLabel="No tags available"
+            emptyLabel={SEARCH_FILTER_EMPTY_LABELS.tags}
           />
         </>
       )}
@@ -161,7 +162,7 @@ export function SidebarFilters({
                 map: { ...prev.map, specialDemand: values },
               }))
             }
-            emptyLabel="No special demand tags available"
+            emptyLabel={SEARCH_FILTER_EMPTY_LABELS.specialDemand}
           />
         </>
       )}
@@ -185,7 +186,7 @@ function ChecklistFilterSection({
   values,
   selected,
   onChange,
-  emptyLabel = "No options available",
+  emptyLabel = SEARCH_FILTER_EMPTY_LABELS.generic,
   formatValue = (value) => value,
 }: FilterSectionProperties) {
   const toggle = (value: string) => {

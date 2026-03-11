@@ -1,6 +1,8 @@
 import { useMemo, useEffect, useRef } from "react";
+import Fuse from "fuse.js";
 import { types } from "../../wailsjs/go/models";
 import { type PerPage, type SortOption } from "../lib/constants";
+import { FUSE_SEARCH_OPTIONS } from "@/lib/search";
 import { useProfileStore } from "@/stores/profile-store";
 import { type SearchFilterState, useSearchStore } from "@/stores/search-store";
 
@@ -15,26 +17,30 @@ interface UseFilteredItemsParams {
   maps: types.MapManifest[];
 }
 
-function matchesQuery(item: TaggedItem, query: string): boolean {
-  const q = query.toLowerCase();
+type SearchableItem = {
+  entry: TaggedItem;
+  searchText: string;
+};
 
+function buildSearchText(item: TaggedItem): string {
   const base = item.item;
-  if (base.name?.toLowerCase().includes(q)) return true;
-  if (base.author?.toLowerCase().includes(q)) return true;
-  if (base.description?.toLowerCase().includes(q)) return true;
-  if (item.type === "mods" && base.tags?.some((t) => t.toLowerCase().includes(q))) return true;
+  const values: string[] = [base.name ?? "", base.author ?? "", base.description ?? ""];
 
-  if (item.type === "maps") {
-    const map = item.item as types.MapManifest;
-    if (map.city_code?.toLowerCase().includes(q)) return true;
-    if (map.country?.toLowerCase().includes(q)) return true;
-    if (map.location?.toLowerCase().includes(q)) return true;
-    if (map.source_quality?.toLowerCase().includes(q)) return true;
-    if (map.level_of_detail?.toLowerCase().includes(q)) return true;
-    if (map.special_demand?.some((tag) => tag.toLowerCase().includes(q))) return true;
+  if (item.type === "mods") {
+    values.push(...(base.tags ?? []));
+  } else {
+    const map = base as types.MapManifest;
+    values.push(
+      map.city_code ?? "",
+      map.country ?? "",
+      map.location ?? "",
+      map.source_quality ?? "",
+      map.level_of_detail ?? "",
+      ...(map.special_demand ?? [])
+    );
   }
 
-  return false;
+  return values.filter(Boolean).join(" ");
 }
 
 function matchesSingleValueFilter(value: string | undefined, selected: string[]): boolean {
@@ -115,10 +121,6 @@ export function useFilteredItems({ mods, maps }: UseFilteredItemsParams) {
   const filtered = useMemo(() => {
     let result = allItems.filter((i) => i.type === filters.type);
 
-    if (filters.query.trim()) {
-      result = result.filter((i) => matchesQuery(i, filters.query.trim()));
-    }
-
     if (filters.mod.tags.length > 0) {
       result = result.filter((i) =>
         i.type === "mods" ? matchesZeroOrManyValuesFilter(i.item.tags, filters.mod.tags) : true
@@ -126,6 +128,17 @@ export function useFilteredItems({ mods, maps }: UseFilteredItemsParams) {
     }
 
     result = result.filter((i) => matchesMapAttributeFilters(i, filters.map));
+    const query = filters.query.trim();
+    if (query) {
+      const searchable: SearchableItem[] = result.map((entry) => ({
+        entry,
+        searchText: buildSearchText(entry),
+      }));
+
+      const fuse = new Fuse(searchable, FUSE_SEARCH_OPTIONS);
+
+      result = fuse.search(query).map(({ item }) => item.entry);
+    }
 
     return [...result].sort((a, b) => compareItems(a, b, filters.sort));
   }, [allItems, filters]);
