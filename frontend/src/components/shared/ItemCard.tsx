@@ -17,6 +17,12 @@ function isMapManifest(item: types.ModManifest | types.MapManifest): item is typ
 
 export function ItemCard({ type, item, installedVersion }: ItemCardProps) {
   const isMap = isMapManifest(item);
+  const mapBadges = isMap
+    ? [item.location, item.source_quality, item.level_of_detail, ...(item.special_demand ?? [])].filter(
+        (value): value is string => Boolean(value)
+      )
+    : [];
+  const badges = isMap ? mapBadges : item.tags ?? [];
 
   return (
     <Link href={`/project/${type}/${item.id}`}>
@@ -95,16 +101,16 @@ export function ItemCard({ type, item, installedVersion }: ItemCardProps) {
               <span />
             )}
 
-            {item.tags && item.tags.length > 0 && (
+            {badges.length > 0 && (
               <div className="flex flex-wrap justify-end gap-1">
-                {item.tags.slice(0, 3).map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-xs px-1.5 py-0">
-                    {tag}
+                {badges.slice(0, 3).map((badge) => (
+                  <Badge key={badge} variant="secondary" className="text-xs px-1.5 py-0">
+                    {badge}
                   </Badge>
                 ))}
-                {item.tags.length > 3 && (
+                {badges.length > 3 && (
                   <Badge variant="outline" className="text-xs px-1.5 py-0">
-                    +{item.tags.length - 3}
+                    +{badges.length - 3}
                   </Badge>
                 )}
               </div>

@@ -22,12 +22,16 @@ function matchesQuery(item: TaggedItem, query: string): boolean {
   if (base.name?.toLowerCase().includes(q)) return true;
   if (base.author?.toLowerCase().includes(q)) return true;
   if (base.description?.toLowerCase().includes(q)) return true;
-  if (base.tags?.some((t) => t.toLowerCase().includes(q))) return true;
+  if (item.type === "mods" && base.tags?.some((t) => t.toLowerCase().includes(q))) return true;
 
   if (item.type === "maps") {
     const map = item.item as types.MapManifest;
     if (map.city_code?.toLowerCase().includes(q)) return true;
     if (map.country?.toLowerCase().includes(q)) return true;
+    if (map.location?.toLowerCase().includes(q)) return true;
+    if (map.source_quality?.toLowerCase().includes(q)) return true;
+    if (map.level_of_detail?.toLowerCase().includes(q)) return true;
+    if (map.special_demand?.some((tag) => tag.toLowerCase().includes(q))) return true;
   }
 
   return false;

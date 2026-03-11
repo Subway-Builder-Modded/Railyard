@@ -16,9 +16,8 @@ export function SearchPage() {
 
   const allTags = useMemo(() => {
     const modTags = mods.flatMap((m) => m.tags ?? []);
-    const mapTags = maps.flatMap((m) => m.tags ?? []);
-    return [...new Set([...modTags, ...mapTags])].sort();
-  }, [mods, maps]);
+    return [...new Set(modTags)].sort();
+  }, [mods]);
 
   const specialDemandTags = useMemo(() => {
     const dynamicTags = maps.flatMap((m) => m.special_demand ?? []);
