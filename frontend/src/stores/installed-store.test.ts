@@ -7,11 +7,19 @@ const {
   mockGetInstalledMaps,
   mockGetActiveProfile,
   mockUpdateSubscriptions,
+  mockInstallMod,
+  mockInstallMap,
+  mockUninstallMod,
+  mockUninstallMap,
 } = vi.hoisted(() => ({
   mockGetInstalledMods: vi.fn(),
   mockGetInstalledMaps: vi.fn(),
   mockGetActiveProfile: vi.fn(),
   mockUpdateSubscriptions: vi.fn(),
+  mockInstallMod: vi.fn(),
+  mockInstallMap: vi.fn(),
+  mockUninstallMod: vi.fn(),
+  mockUninstallMap: vi.fn(),
 }));
 
 vi.mock("../../wailsjs/go/registry/Registry", () => ({
@@ -22,6 +30,13 @@ vi.mock("../../wailsjs/go/registry/Registry", () => ({
 vi.mock("../../wailsjs/go/profiles/UserProfiles", () => ({
   GetActiveProfile: mockGetActiveProfile,
   UpdateSubscriptions: mockUpdateSubscriptions,
+}));
+
+vi.mock("../../wailsjs/go/downloader/Downloader", () => ({
+  InstallMod: mockInstallMod,
+  InstallMap: mockInstallMap,
+  UninstallMod: mockUninstallMod,
+  UninstallMap: mockUninstallMap,
 }));
 
 type ProfilesRequest = {
@@ -37,7 +52,7 @@ function validateProfilesRequest(expected: ProfilesRequest) {
   const request = mockUpdateSubscriptions.mock.calls[0][0];
   expect(request.profileId).toBe(expected.profileId);
   expect(request.action).toBe(expected.action);
-  expect(request.forceSync).toBe(true);
+  expect(request.forceSync).toBe(false);
   expect(request.assets[expected.assetId].type).toBe(expected.assetType);
   expect(request.assets[expected.assetId].version).toBe(expected.version);
 }
@@ -78,6 +93,7 @@ describe("useInstalledStore", () => {
   it("installMap correctly updates subscriptions and refreshes installed lists", async () => {
     mockGetActiveProfile.mockResolvedValue(activeProfileResultSuccess("profile-a"));
     mockUpdateSubscriptions.mockResolvedValue(updateSubscriptionsSuccess("subscriptions updated"));
+    mockInstallMap.mockResolvedValue({ status: "success" });
     mockGetInstalledMods.mockResolvedValue([{ id: "mod-1", version: "1.0.0" }]);
     mockGetInstalledMaps.mockResolvedValue([{ id: "map-1", version: "2.0.0", config: { code: "AAA" } }]);
 
@@ -95,6 +111,7 @@ describe("useInstalledStore", () => {
   });
 
   it("uninstallMap correctly updates subscriptions and refreshes installed lists on success", async () => {
+    mockUninstallMap.mockResolvedValue({ status: "success" });
     mockGetActiveProfile.mockResolvedValue(activeProfileResultSuccess("profile-a"));
     mockUpdateSubscriptions.mockResolvedValue(updateSubscriptionsSuccess("subscriptions updated"));
     mockGetInstalledMods.mockResolvedValue([{ id: "mod-1", version: "1.0.0" }]);
@@ -133,6 +150,7 @@ describe("useInstalledStore", () => {
   it("installMap does not throw when profile mutation returns warn", async () => {
     mockGetActiveProfile.mockResolvedValue(activeProfileResultSuccess("profile-a"));
     mockUpdateSubscriptions.mockResolvedValue(updateSubscriptionsWarn("sync completed with warnings"));
+    mockInstallMap.mockResolvedValue({ status: "success" });
     mockGetInstalledMods.mockResolvedValue([{ id: "mod-1", version: "1.0.0" }]);
     mockGetInstalledMaps.mockResolvedValue([{ id: "map-1", version: "2.0.0", config: { code: "AAA" } }]);
 
@@ -150,6 +168,7 @@ describe("useInstalledStore", () => {
   });
 
   it("uninstallMod errors when profile mutation fails", async () => {
+    mockUninstallMod.mockResolvedValue({ status: "success" });
     mockGetActiveProfile.mockResolvedValue(activeProfileResultSuccess("profile-a"));
     mockUpdateSubscriptions.mockResolvedValue(updateSubscriptionsError("Uninstall failed"));
 

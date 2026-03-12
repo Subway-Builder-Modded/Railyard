@@ -4,12 +4,13 @@ import { TypeToggle } from "./TypeToggle";
 import { TagsFilter } from "./TagsFilter";
 import { SortSelect } from "./SortSelect";
 import type { SortState } from "@/lib/constants";
+import type { AssetType } from "@/lib/asset-types";
 
 interface SearchFiltersProps {
   query: string;
   onQueryChange: (query: string) => void;
-  type: "mods" | "maps";
-  onTypeChange: (type: "mods" | "maps") => void;
+  type: AssetType;
+  onTypeChange: (type: AssetType) => void;
   availableTags: string[];
   selectedTags: string[];
   onTagsChange: (tags: string[]) => void;

@@ -7,12 +7,8 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { CardSkeletonGrid } from "@/components/shared/CardSkeletonGrid";
 import { ErrorBanner } from "@/components/shared/ErrorBanner";
 import { Button } from "@/components/ui/button";
-import {
-  Compass,
-  ArrowRight,
-  Library,
-  Search,
-} from "lucide-react";
+import { Compass, ArrowRight, Library, Search } from "lucide-react";
+import type { AssetType } from "@/lib/asset-types";
 
 export function HomePage() {
   const { mods, maps, loading, error } = useRegistryStore();
@@ -28,19 +24,17 @@ export function HomePage() {
   const installedCount = installedMods.length + installedMaps.length;
 
   const discoverItems = useMemo(() => {
-    const items: Array<{ type: "mods" | "maps"; item: typeof mods[number] | typeof maps[number] }> = [];
-    // Interleave mods and maps for variety, excluding already-installed items
+    const items: Array<{ type: AssetType; item: typeof mods[number] | typeof maps[number] }> = [];
     const maxLen = Math.max(mods.length, maps.length);
     for (let i = 0; i < maxLen && items.length < 8; i++) {
-      if (i < mods.length && items.length < 8 && !installedIds.has(mods[i].id)) items.push({ type: "mods", item: mods[i] });
-      if (i < maps.length && items.length < 8 && !installedIds.has(maps[i].id)) items.push({ type: "maps", item: maps[i] });
+      if (i < mods.length && items.length < 8 && !installedIds.has(mods[i].id)) items.push({ type: "mod", item: mods[i] });
+      if (i < maps.length && items.length < 8 && !installedIds.has(maps[i].id)) items.push({ type: "map", item: maps[i] });
     }
     return items;
   }, [mods, maps, installedIds]);
 
   return (
     <div className="space-y-10">
-      {/* Jump Back In Section */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold tracking-tight">Jump Back In</h2>
@@ -52,9 +46,7 @@ export function HomePage() {
                 <Library className="h-6 w-6" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-sm text-foreground">
-                  My Library
-                </h3>
+                <h3 className="font-semibold text-sm text-foreground">My Library</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {installedCount > 0
                     ? `${installedCount} item${installedCount !== 1 ? "s" : ""} installed`
@@ -71,9 +63,7 @@ export function HomePage() {
                 <Search className="h-6 w-6" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-sm text-foreground">
-                  Browse
-                </h3>
+                <h3 className="font-semibold text-sm text-foreground">Browse</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Discover and install maps and mods
                 </p>
@@ -84,7 +74,6 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Discover Section */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold tracking-tight">Discover</h2>

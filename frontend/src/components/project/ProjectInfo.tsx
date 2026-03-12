@@ -29,9 +29,10 @@ import { BrowserOpenURL } from "../../../wailsjs/runtime/runtime";
 import { types } from "../../../wailsjs/go/models";
 import { formatSourceQuality } from "@/lib/map-filter-values";
 import { useDownloadQueueStore } from "@/stores/download-queue-store";
+import type { AssetType } from "@/lib/asset-types";
 
 interface ProjectInfoProps {
-  type: "mods" | "maps";
+  type: AssetType;
   item: types.ModManifest | types.MapManifest;
   latestVersion?: types.VersionInfo;
   latestCompatibleVersion?: types.VersionInfo;
@@ -72,28 +73,23 @@ export function ProjectInfo({
         ...(item.special_demand ?? []),
       ].filter((value): value is string => Boolean(value))
     : (item.tags ?? []);
-  // Use the latest compatible version for install/update buttons
   const effectiveVersion = latestCompatibleVersion ?? latestVersion;
   const hasUpdate =
     installedVersion &&
     effectiveVersion &&
     installedVersion !== effectiveVersion.version;
-  // No compatible version exists at all
-  const noCompatibleVersion =
-    gameVersion && latestVersion && !latestCompatibleVersion;
+  const noCompatibleVersion = gameVersion && latestVersion && !latestCompatibleVersion;
 
   const handleInstall = async (version: string) => {
     try {
-      if (type === "mods") {
+      if (type === "mod") {
         await installMod(item.id, version);
       } else {
         await installMap(item.id, version);
       }
       const { completed, total } = useDownloadQueueStore.getState();
       const queueText = total > 1 ? ` (${completed}/${total} Downloaded)` : "";
-      toast.success(
-        `${item.name} ${version} installed successfully.${queueText}`,
-      );
+      toast.success(`${item.name} ${version} installed successfully.${queueText}`);
     } catch (err) {
       setInstallError({
         version,
@@ -124,8 +120,7 @@ export function ProjectInfo({
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              No version compatible with your installed game version (
-              {gameVersion})
+              No version compatible with your installed game version ({gameVersion})
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -133,10 +128,7 @@ export function ProjectInfo({
     }
     return (
       <>
-        <Button
-          size="sm"
-          onClick={() => handleInstallClick(v.version, v.prerelease)}
-        >
+        <Button size="sm" onClick={() => handleInstallClick(v.version, v.prerelease)}>
           <Download className="h-4 w-4 mr-1.5" />
           {label}
         </Button>
@@ -162,7 +154,7 @@ export function ProjectInfo({
           <p className="text-muted-foreground mt-1">by {item.author}</p>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {versionsLoading ? (
             <Button size="sm" disabled>
               <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -174,15 +166,9 @@ export function ProjectInfo({
               Installing...
             </Button>
           ) : !installedVersion && effectiveVersion ? (
-            renderInstallButton(
-              effectiveVersion,
-              `Install ${effectiveVersion.version}`,
-            )
+            renderInstallButton(effectiveVersion, `Install ${effectiveVersion.version}`)
           ) : hasUpdate && effectiveVersion ? (
-            renderInstallButton(
-              effectiveVersion,
-              `Update to ${effectiveVersion.version}`,
-            )
+            renderInstallButton(effectiveVersion, `Update to ${effectiveVersion.version}`)
           ) : installedVersion ? (
             <>
               <Badge variant="secondary" className="gap-1">
@@ -208,9 +194,7 @@ export function ProjectInfo({
             <div className="flex items-center gap-1.5">
               <MapPin className="h-4 w-4 text-muted-foreground" />
               <span className="font-mono font-bold">{item.city_code}</span>
-              {item.country && (
-                <span className="text-muted-foreground">{item.country}</span>
-              )}
+              {item.country && <span className="text-muted-foreground">{item.country}</span>}
             </div>
           )}
           {item.population > 0 && (

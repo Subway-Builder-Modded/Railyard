@@ -18,6 +18,7 @@ import {
 } from "@/lib/map-filter-values";
 import { SEARCH_FILTER_EMPTY_LABELS } from "@/lib/search";
 import { type SearchFilterState } from "@/stores/search-store";
+import type { AssetType } from "@/lib/asset-types";
 
 const FILTER_SECTION_TITLE_CLASS =
   "text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1";
@@ -36,8 +37,8 @@ interface SidebarFiltersProps {
 }
 
 const typeOptions = [
-  { value: "maps" as const, label: "Maps", icon: MapPin },
-  { value: "mods" as const, label: "Mods", icon: Package },
+  { value: "map" as const, label: "Maps", icon: MapPin },
+  { value: "mod" as const, label: "Mods", icon: Package },
 ];
 
 export function SidebarFilters({
@@ -48,14 +49,13 @@ export function SidebarFilters({
   modCount,
   mapCount,
 }: SidebarFiltersProps) {
-  const counts: Record<"mods" | "maps", number> = {
-    mods: modCount,
-    maps: mapCount,
+  const counts: Record<AssetType, number> = {
+    mod: modCount,
+    map: mapCount,
   };
 
   return (
     <div className="space-y-5">
-      {/* Type filter */}
       <div>
         <FilterSectionTitle title="Type" />
         <nav className="space-y-0.5" aria-label="Content type filter">
@@ -92,7 +92,7 @@ export function SidebarFilters({
         </nav>
       </div>
 
-      {filters.type !== "maps" && (
+      {filters.type !== "map" && (
         <>
           <Separator />
           <ChecklistFilterSection
@@ -111,7 +111,7 @@ export function SidebarFilters({
         </>
       )}
 
-      {filters.type !== "mods" && (
+      {filters.type !== "mod" && (
         <>
           <Separator />
           <ChecklistFilterSection

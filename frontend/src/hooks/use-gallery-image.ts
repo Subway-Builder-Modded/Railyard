@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { GetGalleryImage } from '../../wailsjs/go/registry/Registry';
+import { useState, useEffect } from "react";
+import { GetGalleryImage } from "../../wailsjs/go/registry/Registry";
+import { assetTypeToListingPath, type AssetType } from "@/lib/asset-types";
 
-export function useGalleryImage(type: "mods" | "maps", id: string, imagePath?: string) {
+export function useGalleryImage(type: AssetType, id: string, imagePath?: string) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -16,7 +17,7 @@ export function useGalleryImage(type: "mods" | "maps", id: string, imagePath?: s
     setLoading(true);
     setError(false);
 
-    GetGalleryImage(type, id, imagePath)
+    GetGalleryImage(assetTypeToListingPath(type), id, imagePath)
       .then((url) => {
         if (!cancelled) {
           setImageUrl(url);
@@ -30,7 +31,9 @@ export function useGalleryImage(type: "mods" | "maps", id: string, imagePath?: s
         }
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [type, id, imagePath]);
 
   return { imageUrl, loading, error };

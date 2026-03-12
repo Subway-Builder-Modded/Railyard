@@ -1,7 +1,10 @@
 import { create } from "zustand";
-import { type PerPage } from "@/lib/constants";
+import {
+  createDefaultSharedAssetFilters,
+  type SharedAssetFilterState,
+} from "@/stores/asset-filter-state";
 
-export type LibraryTypeFilter = "mods" | "maps";
+export type LibraryTypeFilter = SharedAssetFilterState["type"];
 export type LibrarySortOption =
   | "name-asc"
   | "name-desc"
@@ -9,20 +12,8 @@ export type LibrarySortOption =
   | "country-asc"
   | "country-desc";
 
-export interface LibraryFilterState {
-  query: string;
-  type: LibraryTypeFilter;
+export interface LibraryFilterState extends SharedAssetFilterState {
   sort: LibrarySortOption;
-  perPage: PerPage;
-  mod: {
-    tags: string[];
-  };
-  map: {
-    locations: string[];
-    sourceQuality: string[];
-    levelOfDetail: string[];
-    specialDemand: string[];
-  };
 }
 
 type LibraryFilterUpdater =
@@ -42,19 +33,8 @@ interface LibraryState {
 }
 
 const defaultLibraryFilters: LibraryFilterState = {
-  query: "",
-  type: "mods",
+  ...createDefaultSharedAssetFilters("mod"),
   sort: "name-asc",
-  perPage: 12,
-  mod: {
-    tags: [],
-  },
-  map: {
-    locations: [],
-    sourceQuality: [],
-    levelOfDetail: [],
-    specialDemand: [],
-  },
 };
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({

@@ -28,12 +28,14 @@ import { formatSourceQuality } from "@/lib/map-filter-values";
 import { getCountryFlagIcon } from "@/lib/flags";
 import { type LibrarySortOption } from "@/stores/library-store";
 import { toast } from "sonner";
+import type { AssetType } from "@/lib/asset-types";
+import { assetTypeToListingPath } from "@/lib/asset-types";
 
 interface LibraryTableProps {
   items: InstalledTaggedItem[];
   updatesAvailable: Map<string, types.VersionInfo>;
   sort: LibrarySortOption;
-  activeType: "mods" | "maps";
+  activeType: AssetType;
   onToggleNameSort: () => void;
   onToggleCountrySort: () => void;
 }
@@ -52,7 +54,7 @@ export function LibraryTable({
 }: LibraryTableProps) {
   const { selectedIds, toggleSelected, selectAll, clearSelection } =
     useLibraryStore();
-  const showCountryColumn = activeType === "maps";
+  const showCountryColumn = activeType === "map";
   const isNameDesc = sort === "name-desc";
   const isNameSort = sort === "name-asc" || sort === "name-desc";
   const isCountryDesc = sort === "country-desc";
@@ -163,7 +165,7 @@ function LibraryTableRow({
   const [uninstallOpen, setUninstallOpen] = useState(false);
   const metroMakerDataPath = useConfigStore((s) => s.config?.metroMakerDataPath);
 
-  const isMap = entry.type === "maps";
+  const isMap = entry.type === "map";
   const map = isMap ? (entry.item as types.MapManifest) : null;
   const mapBadges = map
     ? [
@@ -180,7 +182,7 @@ function LibraryTableRow({
   const resolveInstallFolderPath = (): string | null => {
     if (!metroMakerDataPath) return null;
 
-    if (entry.type === "mods") {
+    if (entry.type === "mod") {
       return `${metroMakerDataPath}\\mods\\${entry.item.id}`;
     }
 
@@ -237,7 +239,7 @@ function LibraryTableRow({
                 <div className="flex items-center gap-2 flex-wrap">
                   {entry.inRegistry ? (
                     <Link
-                      href={`/project/${entry.type}/${entry.item.id}`}
+                      href={`/project/${assetTypeToListingPath(entry.type)}/${entry.item.id}`}
                       className="font-medium text-sm text-foreground hover:underline truncate"
                     >
                       {entry.item.name}

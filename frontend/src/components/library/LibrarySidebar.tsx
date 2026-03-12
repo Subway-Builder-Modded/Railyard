@@ -47,8 +47,8 @@ const typeOptions: Array<{
   label: string;
   icon: typeof MapPin;
 }> = [
-  { value: "mods", label: "Mods", icon: Package },
-  { value: "maps", label: "Maps", icon: MapPin },
+  { value: "mod", label: "Mods", icon: Package },
+  { value: "map", label: "Maps", icon: MapPin },
 ];
 
 export function LibrarySidebar({
@@ -63,8 +63,8 @@ export function LibrarySidebar({
   availableSpecialDemand,
 }: LibrarySidebarProps) {
   const counts: Record<LibraryTypeFilter, number> = {
-    mods: modCount,
-    maps: mapCount,
+    mod: modCount,
+    map: mapCount,
   };
 
   return (
@@ -107,7 +107,7 @@ export function LibrarySidebar({
       </div>
 
       {/* Mod tags filter */}
-      {filters.type === "mods" && (
+      {filters.type === "mod" && (
         <>
           <Separator />
           <ChecklistFilterSection
@@ -126,7 +126,7 @@ export function LibrarySidebar({
         </>
       )}
 
-      {filters.type === "maps" && (
+      {filters.type === "map" && (
         <>
           <Separator />
           <ChecklistFilterSection

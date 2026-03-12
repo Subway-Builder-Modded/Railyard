@@ -88,6 +88,8 @@ func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
 		versions = append(versions, v)
 	}
 
+	versions = r.filterSemverVersions(versions, "github:"+repo)
+
 	// Fetch manifest.json assets in parallel to extract game_version
 	r.enrichGameVersions(versions)
 
@@ -181,5 +183,20 @@ func (r *Registry) getCustomVersions(updateURL string) ([]types.VersionInfo, err
 		})
 	}
 
-	return versions, nil
+	return r.filterSemverVersions(versions, "custom:"+updateURL), nil
+}
+
+func (r *Registry) filterSemverVersions(
+	versions []types.VersionInfo,
+	sourceLabel string,
+) []types.VersionInfo {
+	filtered := make([]types.VersionInfo, 0, len(versions))
+	for _, version := range versions {
+		if !types.IsValidSemverVersion(types.Version(version.Version)) {
+			r.logger.Warn("Skipping non-semver version", "version", version.Version, "source", sourceLabel)
+			continue
+		}
+		filtered = append(filtered, version)
+	}
+	return filtered
 }

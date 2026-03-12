@@ -255,6 +255,7 @@ export namespace types {
 	    name: string;
 	    author: string;
 	    github_id: number;
+	    last_updated: number;
 	    city_code: string;
 	    country: string;
 	    location: string;
@@ -280,6 +281,7 @@ export namespace types {
 	        this.name = source["name"];
 	        this.author = source["author"];
 	        this.github_id = source["github_id"];
+	        this.last_updated = source["last_updated"];
 	        this.city_code = source["city_code"];
 	        this.country = source["country"];
 	        this.location = source["location"];
@@ -319,6 +321,7 @@ export namespace types {
 	    name: string;
 	    author: string;
 	    github_id: number;
+	    last_updated: number;
 	    description: string;
 	    tags: string[];
 	    gallery: string[];
@@ -336,6 +339,7 @@ export namespace types {
 	        this.name = source["name"];
 	        this.author = source["author"];
 	        this.github_id = source["github_id"];
+	        this.last_updated = source["last_updated"];
 	        this.description = source["description"];
 	        this.tags = source["tags"];
 	        this.gallery = source["gallery"];

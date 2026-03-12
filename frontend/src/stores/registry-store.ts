@@ -6,6 +6,7 @@ import {
   GetMods,
   Refresh,
 } from "../../wailsjs/go/registry/Registry";
+import { ASSET_TYPES, type AssetType } from "@/lib/asset-types";
 import { toCumulativeDownloadTotals } from "@/lib/download-totals";
 
 interface RegistryState {
@@ -23,7 +24,13 @@ interface RegistryState {
   refresh: () => Promise<void>;
 }
 
-let requests: Promise<void> | null = null;
+let downloadTotalsRequest: Promise<void> | null = null;
+
+function emptyRecordByAssetType<T>(factory: () => T): Record<AssetType, T> {
+  return Object.fromEntries(
+    ASSET_TYPES.map((assetType) => [assetType, factory()]),
+  ) as Record<AssetType, T>;
+}
 
 export const useRegistryStore = create<RegistryState>((set, get) => ({
   mods: [],
@@ -36,46 +43,37 @@ export const useRegistryStore = create<RegistryState>((set, get) => ({
   error: null,
   initialized: false,
 
-  // Ensure that download totals are loaded on Browse page, but only fetch them when needed
   ensureDownloadTotals: async () => {
     if (get().downloadTotalsLoaded) return;
-    if (requests) {
-      await requests;
+    if (downloadTotalsRequest) {
+      await downloadTotalsRequest;
       return;
     }
 
-    requests = (async () => {
+    downloadTotalsRequest = (async () => {
       try {
-        // Request download counts for each asset type in parallel
-        const [modCountsResult, mapCountsResult] = await Promise.all([
-          GetDownloadCountsByAssetType("mod"),
-          GetDownloadCountsByAssetType("map"),
-        ]);
+        const results = await Promise.all(
+          ASSET_TYPES.map((assetType) => GetDownloadCountsByAssetType(assetType)),
+        );
 
-        // TODO: Make this iterate over all asset types in the future
-        const modDownloadTotals =
-          modCountsResult.status === "success"
-            ? toCumulativeDownloadTotals(modCountsResult.counts)
-            : {};
-        if (modCountsResult.status !== "success") {
-          console.warn(
-            `[downloads:mod] Failed to load download counts: ${modCountsResult.message}`
-          );
-        }
+        const totalsByAsset = emptyRecordByAssetType<Record<string, number>>(
+          () => ({}),
+        );
 
-        const mapDownloadTotals =
-          mapCountsResult.status === "success"
-            ? toCumulativeDownloadTotals(mapCountsResult.counts)
-            : {};
-        if (mapCountsResult.status !== "success") {
+        results.forEach((result, index) => {
+          const assetType = ASSET_TYPES[index];
+          if (result.status === "success") {
+            totalsByAsset[assetType] = toCumulativeDownloadTotals(result.counts);
+            return;
+          }
           console.warn(
-            `[downloads:map] Failed to load download counts: ${mapCountsResult.message}`
+            `[downloads:${assetType}] Failed to load download counts: ${result.message}`,
           );
-        }
+        });
 
         set({
-          modDownloadTotals,
-          mapDownloadTotals,
+          modDownloadTotals: totalsByAsset.mod,
+          mapDownloadTotals: totalsByAsset.map,
           downloadTotalsLoaded: true,
         });
       } catch (err) {
@@ -87,14 +85,13 @@ export const useRegistryStore = create<RegistryState>((set, get) => ({
           downloadTotalsLoaded: true,
         });
       } finally {
-        requests = null;
+        downloadTotalsRequest = null;
       }
     })();
 
-    await requests;
+    await downloadTotalsRequest;
   },
 
-  // On initial load, fetch mod and map manifests
   initialize: async () => {
     if (get().initialized) return;
     set({ loading: true, error: null });
@@ -111,7 +108,6 @@ export const useRegistryStore = create<RegistryState>((set, get) => ({
     }
   },
 
-  // On refresh, re-fetch mod and map manifests and reset download totals so they will be re-fetched on demand with ensureDownloadTotals (to avoid stale data)
   refresh: async () => {
     set({ refreshing: true, error: null });
     try {

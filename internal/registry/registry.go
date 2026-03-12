@@ -21,6 +21,12 @@ type logSink interface {
 	Error(msg string, err error, attrs ...any)
 }
 
+type noopLogSink struct{}
+
+func (noopLogSink) Info(string, ...any)         {}
+func (noopLogSink) Warn(string, ...any)         {}
+func (noopLogSink) Error(string, error, ...any) {}
+
 // Registry manages the local clone of The Railyard registry repository.
 type Registry struct {
 	repoPath       string
@@ -36,6 +42,10 @@ type Registry struct {
 // NewRegistry creates a new Registry instance with the platform-appropriate
 // storage path.
 func NewRegistry(l logSink) *Registry {
+	if l == nil {
+		l = noopLogSink{}
+	}
+
 	return &Registry{
 		repoPath: paths.RegistryRepoPath(),
 		httpClient: &http.Client{

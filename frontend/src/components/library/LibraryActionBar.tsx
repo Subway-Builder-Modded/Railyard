@@ -13,6 +13,7 @@ import {
 import { type InstalledTaggedItem } from "@/hooks/use-filtered-installed-items";
 import { types } from "../../../wailsjs/go/models";
 import { toast } from "sonner";
+import type { AssetType } from "@/lib/asset-types";
 
 interface LibraryActionBarProps {
   allItems: InstalledTaggedItem[];
@@ -26,7 +27,7 @@ export function LibraryActionBar({
   const { selectedIds, clearSelection } = useLibraryStore();
   const { installMod, installMap } = useInstalledStore();
   const [uninstallTarget, setUninstallTarget] = useState<{
-    type: "mods" | "maps";
+    type: AssetType;
     id: string;
     name: string;
   } | null>(null);
@@ -52,7 +53,7 @@ export function LibraryActionBar({
       for (const item of selectedWithUpdates) {
         const updateInfo = updatesAvailable.get(item.item.id);
         if (!updateInfo) continue;
-        if (item.type === "mods") {
+        if (item.type === "mod") {
           await installMod(item.item.id, updateInfo.version);
         } else {
           await installMap(item.item.id, updateInfo.version);

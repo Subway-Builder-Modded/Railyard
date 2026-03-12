@@ -12,6 +12,7 @@ import { SortSelect } from "@/components/search/SortSelect";
 import { SearchX } from "lucide-react";
 import { useInstalledStore } from "@/stores/installed-store";
 import { createRandomSeed } from "@/stores/search-store";
+import type { AssetType } from "@/lib/asset-types";
 
 export function SearchPage() {
   const {
@@ -26,7 +27,7 @@ export function SearchPage() {
   const { installedMaps, installedMods } = useInstalledStore();
   const installedItems = useMemo(() => {
     const items: Array<{
-      type: "mods" | "maps";
+      type: AssetType;
       item: (typeof mods)[number] | (typeof maps)[number];
       installedVersion: string;
     }> = [];
@@ -34,7 +35,7 @@ export function SearchPage() {
       const manifest = mods.find((m) => m.id === installed.id);
       if (manifest)
         items.push({
-          type: "mods",
+          type: "mod",
           item: manifest,
           installedVersion: installed.version,
         });
@@ -43,7 +44,7 @@ export function SearchPage() {
       const manifest = maps.find((m) => m.id === installed.id);
       if (manifest)
         items.push({
-          type: "maps",
+          type: "map",
           item: manifest,
           installedVersion: installed.version,
         });
@@ -85,7 +86,6 @@ export function SearchPage() {
 
   return (
     <div className="space-y-5">
-      {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground text-balance">
           Browse
@@ -97,7 +97,6 @@ export function SearchPage() {
 
       {error && <ErrorBanner message={error} />}
 
-      {/* Search bar - full width at top */}
       <SearchBar
         query={filters.query}
         onQueryChange={(value) =>
@@ -105,9 +104,7 @@ export function SearchPage() {
         }
       />
 
-      {/* Two-column layout: sidebar + results */}
       <div className="flex gap-6 items-start">
-        {/* Sidebar */}
         <aside className="w-52 shrink-0">
           <SidebarFilters
             filters={filters}
@@ -119,18 +116,14 @@ export function SearchPage() {
           />
         </aside>
 
-        {/* Main results area */}
         <div className="flex-1 min-w-0 space-y-4">
-          {/* Results toolbar */}
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
               {loading ? (
                 <span className="inline-block h-4 w-24 bg-muted rounded animate-pulse" />
               ) : (
                 <>
-                  <span className="font-medium text-foreground">
-                    {totalResults}
-                  </span>{" "}
+                  <span className="font-medium text-foreground">{totalResults}</span>{" "}
                   result{totalResults !== 1 ? "s" : ""}
                   {filters.query && (
                     <span className="ml-1">
@@ -154,7 +147,6 @@ export function SearchPage() {
             />
           </div>
 
-          {/* Cards / empty / loading */}
           {loading ? (
             <CardSkeletonGrid count={filters.perPage} />
           ) : items.length === 0 ? (
@@ -176,11 +168,10 @@ export function SearchPage() {
                     type={itemType}
                     item={item}
                     installedVersion={
-                      installedItems.find((i) => i.item === item)
-                        ?.installedVersion
+                      installedItems.find((i) => i.item === item)?.installedVersion
                     }
                     totalDownloads={
-                      itemType === "mods"
+                      itemType === "mod"
                         ? (modDownloadTotals[item.id] ?? 0)
                         : (mapDownloadTotals[item.id] ?? 0)
                     }

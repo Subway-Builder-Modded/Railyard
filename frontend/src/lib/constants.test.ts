@@ -14,6 +14,10 @@ describe("sort helpers", () => {
       field: "downloads",
       direction: "desc",
     });
+    expect(sortKeyToState("last_updated:desc")).toEqual({
+      field: "last_updated",
+      direction: "desc",
+    });
     expect(sortKeyToState("random:asc")).toEqual({
       field: "random",
       direction: "asc",
@@ -22,7 +26,7 @@ describe("sort helpers", () => {
 
   it("maps structured state to sort key", () => {
     const state: SortState = { field: "downloads", direction: "asc" };
-    expect(sortStateToOptionKey(state, "mods")).toBe("downloads:asc");
+    expect(sortStateToOptionKey(state, "mod")).toBe("downloads:asc");
   });
 
   it("compares sort keys via helper", () => {
@@ -31,19 +35,24 @@ describe("sort helpers", () => {
   });
 
   it("hides population options for mods only", () => {
-    const modOptions = getSortOptionsForType("mods");
-    const mapOptions = getSortOptionsForType("maps");
+    const modOptions = getSortOptionsForType("mod");
+    const mapOptions = getSortOptionsForType("map");
 
-    expect(modOptions).toHaveLength(7);
+    expect(modOptions).toHaveLength(9);
     expect(modOptions.map((opt) => opt.value)).not.toContain("population:asc");
     expect(modOptions.map((opt) => opt.value)).not.toContain("population:desc");
+    expect(modOptions.map((opt) => opt.value)).toContain("last_updated:asc");
+    expect(modOptions.map((opt) => opt.value)).toContain("last_updated:desc");
     expect(modOptions.map((opt) => opt.value)).toContain("random:asc");
     expect(modOptions.map((opt) => opt.value)).not.toContain("random:desc");
-    expect(mapOptions).toHaveLength(9);
+    expect(mapOptions).toHaveLength(11);
     expect(mapOptions).toEqual(SORT_OPTIONS);
   });
 
   it("falls back to default when sort key is invalid", () => {
-    expect(sortKeyToState("nope")).toEqual({ field: "name", direction: "asc" });
+    expect(sortKeyToState("nope")).toEqual({
+      field: "last_updated",
+      direction: "desc",
+    });
   });
 });

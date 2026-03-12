@@ -8,13 +8,13 @@ import { useLibraryStore, type LibrarySortOption } from "@/stores/library-store"
 
 export type InstalledTaggedItem =
   | {
-      type: "mods";
+      type: "mod";
       item: types.ModManifest;
       installedVersion: string;
       inRegistry: boolean;
     }
   | {
-      type: "maps";
+      type: "map";
       item: types.MapManifest;
       installedVersion: string;
       inRegistry: boolean;
@@ -56,7 +56,7 @@ function matchesMapAttributeFilters(
     specialDemand: string[];
   },
 ): boolean {
-  if (item.type !== "maps") return true;
+  if (item.type !== "map") return true;
 
   const map = item.item as types.MapManifest;
   return (
@@ -71,7 +71,7 @@ function buildSearchText(entry: InstalledTaggedItem): string {
   const base = entry.item;
   const values: string[] = [base.name ?? "", base.author ?? ""];
 
-  if (entry.type === "mods") {
+  if (entry.type === "mod") {
     values.push(...(base.tags ?? []));
   } else {
     const map = base as types.MapManifest;
@@ -93,8 +93,8 @@ function compareItems(
   b: InstalledTaggedItem,
   sort: LibrarySortOption,
 ): number {
-  const countryA = a.type === "maps" ? ((a.item as types.MapManifest).country ?? "") : "";
-  const countryB = b.type === "maps" ? ((b.item as types.MapManifest).country ?? "") : "";
+  const countryA = a.type === "map" ? ((a.item as types.MapManifest).country ?? "") : "";
+  const countryB = b.type === "map" ? ((b.item as types.MapManifest).country ?? "") : "";
 
   switch (sort) {
     case "name-asc":
@@ -145,9 +145,9 @@ export function useFilteredInstalledItems({
     result = result.filter((i) => i.type === filters.type);
 
     // Filter by mod tags
-    if (filters.type === "mods" && filters.mod.tags.length > 0) {
+    if (filters.type === "mod" && filters.mod.tags.length > 0) {
       result = result.filter((i) =>
-        i.type === "mods"
+        i.type === "mod"
           ? (i.item.tags ?? []).some((tag) => filters.mod.tags.includes(tag))
           : true,
       );

@@ -26,9 +26,10 @@ import { PrereleaseConfirmDialog } from "@/components/dialogs/PrereleaseConfirmD
 import { isCompatible } from "@/lib/semver";
 import { toast } from "sonner";
 import { useDownloadQueueStore } from "@/stores/download-queue-store";
+import type { AssetType } from "@/lib/asset-types";
 
 interface VersionsTableProps {
-  type: "mods" | "maps";
+  type: AssetType;
   itemId: string;
   itemName: string;
   update: types.UpdateConfig;
@@ -46,7 +47,7 @@ export function VersionsTable({ type, itemId, itemName, versions, loading, error
 
   const doInstall = async (version: string) => {
     try {
-      if (type === "mods") {
+      if (type === "mod") {
         await installMod(itemId, version);
       } else {
         await installMap(itemId, version);
@@ -144,12 +145,10 @@ export function VersionsTable({ type, itemId, itemName, versions, loading, error
                       )}
                     </span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(v.date)}
-                  </TableCell>
+                  <TableCell className="text-muted-foreground">{formatDate(v.date)}</TableCell>
                   {hasAnyGameVersion && (
                     <TableCell className="text-muted-foreground font-mono text-xs">
-                      {v.game_version || "\u2014"}
+                      {v.game_version || "—"}
                     </TableCell>
                   )}
                   <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
@@ -203,7 +202,9 @@ export function VersionsTable({ type, itemId, itemName, versions, loading, error
       {prereleasePrompt && (
         <PrereleaseConfirmDialog
           open={!!prereleasePrompt}
-          onOpenChange={(open) => { if (!open) setPrereleasePrompt(null); }}
+          onOpenChange={(open) => {
+            if (!open) setPrereleasePrompt(null);
+          }}
           itemName={itemName}
           version={prereleasePrompt.version}
           onConfirm={() => doInstall(prereleasePrompt.version)}
@@ -213,7 +214,9 @@ export function VersionsTable({ type, itemId, itemName, versions, loading, error
       {installError && (
         <InstallErrorDialog
           open={!!installError}
-          onOpenChange={(open) => { if (!open) setInstallError(null); }}
+          onOpenChange={(open) => {
+            if (!open) setInstallError(null);
+          }}
           itemName={itemName}
           version={installError.version}
           error={installError.message}

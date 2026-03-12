@@ -23,6 +23,7 @@ type ModManifest struct {
 	Name          string       `json:"name"`
 	Author        string       `json:"author"`
 	GithubID      int          `json:"github_id"`
+	LastUpdated   int64        `json:"last_updated"`
 	Description   string       `json:"description"`
 	Tags          []string     `json:"tags"`
 	Gallery       []string     `json:"gallery"`
@@ -56,6 +57,7 @@ type MapManifest struct {
 	Name          string       `json:"name"`
 	Author        string       `json:"author"`
 	GithubID      int          `json:"github_id"`
+	LastUpdated   int64        `json:"last_updated"`
 	CityCode      string       `json:"city_code"`
 	Country       string       `json:"country"`
 	Location      string       `json:"location"`

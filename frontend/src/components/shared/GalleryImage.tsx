@@ -2,9 +2,10 @@ import { useGalleryImage } from "@/hooks/use-gallery-image";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { AssetType } from "@/lib/asset-types";
 
 interface GalleryImageProps {
-  type: "mods" | "maps";
+  type: AssetType;
   id: string;
   imagePath?: string;
   className?: string;
@@ -12,7 +13,7 @@ interface GalleryImageProps {
 
 export function GalleryImage({ type, id, imagePath, className }: GalleryImageProps) {
   const { imageUrl, loading, error } = useGalleryImage(type, id, imagePath);
-  const FallbackIcon = type === "mods" ? Package : MapPin;
+  const FallbackIcon = type === "mod" ? Package : MapPin;
 
   if (loading) {
     return <Skeleton className={cn("w-full", className)} />;
@@ -26,7 +27,5 @@ export function GalleryImage({ type, id, imagePath, className }: GalleryImagePro
     );
   }
 
-  return (
-    <img src={imageUrl} alt="" className={cn("w-full object-cover", className)} />
-  );
+  return <img src={imageUrl} alt="" className={cn("w-full object-cover", className)} />;
 }

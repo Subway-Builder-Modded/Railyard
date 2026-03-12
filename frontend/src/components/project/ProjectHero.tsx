@@ -4,9 +4,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GetGalleryImage } from "../../../wailsjs/go/registry/Registry";
+import { assetTypeToListingPath, type AssetType } from "@/lib/asset-types";
 
 interface ProjectHeroProps {
-  type: "mods" | "maps";
+  type: AssetType;
   id: string;
   gallery: string[];
 }
@@ -24,8 +25,8 @@ export function ProjectHero({ type, id, gallery }: ProjectHeroProps) {
 
     Promise.all(
       gallery.map((path) =>
-        GetGalleryImage(type, id, path).catch(() => null)
-      )
+        GetGalleryImage(assetTypeToListingPath(type), id, path).catch(() => null),
+      ),
     ).then((urls) => {
       setImages(urls);
       setLoading(false);
@@ -36,7 +37,7 @@ export function ProjectHero({ type, id, gallery }: ProjectHeroProps) {
     return (
       <div className="flex gap-2 overflow-hidden">
         {Array.from({ length: Math.min(gallery?.length || 3, 5) }).map((_, i) => (
-          <Skeleton key={i} className="h-24 w-40 rounded-md flex-shrink-0" />
+          <Skeleton key={i} className="h-24 w-40 rounded-md shrink-0" />
         ))}
       </div>
     );
@@ -55,13 +56,9 @@ export function ProjectHero({ type, id, gallery }: ProjectHeroProps) {
           <button
             key={i}
             onClick={() => setSelectedIndex(i)}
-            className="h-24 w-40 flex-shrink-0 rounded-md overflow-hidden ring-offset-background transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="h-24 w-40 shrink-0 rounded-md overflow-hidden ring-offset-background transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <img
-              src={url}
-              alt=""
-              className="w-full h-full object-cover"
-            />
+            <img src={url} alt="" className="w-full h-full object-cover" />
           </button>
         ))}
       </div>

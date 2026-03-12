@@ -11,11 +11,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { AlertTriangle, Loader2 } from "lucide-react";
+import type { AssetType } from "@/lib/asset-types";
 
 interface UninstallDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  type: "mods" | "maps";
+  type: AssetType;
   id: string;
   name: string;
 }
@@ -27,7 +28,7 @@ export function UninstallDialog({ open, onOpenChange, type, id, name }: Uninstal
   const handleUninstall = async () => {
     setLoading(true);
     try {
-      if (type === "mods") {
+      if (type === "mod") {
         await uninstallMod(id);
       } else {
         await uninstallMap(id);
@@ -50,7 +51,7 @@ export function UninstallDialog({ open, onOpenChange, type, id, name }: Uninstal
             Uninstall {name}?
           </DialogTitle>
           <DialogDescription>
-            This will remove all installed files for this {type === "mods" ? "mod" : "map"}. You can reinstall it later from the registry.
+            This will remove all installed files for this {type === "mod" ? "mod" : "map"}. You can reinstall it later from the registry.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

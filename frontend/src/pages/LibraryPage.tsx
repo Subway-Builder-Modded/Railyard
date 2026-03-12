@@ -48,7 +48,7 @@ export function LibraryPage() {
     for (const installed of installedMods) {
       const manifest = modManifestById.get(installed.id);
       items.push({
-        type: "mods",
+        type: "mod",
         item: manifest ?? new types.ModManifest({
           id: installed.id,
           name: installed.id,
@@ -66,7 +66,7 @@ export function LibraryPage() {
     for (const installed of installedMaps) {
       const manifest = mapManifestById.get(installed.id);
       items.push({
-        type: "maps",
+        type: "map",
         item: manifest ?? new types.MapManifest({
           id: installed.id,
           name: installed.config?.name || installed.id,
@@ -93,11 +93,8 @@ export function LibraryPage() {
   }, [installedMods, installedMaps, modManifestById, mapManifestById]);
 
   const {
-    items: paginatedItems,
     allFilteredItems,
     page,
-    totalPages,
-    totalResults,
     filters,
     setFilters,
     setPage,
@@ -183,8 +180,8 @@ export function LibraryPage() {
   };
 
   // Precompute counts for sidebar display
-  const modCount = installedItems.filter((i) => i.type === "mods").length;
-  const mapCount = installedItems.filter((i) => i.type === "maps").length;
+  const mapCount = installedItems.filter((i) => i.type === "map").length;
+  const modCount = installedItems.filter((i) => i.type === "mod").length;
 
   // Collect all unique tags from full registry for filter vocabulary.
   // We source from the full registry (not just installed items) so users
@@ -203,14 +200,22 @@ export function LibraryPage() {
   const [showingUpdatesOnly, setShowingUpdatesOnly] = useState(false);
 
   // When showing updates only, further filter the paginated items
-  const displayedItems = showingUpdatesOnly
-    ? paginatedItems.filter((item) => updatesAvailable.has(item.item.id))
-    : paginatedItems;
+  const visibleItems = showingUpdatesOnly
+    ? allFilteredItems.filter((item) => updatesAvailable.has(item.item.id))
+    : allFilteredItems;
+
+  const visibleTotalResults = visibleItems.length;
+  const visibleTotalPages = Math.max(1, Math.ceil(visibleTotalResults / filters.perPage));
+  const visiblePage = Math.min(page, visibleTotalPages);
+  const displayedItems = visibleItems.slice(
+    (visiblePage - 1) * filters.perPage,
+    visiblePage * filters.perPage,
+  );
 
   const totalProjects = installedItems.length;
 
   useEffect(() => {
-    if (filters.type === "mods" && (filters.sort === "country-asc" || filters.sort === "country-desc")) {
+    if (filters.type === "mod" && (filters.sort === "country-asc" || filters.sort === "country-desc")) {
       setFilters((prev) => ({ ...prev, sort: "name-asc" }));
     }
   }, [filters.type, filters.sort, setFilters]);
@@ -346,7 +351,7 @@ export function LibraryPage() {
               {displayedItems.length === 0 ? (
                 <EmptyState
                   icon={Inbox}
-                  title={filters.type === "maps" ? "No maps found" : "No mods found"}
+                  title={filters.type === "map" ? "No maps found" : "No mods found"}
                   description={
                     showingUpdatesOnly
                       ? "No updates available for the current filter"
@@ -367,9 +372,9 @@ export function LibraryPage() {
                     onToggleCountrySort={handleToggleCountrySort}
                   />
                   <Pagination
-                    page={page}
-                    totalPages={totalPages}
-                    totalResults={totalResults}
+                    page={visiblePage}
+                    totalPages={visibleTotalPages}
+                    totalResults={visibleTotalResults}
                     perPage={filters.perPage}
                     onPageChange={setPage}
                     onPerPageChange={(value) =>

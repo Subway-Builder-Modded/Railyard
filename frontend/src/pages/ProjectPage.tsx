@@ -20,19 +20,21 @@ import { VersionsTable } from "@/components/project/VersionsTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Separator } from "@/components/ui/separator";
 import { CircleAlert } from "lucide-react";
+import { listingPathToAssetType } from "@/lib/asset-types";
 
 export function ProjectPage() {
   const [, params] = useRoute("/project/:type/:id");
   const mods = useRegistryStore((s) => s.mods);
   const maps = useRegistryStore((s) => s.maps);
 
-  const type = params?.type as "mods" | "maps" | undefined;
+  const routeType = params?.type;
+  const type = routeType ? listingPathToAssetType(routeType) : undefined;
   const id = params?.id;
 
   const item =
-    type === "mods"
+    type === "mod"
       ? mods.find((m) => m.id === id)
-      : type === "maps"
+      : type === "map"
         ? maps.find((m) => m.id === id)
         : undefined;
 
@@ -46,7 +48,7 @@ export function ProjectPage() {
   }, []);
 
   useEffect(() => {
-    if (!item) return;
+    if (!item || !type) return;
     const source = item.update.type === "github" ? item.update.repo : item.update.url;
     if (!source) {
       setVersionsLoading(false);
@@ -60,24 +62,23 @@ export function ProjectPage() {
       .then(async (v) => {
         if (cancelled) return;
         const all = v || [];
-        const visibleVersions = type === "mods" ? all.filter((ver) => ver.manifest) : all;
+        const visibleVersions = type === "mod" ? all.filter((ver) => ver.manifest) : all;
 
         let mergedVersions = withZeroDownloads(visibleVersions);
-        const assetType = type === "mods" ? "mod" : "map";
         try {
-          const countsResult = await GetAssetDownloadCounts(assetType, item.id);
+          const countsResult = await GetAssetDownloadCounts(type, item.id);
           if (countsResult.status === "success") {
             mergedVersions = mergeVersionDownloads(
               visibleVersions,
               countsResult.counts ?? {},
-              `${assetType}:${item.id}`,
+              `${type}:${item.id}`,
             );
           } else {
-            console.warn(`[${assetType}:${item.id}] Failed to fetch download counts: ${countsResult.message}`);
+            console.warn(`[${type}:${item.id}] Failed to fetch download counts: ${countsResult.message}`);
           }
         } catch (countErr) {
           const message = countErr instanceof Error ? countErr.message : String(countErr);
-          console.warn(`[${assetType}:${item.id}] Failed to fetch download counts: ${message}`);
+          console.warn(`[${type}:${item.id}] Failed to fetch download counts: ${message}`);
         }
 
         if (!cancelled) {
@@ -91,7 +92,9 @@ export function ProjectPage() {
           setVersionsLoading(false);
         }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [type, item?.id, item?.update.type, item?.update.repo, item?.update.url]);
 
   const latestVersion = versions[0];
@@ -135,11 +138,27 @@ export function ProjectPage() {
 
       <ProjectHero type={type} id={item.id} gallery={gallery} />
 
-      <ProjectInfo type={type} item={item} latestVersion={latestVersion} latestCompatibleVersion={latestCompatibleVersion} versionsLoading={versionsLoading} gameVersion={gameVersion} />
+      <ProjectInfo
+        type={type}
+        item={item}
+        latestVersion={latestVersion}
+        latestCompatibleVersion={latestCompatibleVersion}
+        versionsLoading={versionsLoading}
+        gameVersion={gameVersion}
+      />
 
       <Separator />
 
-      <VersionsTable type={type} itemId={item.id} itemName={item.name} update={item.update} versions={versions} loading={versionsLoading} error={versionsError} gameVersion={gameVersion} />
+      <VersionsTable
+        type={type}
+        itemId={item.id}
+        itemName={item.name}
+        update={item.update}
+        versions={versions}
+        loading={versionsLoading}
+        error={versionsError}
+        gameVersion={gameVersion}
+      />
     </div>
   );
 }

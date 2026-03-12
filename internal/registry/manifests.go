@@ -40,6 +40,9 @@ func (r *Registry) fetchFromDisk() error {
 		return fmt.Errorf("failed to load installed maps from disk: %w", err)
 	}
 
+	modLastUpdated, mapLastUpdated := r.loadLastUpdated(mods, maps)
+	updateManifestLastUpdated(mods, maps, modLastUpdated, mapLastUpdated)
+
 	// Make updates only when all reads are successful to avoid partial registry updates
 	r.mods = mods
 	r.maps = maps
