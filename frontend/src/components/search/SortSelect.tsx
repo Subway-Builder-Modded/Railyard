@@ -5,34 +5,48 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SORT_OPTIONS, type SortOption } from "@/lib/constants";
+import {
+  getSortOptionsForType,
+  sortKeyToState,
+  sortStateToOptionKey,
+  type SortState,
+  type ListingType,
+} from "@/lib/constants";
 import { useEffect } from "react";
 
 interface SortSelectProps {
-  value: SortOption;
-  onChange: (value: SortOption) => void;
-  tab: string
+  value: SortState;
+  onChange: (value: SortState) => void;
+  tab: ListingType;
 }
 
 export function SortSelect({ value, onChange, tab }: SortSelectProps) {
-  let sortOptions = [...SORT_OPTIONS];
-  if(tab !== "maps") {
-    sortOptions = sortOptions.filter(opt => opt.value !== "population-desc");
-  }
+  const sortOptions = getSortOptionsForType(tab);
+  const selectedOptionKey = sortStateToOptionKey(value, tab);
 
   // Reset to default if current value is not available in filtered options
   useEffect(() => {
-    if (!sortOptions.some(opt => opt.value === value)) {
-      onChange(sortOptions[0].value as SortOption);
+    if (!sortOptions.some((opt) => opt.value === selectedOptionKey)) {
+      onChange(sortOptions[0].sort);
     }
-  }, [tab, value, onChange, sortOptions]);
+  }, [onChange, selectedOptionKey, sortOptions]);
 
   return (
-    <Select value={value} onValueChange={(v) => onChange(v as SortOption)}>
+    <Select
+      value={selectedOptionKey}
+      onValueChange={(v) => onChange(sortKeyToState(v))}
+    >
       <SelectTrigger className="w-36 h-8 text-xs">
         <SelectValue placeholder="Sort by..." />
       </SelectTrigger>
-      <SelectContent>
+      {/* Make sure that the selected option is always visible and ensure the dropdown renders downwards */}
+      <SelectContent
+        side="bottom"
+        sideOffset={4}
+        position="popper"
+        align="end"
+        avoidCollisions={false}
+      >
         {sortOptions.map((opt) => (
           <SelectItem key={opt.value} value={opt.value}>
             {opt.label}

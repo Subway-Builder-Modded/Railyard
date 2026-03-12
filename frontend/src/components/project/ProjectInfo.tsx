@@ -13,7 +13,16 @@ import { UninstallDialog } from "@/components/dialogs/UninstallDialog";
 import { InstallErrorDialog } from "@/components/dialogs/InstallErrorDialog";
 import { PrereleaseConfirmDialog } from "@/components/dialogs/PrereleaseConfirmDialog";
 import { toast } from "sonner";
-import { ExternalLink, MapPin, Users, Globe, Loader2, Trash2, CheckCircle, Download } from "lucide-react";
+import {
+  ExternalLink,
+  MapPin,
+  Users,
+  Globe,
+  Loader2,
+  Trash2,
+  CheckCircle,
+  Download,
+} from "lucide-react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import { BrowserOpenURL } from "../../../wailsjs/runtime/runtime";
@@ -31,29 +40,47 @@ interface ProjectInfoProps {
 }
 
 function isMapManifest(
-  item: types.ModManifest | types.MapManifest
+  item: types.ModManifest | types.MapManifest,
 ): item is types.MapManifest {
   return "city_code" in item;
 }
 
-export function ProjectInfo({ type, item, latestVersion, latestCompatibleVersion, versionsLoading, gameVersion }: ProjectInfoProps) {
+export function ProjectInfo({
+  type,
+  item,
+  latestVersion,
+  latestCompatibleVersion,
+  versionsLoading,
+  gameVersion,
+}: ProjectInfoProps) {
   const [uninstallOpen, setUninstallOpen] = useState(false);
-  const [installError, setInstallError] = useState<{ version: string; message: string } | null>(null);
+  const [installError, setInstallError] = useState<{
+    version: string;
+    message: string;
+  } | null>(null);
   const [prereleasePrompt, setPrereleasePrompt] = useState(false);
-  const { installMod, installMap, getInstalledVersion, isOperating } = useInstalledStore();
+  const { installMod, installMap, getInstalledVersion, isOperating } =
+    useInstalledStore();
 
   const installedVersion = getInstalledVersion(item.id);
   const installing = isOperating(item.id);
   const detailBadges = isMapManifest(item)
-    ? [item.location, formatSourceQuality(item.source_quality), item.level_of_detail, ...(item.special_demand ?? [])].filter(
-        (value): value is string => Boolean(value)
-      )
-    : item.tags ?? [];
+    ? [
+        item.location,
+        formatSourceQuality(item.source_quality),
+        item.level_of_detail,
+        ...(item.special_demand ?? []),
+      ].filter((value): value is string => Boolean(value))
+    : (item.tags ?? []);
   // Use the latest compatible version for install/update buttons
   const effectiveVersion = latestCompatibleVersion ?? latestVersion;
-  const hasUpdate = installedVersion && effectiveVersion && installedVersion !== effectiveVersion.version;
+  const hasUpdate =
+    installedVersion &&
+    effectiveVersion &&
+    installedVersion !== effectiveVersion.version;
   // No compatible version exists at all
-  const noCompatibleVersion = gameVersion && latestVersion && !latestCompatibleVersion;
+  const noCompatibleVersion =
+    gameVersion && latestVersion && !latestCompatibleVersion;
 
   const handleInstall = async (version: string) => {
     try {
@@ -64,9 +91,14 @@ export function ProjectInfo({ type, item, latestVersion, latestCompatibleVersion
       }
       const { completed, total } = useDownloadQueueStore.getState();
       const queueText = total > 1 ? ` (${completed}/${total} Downloaded)` : "";
-      toast.success(`${item.name} ${version} installed successfully.${queueText}`);
+      toast.success(
+        `${item.name} ${version} installed successfully.${queueText}`,
+      );
     } catch (err) {
-      setInstallError({ version, message: err instanceof Error ? err.message : String(err) });
+      setInstallError({
+        version,
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   };
 
@@ -92,7 +124,8 @@ export function ProjectInfo({ type, item, latestVersion, latestCompatibleVersion
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              No version compatible with your installed game version ({gameVersion})
+              No version compatible with your installed game version (
+              {gameVersion})
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -100,15 +133,23 @@ export function ProjectInfo({ type, item, latestVersion, latestCompatibleVersion
     }
     return (
       <>
-      <Button size="sm" onClick={() => handleInstallClick(v.version, v.prerelease)}>
-        <Download className="h-4 w-4 mr-1.5" />
-        {label}
-      </Button>
-      {label.toLowerCase().includes("update") && (
-      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setUninstallOpen(true)}>
-        <Trash2 className="h-4 w-4" />
-      </Button>
-      )}
+        <Button
+          size="sm"
+          onClick={() => handleInstallClick(v.version, v.prerelease)}
+        >
+          <Download className="h-4 w-4 mr-1.5" />
+          {label}
+        </Button>
+        {label.toLowerCase().includes("update") && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setUninstallOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </>
     );
   };
@@ -133,16 +174,27 @@ export function ProjectInfo({ type, item, latestVersion, latestCompatibleVersion
               Installing...
             </Button>
           ) : !installedVersion && effectiveVersion ? (
-            renderInstallButton(effectiveVersion, `Install ${effectiveVersion.version}`)
+            renderInstallButton(
+              effectiveVersion,
+              `Install ${effectiveVersion.version}`,
+            )
           ) : hasUpdate && effectiveVersion ? (
-            renderInstallButton(effectiveVersion, `Update to ${effectiveVersion.version}`)
+            renderInstallButton(
+              effectiveVersion,
+              `Update to ${effectiveVersion.version}`,
+            )
           ) : installedVersion ? (
             <>
               <Badge variant="secondary" className="gap-1">
                 <CheckCircle className="h-3 w-3" />
                 Installed {installedVersion}
               </Badge>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setUninstallOpen(true)}>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setUninstallOpen(true)}
+              >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </>
@@ -164,7 +216,7 @@ export function ProjectInfo({ type, item, latestVersion, latestCompatibleVersion
           {item.population > 0 && (
             <div className="flex items-center gap-1.5">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <span>Pop. {item.population.toLocaleString()}</span>
+              <span>{item.population.toLocaleString()}</span>
             </div>
           )}
         </div>
@@ -207,7 +259,11 @@ export function ProjectInfo({ type, item, latestVersion, latestCompatibleVersion
       )}
 
       {item.source && (
-        <Button variant="outline" size="sm" onClick={() => BrowserOpenURL(item.source!)}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => BrowserOpenURL(item.source!)}
+        >
           <Globe className="h-4 w-4 mr-1.5" />
           View Source
           <ExternalLink className="h-3 w-3 ml-1.5" />
@@ -225,7 +281,9 @@ export function ProjectInfo({ type, item, latestVersion, latestCompatibleVersion
       {prereleasePrompt && effectiveVersion && (
         <PrereleaseConfirmDialog
           open={prereleasePrompt}
-          onOpenChange={(open) => { if (!open) setPrereleasePrompt(false); }}
+          onOpenChange={(open) => {
+            if (!open) setPrereleasePrompt(false);
+          }}
           itemName={item.name}
           version={effectiveVersion.version}
           onConfirm={() => handleInstall(effectiveVersion.version)}
@@ -235,7 +293,9 @@ export function ProjectInfo({ type, item, latestVersion, latestCompatibleVersion
       {installError && (
         <InstallErrorDialog
           open={!!installError}
-          onOpenChange={(open) => { if (!open) setInstallError(null); }}
+          onOpenChange={(open) => {
+            if (!open) setInstallError(null);
+          }}
           itemName={item.name}
           version={installError.version}
           error={installError.message}

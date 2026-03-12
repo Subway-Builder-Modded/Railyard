@@ -1,7 +1,12 @@
 import { useMemo, useEffect, useRef } from "react";
 import Fuse from "fuse.js";
 import { types } from "../../wailsjs/go/models";
-import { type PerPage, type SortOption } from "../lib/constants";
+import {
+  type PerPage,
+  type SortDirection,
+  type SortField,
+  type SortState,
+} from "../lib/constants";
 import { FUSE_SEARCH_OPTIONS } from "@/lib/search";
 import { useProfileStore } from "@/stores/profile-store";
 import { type SearchFilterState, useSearchStore } from "@/stores/search-store";
@@ -15,6 +20,8 @@ export type { TypeFilter, SearchFilterState } from "@/stores/search-store";
 interface UseFilteredItemsParams {
   mods: types.ModManifest[];
   maps: types.MapManifest[];
+  modDownloadTotals: Record<string, number>;
+  mapDownloadTotals: Record<string, number>;
 }
 
 type SearchableItem = {
@@ -67,25 +74,85 @@ function matchesMapAttributeFilters(item: TaggedItem, filters: SearchFilterState
   );
 }
 
-function compareItems(a: TaggedItem, b: TaggedItem, sort: SortOption): number {
-  switch (sort) {
-    case "name-asc":
-      return (a.item.name ?? "").localeCompare(b.item.name ?? "");
-    case "name-desc":
-      return (b.item.name ?? "").localeCompare(a.item.name ?? "");
-    case "author-asc":
-      return (a.item.author ?? "").localeCompare(b.item.author ?? "");
-    case "population-desc": {
-      const popA = a.type === "maps" ? (a.item as types.MapManifest).population ?? 0 : -1;
-      const popB = b.type === "maps" ? (b.item as types.MapManifest).population ?? 0 : -1;
-      return popB - popA;
-    }
-    default:
-      return 0;
-  }
+function compareByDirection(a: number, b: number, direction: SortDirection): number {
+  return direction === "asc" ? a - b : b - a;
 }
 
-export function useFilteredItems({ mods, maps }: UseFilteredItemsParams) {
+function getTotalDownloads(
+  item: TaggedItem,
+  modDownloadTotals: Record<string, number>,
+  mapDownloadTotals: Record<string, number>
+): number {
+  return item.type === "mods"
+    ? modDownloadTotals[item.item.id] ?? 0
+    : mapDownloadTotals[item.item.id] ?? 0;
+}
+
+// Helper to determine comparation logic based on sort field and direction
+function compareItems(
+  a: TaggedItem,
+  b: TaggedItem,
+  sort: SortState,
+  modDownloadTotals: Record<string, number>,
+  mapDownloadTotals: Record<string, number>
+): number {
+  const compareText = (left: string, right: string, direction: SortDirection) =>
+    direction === "asc" ? left.localeCompare(right) : right.localeCompare(left);
+
+  const compareField = (field: SortField): number => {
+    switch (field) {
+      case "name":
+        return compareText(a.item.name ?? "", b.item.name ?? "", sort.direction);
+      case "author":
+        return compareText(a.item.author ?? "", b.item.author ?? "", sort.direction);
+      case "population": {
+        const popA = a.type === "maps" ? (a.item as types.MapManifest).population ?? 0 : 0;
+        const popB = b.type === "maps" ? (b.item as types.MapManifest).population ?? 0 : 0;
+        return compareByDirection(popA, popB, sort.direction);
+      }
+      case "downloads": {
+        const downloadsA = getTotalDownloads(a, modDownloadTotals, mapDownloadTotals);
+        const downloadsB = getTotalDownloads(b, modDownloadTotals, mapDownloadTotals);
+        return compareByDirection(downloadsA, downloadsB, sort.direction);
+      }
+      default:
+        return 0;
+    }
+  };
+
+  return compareField(sort.field);
+}
+
+// Seeded hash function to provide consistent "random" sorting. Stable across renders, but different across sessions
+function seededHash(value: string, seed: number): number {
+  const FNV_OFFSET_BASIS_32 = 0x811c9dc5;
+  const FNV_PRIME_32 = 0x01000193;
+
+  let hash = (seed ^ FNV_OFFSET_BASIS_32) >>> 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, FNV_PRIME_32) >>> 0;
+  }
+  return hash;
+}
+
+function sortItemsBySeed(items: TaggedItem[], seed: number): TaggedItem[] {
+  return [...items].sort((a, b) => {
+    const hashA = seededHash(`${a.type}:${a.item.id}`, seed);
+    const hashB = seededHash(`${b.type}:${b.item.id}`, seed);
+    if (hashA !== hashB) {
+      return hashA - hashB;
+    }
+    return a.item.id.localeCompare(b.item.id);
+  });
+}
+
+export function useFilteredItems({
+  mods,
+  maps,
+  modDownloadTotals,
+  mapDownloadTotals,
+}: UseFilteredItemsParams) {
   const defaultPerPage = useProfileStore((s) => s.defaultPerPage)() as PerPage;
   const filters = useSearchStore((s) => s.filters);
   const setFilters = useSearchStore((s) => s.setFilters);
@@ -97,9 +164,9 @@ export function useFilteredItems({ mods, maps }: UseFilteredItemsParams) {
       prev.perPage === defaultPerPage
         ? prev
         : {
-            ...prev,
-            perPage: defaultPerPage,
-          }
+          ...prev,
+          perPage: defaultPerPage,
+        }
     );
   }, [defaultPerPage, setFilters]);
 
@@ -140,8 +207,14 @@ export function useFilteredItems({ mods, maps }: UseFilteredItemsParams) {
       result = fuse.search(query).map(({ item }) => item.entry);
     }
 
-    return [...result].sort((a, b) => compareItems(a, b, filters.sort));
-  }, [allItems, filters]);
+    if (filters.sort.field === "random") {
+      return sortItemsBySeed(result, filters.randomSeed);
+    }
+
+    return [...result].sort((a, b) =>
+      compareItems(a, b, filters.sort, modDownloadTotals, mapDownloadTotals)
+    );
+  }, [allItems, filters, mapDownloadTotals, modDownloadTotals]);
 
   const totalResults = filtered.length;
   const totalPages = Math.max(1, Math.ceil(totalResults / filters.perPage));

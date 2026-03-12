@@ -178,6 +178,7 @@ func (a *App) recoverProfiles(cause types.UserProfileResult) types.UserProfile {
 }
 
 func runNonBlockingStartupRoutines(a *App, activeProfile types.UserProfile) {
+	wailsruntime.WindowMaximise(a.ctx)
 	if activeProfile.SystemPreferences.RefreshRegistryOnStartup {
 		if err := a.Registry.Refresh(); err != nil {
 			a.Logger.Warn("Failed to refresh registry on startup", "error", err)
@@ -487,7 +488,7 @@ func (a *App) generateMod(port int) error {
 		Id:          "com.railyard.maploader",
 		Name:        "Railyard Map Loader",
 		Description: "Loads any custom maps installed by Railyard.",
-		Version:     constants.MOD_VERSION,
+		Version:     strings.Replace(constants.MOD_VERSION, "v", "", 1),
 		Author: struct {
 			Name string `json:"name"`
 		}{

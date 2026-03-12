@@ -3,7 +3,7 @@ import { Search } from "lucide-react";
 import { TypeToggle } from "./TypeToggle";
 import { TagsFilter } from "./TagsFilter";
 import { SortSelect } from "./SortSelect";
-import type { SortOption } from "@/lib/constants";
+import type { SortState } from "@/lib/constants";
 
 interface SearchFiltersProps {
   query: string;
@@ -13,8 +13,8 @@ interface SearchFiltersProps {
   availableTags: string[];
   selectedTags: string[];
   onTagsChange: (tags: string[]) => void;
-  sort: SortOption;
-  onSortChange: (sort: SortOption) => void;
+  sort: SortState;
+  onSortChange: (sort: SortState) => void;
 }
 
 export function SearchFilters({

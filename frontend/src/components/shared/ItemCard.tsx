@@ -2,36 +2,53 @@ import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { GalleryImage } from "./GalleryImage";
 import { cn } from "@/lib/utils";
-import { Users, CheckCircle, Package, MapPin } from "lucide-react";
+import { Users, CheckCircle, Package, MapPin, Download } from "lucide-react";
 import { formatSourceQuality } from "@/lib/map-filter-values";
 import { MAX_CARD_BADGES } from "@/lib/search";
+import { getCountryFlagIcon } from "@/lib/flags";
 import { types } from "../../../wailsjs/go/models";
 
 interface ItemCardProps {
   type: "mods" | "maps";
   item: types.ModManifest | types.MapManifest;
   installedVersion?: string;
+  totalDownloads?: number;
 }
 
-function isMapManifest(item: types.ModManifest | types.MapManifest): item is types.MapManifest {
+function isMapManifest(
+  item: types.ModManifest | types.MapManifest,
+): item is types.MapManifest {
   return "city_code" in item;
 }
 
-export function ItemCard({ type, item, installedVersion }: ItemCardProps) {
+export function ItemCard({
+  type,
+  item,
+  installedVersion,
+  totalDownloads,
+}: ItemCardProps) {
   const isMap = isMapManifest(item);
   const mapBadges = isMap
-    ? [item.location, formatSourceQuality(item.source_quality), item.level_of_detail, ...(item.special_demand ?? [])].filter(
-        (value): value is string => Boolean(value)
-      )
+    ? [
+        item.location,
+        formatSourceQuality(item.source_quality),
+        item.level_of_detail,
+        ...(item.special_demand ?? []),
+      ].filter((value): value is string => Boolean(value))
     : [];
-  const badges = isMap ? mapBadges : item.tags ?? [];
+  const badges = isMap ? mapBadges : (item.tags ?? []);
+
+  const mapCityCode = isMap ? item.city_code!.trim() : "";
+  const mapCountry = isMap ? item.country!.trim().toUpperCase() : "";
+  const CountryFlag = isMap ? getCountryFlagIcon(mapCountry) : null;
+  const showDownloads = typeof totalDownloads === "number";
 
   return (
     <Link href={`/project/${type}/${item.id}`}>
       <article
         className={cn(
           "group relative bg-card border border-border rounded-lg overflow-hidden cursor-pointer transition-all duration-150 hover:border-foreground/20 hover:shadow-sm h-full flex flex-col",
-          installedVersion && "ring-1 ring-primary/40"
+          installedVersion && "ring-1 ring-primary/40",
         )}
       >
         {/* Thumbnail */}
@@ -75,13 +92,21 @@ export function ItemCard({ type, item, installedVersion }: ItemCardProps) {
                 by {item.author}
               </p>
             </div>
-            {isMap && item.city_code && (
+            {isMap && (
               <div className="shrink-0 text-right">
-                <span className="block text-xs font-mono font-bold text-foreground leading-none">
-                  {item.city_code}
-                </span>
-                {item.country && (
-                  <span className="text-xs text-muted-foreground">{item.country}</span>
+                {mapCityCode && (
+                  <span className="block text-xs font-mono font-bold text-foreground leading-none">
+                    {mapCityCode}
+                  </span>
+                )}
+                {/* Show the country flag as an icon next to the country code*/}
+                {mapCountry && (
+                  <span className="inline-flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                    {CountryFlag && (
+                      <CountryFlag className="h-3 w-4 rounded-[1px]" />
+                    )}
+                    <span>{mapCountry.toUpperCase()}</span>
+                  </span>
                 )}
               </div>
             )}
@@ -94,10 +119,21 @@ export function ItemCard({ type, item, installedVersion }: ItemCardProps) {
 
           {/* Footer: population + tags */}
           <div className="flex items-end justify-between gap-2 mt-auto">
-            {isMap && item.population > 0 ? (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                <Users className="h-3 w-3" aria-hidden="true" />
-                <span>Pop. {item.population.toLocaleString()}</span>
+            {(isMap && item.population > 0) || showDownloads ? (
+              <div className="flex flex-col gap-1 text-xs text-muted-foreground shrink-0">
+                {/* Show population above downloads if both are available. */}
+                {isMap && item.population > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Users className="h-3 w-3" aria-hidden="true" />
+                    <span>{item.population.toLocaleString()}</span>
+                  </div>
+                )}
+                {showDownloads && (
+                  <div className="flex items-center gap-1">
+                    <Download className="h-3 w-3" aria-hidden="true" />
+                    <span>{totalDownloads.toLocaleString()}</span>
+                  </div>
+                )}
               </div>
             ) : (
               <span />
@@ -106,7 +142,11 @@ export function ItemCard({ type, item, installedVersion }: ItemCardProps) {
             {badges.length > 0 && (
               <div className="flex flex-wrap justify-end gap-1">
                 {badges.slice(0, MAX_CARD_BADGES).map((badge) => (
-                  <Badge key={badge} variant="secondary" className="text-xs px-1.5 py-0">
+                  <Badge
+                    key={badge}
+                    variant="secondary"
+                    className="text-xs px-1.5 py-0"
+                  >
                     {badge}
                   </Badge>
                 ))}
