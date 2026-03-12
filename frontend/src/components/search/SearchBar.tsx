@@ -6,14 +6,15 @@ import { SEARCH_BAR_PLACEHOLDER } from "@/lib/search";
 interface SearchBarProps {
   query: string;
   onQueryChange: (query: string) => void;
+  placeholder?: string;
 }
 
-export function SearchBar({ query, onQueryChange }: SearchBarProps) {
+export function SearchBar({ query, onQueryChange, placeholder = SEARCH_BAR_PLACEHOLDER }: SearchBarProps) {
   return (
     <div className="relative">
       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
       <Input
-        placeholder={SEARCH_BAR_PLACEHOLDER}
+        placeholder={placeholder}
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         className="pl-10 pr-10 h-10 bg-card border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-ring"

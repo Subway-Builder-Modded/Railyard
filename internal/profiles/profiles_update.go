@@ -13,7 +13,8 @@ import (
 
 // ===== Profile Mutations ===== //
 
-// UpdateSubscriptions mutates the runtime state of the specified profile's subscriptions
+// UpdateSubscriptions mutates the specified profile's subscriptions and persists the new state.
+// ForceSync controls whether reconciliation/install-uninstall routines are run after persistence.
 func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest) types.UpdateSubscriptionsResult {
 	s.logRequest("UpdateSubscriptions", "profile_id", req.ProfileID, "action", req.Action, "asset_count", len(req.Assets), "force_sync", req.ForceSync)
 
@@ -251,19 +252,17 @@ func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsR
 	}
 
 	stateCopy.Profiles[req.ProfileID] = profile
-	if req.ForceSync {
-		if err := WriteUserProfilesState(stateCopy); err != nil {
-			return newUpdateSubscriptionsResult(
-				types.ResponseError,
-				"Failed to persist subscriptions",
-				profile,
-				false,
-				operations,
-				[]types.UserProfilesError{
-					updateSubscriptionError(req.ProfileID, "", "", types.ErrorPersistFailed, fmt.Errorf("Failed to persist subscriptions: %w", err)),
-				},
-			)
-		}
+	if err := WriteUserProfilesState(stateCopy); err != nil {
+		return newUpdateSubscriptionsResult(
+			types.ResponseError,
+			"Failed to persist subscriptions",
+			profile,
+			false,
+			operations,
+			[]types.UserProfilesError{
+				updateSubscriptionError(req.ProfileID, "", "", types.ErrorPersistFailed, fmt.Errorf("Failed to persist subscriptions: %w", err)),
+			},
+		)
 	}
 
 	s.setState(stateCopy)
@@ -271,7 +270,7 @@ func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsR
 		types.ResponseSuccess,
 		"Subscriptions updated",
 		profile,
-		req.ForceSync,
+		true,
 		operations,
 		[]types.UserProfilesError{},
 	)
@@ -280,7 +279,7 @@ func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsR
 		result.GenericResponse,
 		"profile_id", req.ProfileID,
 		"operation_count", len(operations),
-		"persisted", req.ForceSync,
+		"persisted", result.Persisted,
 	)
 	return result
 }

@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -45,6 +46,38 @@ type App struct {
 	pmtilesServer *http.Server
 	startupMu     sync.RWMutex
 	startupReady  bool
+}
+
+// OpenInFileExplorer opens a directory in the OS-native file explorer.
+func (a *App) OpenInFileExplorer(targetPath string) types.GenericResponse {
+	cleanedPath := filepath.Clean(strings.TrimSpace(targetPath))
+	if cleanedPath == "" {
+		return types.ErrorResponse("invalid path")
+	}
+
+	info, err := os.Stat(cleanedPath)
+	if err != nil {
+		return types.ErrorResponse(fmt.Sprintf("failed to resolve path: %v", err))
+	}
+	if !info.IsDir() {
+		cleanedPath = filepath.Dir(cleanedPath)
+	}
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", cleanedPath)
+	case "darwin":
+		cmd = exec.Command("open", cleanedPath)
+	default:
+		cmd = exec.Command("xdg-open", cleanedPath)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return types.ErrorResponse(fmt.Sprintf("failed to open path in file explorer: %v", err))
+	}
+
+	return types.SuccessResponse("opened in file explorer")
 }
 
 // NewApp creates a new App application struct

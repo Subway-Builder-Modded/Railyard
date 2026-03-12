@@ -128,10 +128,20 @@
   body,
   #root {
     @apply min-h-screen bg-background text-foreground;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     }
   body {
     @apply bg-background text-foreground;
+    overflow-y: auto;
     }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  #root::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 

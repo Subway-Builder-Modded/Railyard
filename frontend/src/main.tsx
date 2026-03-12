@@ -23,6 +23,11 @@ document.addEventListener(
   { passive: false },
 );
 
+// ── Disable browser context menu ──
+document.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+});
+
 const container = document.getElementById("root");
 
 const root = createRoot(container!);

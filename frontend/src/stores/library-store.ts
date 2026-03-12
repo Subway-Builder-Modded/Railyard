@@ -1,13 +1,28 @@
 import { create } from "zustand";
-import { type PerPage, type SortOption } from "@/lib/constants";
+import { type PerPage } from "@/lib/constants";
 
-export type LibraryTypeFilter = "all" | "mods" | "maps";
+export type LibraryTypeFilter = "mods" | "maps";
+export type LibrarySortOption =
+  | "name-asc"
+  | "name-desc"
+  | "author-asc"
+  | "country-asc"
+  | "country-desc";
 
 export interface LibraryFilterState {
   query: string;
   type: LibraryTypeFilter;
-  sort: SortOption;
+  sort: LibrarySortOption;
   perPage: PerPage;
+  mod: {
+    tags: string[];
+  };
+  map: {
+    locations: string[];
+    sourceQuality: string[];
+    levelOfDetail: string[];
+    specialDemand: string[];
+  };
 }
 
 type LibraryFilterUpdater =
@@ -28,9 +43,18 @@ interface LibraryState {
 
 const defaultLibraryFilters: LibraryFilterState = {
   query: "",
-  type: "all",
+  type: "mods",
   sort: "name-asc",
   perPage: 12,
+  mod: {
+    tags: [],
+  },
+  map: {
+    locations: [],
+    sourceQuality: [],
+    levelOfDetail: [],
+    specialDemand: [],
+  },
 };
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({

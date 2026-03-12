@@ -287,7 +287,7 @@ func TestQuarantineUserProfilesFileMovesSourceToBackup(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 }
 
-func TestUpdateSubscriptionsSubscribeMapAddsOperationAndRuntimeOnlyByDefault(t *testing.T) {
+func TestUpdateSubscriptionsSubscribeMapAddsOperationAndPersistsByDefault(t *testing.T) {
 	testutil.NewHarness(t)
 	svc := loadedUserProfilesService(t, types.InitialProfilesState())
 
@@ -304,7 +304,7 @@ func TestUpdateSubscriptionsSubscribeMapAddsOperationAndRuntimeOnlyByDefault(t *
 	require.Equal(t, types.ResponseSuccess, result.Status)
 	require.Equal(t, "Subscriptions updated", result.Message)
 	require.Empty(t, result.Errors)
-	require.False(t, result.Persisted)
+	require.True(t, result.Persisted)
 	require.Equal(t, "1.2.3", result.Profile.Subscriptions.Maps["map-a"])
 	require.Len(t, result.Operations, 1)
 	require.Equal(t, "map-a", result.Operations[0].AssetID)
@@ -314,7 +314,7 @@ func TestUpdateSubscriptionsSubscribeMapAddsOperationAndRuntimeOnlyByDefault(t *
 
 	persisted, err := ReadUserProfilesState()
 	require.NoError(t, err)
-	require.Empty(t, persisted.Profiles[types.DefaultProfileID].Subscriptions.Maps)
+	require.Equal(t, "1.2.3", persisted.Profiles[types.DefaultProfileID].Subscriptions.Maps["map-a"])
 }
 
 func TestUpdateSubscriptionsForceSyncPersistsStateAndSyncs(t *testing.T) {

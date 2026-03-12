@@ -15,14 +15,19 @@ export function ExtractNotification() {
 
   useEffect(() => {
     const cancel = EventsOn("extract:progress", (data: ExtractProgress) => {
+      const { total: queueTotal } = useDownloadQueueStore.getState();
+      if (queueTotal <= 0) {
+        return;
+      }
+
       const { itemId, amountExtracted, total } = data;
       const isComplete = total > 0 && amountExtracted >= total;
 
       if (isComplete) {
         const existingId = toastIds.current.get(itemId);
         if (existingId) {
-          const { completed, total: queueTotal } = useDownloadQueueStore.getState();
-          const queueLabel = queueTotal > 1 ? `${completed + 1}/${queueTotal}` : null;
+          const { completed, total: queueTotalForLabel } = useDownloadQueueStore.getState();
+          const queueLabel = queueTotalForLabel > 1 ? `${completed + 1}/${queueTotalForLabel}` : null;
 
           toast(
             <div className="flex flex-col gap-1.5 w-full">
@@ -45,8 +50,8 @@ export function ExtractNotification() {
         return;
       }
 
-      const { completed, total: queueTotal } = useDownloadQueueStore.getState();
-      const queueLabel = queueTotal > 1 ? `${completed + 1}/${queueTotal}` : null;
+      const { completed, total: queueTotalForLabel } = useDownloadQueueStore.getState();
+      const queueLabel = queueTotalForLabel > 1 ? `${completed + 1}/${queueTotalForLabel}` : null;
 
       const description = `Extracting\u2026 (${amountExtracted} / ${total})`;
 

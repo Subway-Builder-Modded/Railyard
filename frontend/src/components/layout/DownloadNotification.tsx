@@ -21,6 +21,11 @@ export function DownloadNotification() {
 
   useEffect(() => {
     const cancel = EventsOn("download:progress", (data: DownloadProgress) => {
+      const { total: queueTotal } = useDownloadQueueStore.getState();
+      if (queueTotal <= 0) {
+        return;
+      }
+
       const { itemId, received, total } = data;
       const percent = total > 0 ? Math.round((received / total) * 100) : -1;
       const isComplete = total > 0 && received >= total;
@@ -29,8 +34,8 @@ export function DownloadNotification() {
         const existingId = toastIds.current.get(itemId);
         if (existingId) {
           // Show brief "Downloaded" state before dismissing
-          const { completed, total: queueTotal } = useDownloadQueueStore.getState();
-          const queueLabel = queueTotal > 1 ? `${completed + 1}/${queueTotal}` : null;
+          const { completed, total: queueTotalForLabel } = useDownloadQueueStore.getState();
+          const queueLabel = queueTotalForLabel > 1 ? `${completed + 1}/${queueTotalForLabel}` : null;
 
           toast(
             <div className="flex flex-col gap-1.5 w-full">
@@ -53,8 +58,8 @@ export function DownloadNotification() {
         return;
       }
 
-      const { completed, total: queueTotal } = useDownloadQueueStore.getState();
-      const queueLabel = queueTotal > 1 ? `${completed + 1}/${queueTotal}` : null;
+      const { completed, total: queueTotalForLabel } = useDownloadQueueStore.getState();
+      const queueLabel = queueTotalForLabel > 1 ? `${completed + 1}/${queueTotalForLabel}` : null;
 
       const description =
         percent >= 0
