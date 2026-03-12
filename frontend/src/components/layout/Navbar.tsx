@@ -20,6 +20,7 @@ import { toast } from "sonner";
 
 const navLinks = [
   { href: "/", label: "Home" },
+  { href: "/library", label: "Library" },
   { href: "/search", label: "Browse" },
   { href: "/logs", label: "Logs" },
   { href: "/settings", label: "Settings" },

@@ -17,6 +17,7 @@ import { SearchPage } from "@/pages/SearchPage";
 import { ProjectPage } from "@/pages/ProjectPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { LogsPage } from "@/pages/LogsPage";
+import { LibraryPage } from "@/pages/LibraryPage";
 import { ExtractNotification } from "./components/layout/ExtractNotification";
 import { IsStartupReady } from "../wailsjs/go/main/App";
 import { EventsOn } from "../wailsjs/runtime/runtime";
@@ -151,6 +152,7 @@ function App() {
       <Layout>
         <Switch>
           <Route path="/" component={HomePage} />
+          <Route path="/library" component={LibraryPage} />
           <Route path="/search" component={SearchPage} />
           <Route path="/project/:type/:id" component={ProjectPage} />
           <Route path="/logs" component={LogsPage} />
