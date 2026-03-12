@@ -16,10 +16,10 @@ import (
 )
 
 // extractMod processes the downloaded mod zip file, extracts it to the appropriate location.
-func extractMod(d *Downloader, filePath string, modId string) types.GenericResponse {
+func extractMod(d *Downloader, filePath string, modId string, version string) types.AssetInstallResponse {
 	reader, err := zip.OpenReader(filePath)
 	if err != nil {
-		return d.throwError("Failed to open zip file", err, "file_path", filePath, "mod_id", modId)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorInvalidArchive, "Failed to open zip file", err, "file_path", filePath, "mod_id", modId)
 	}
 	defer reader.Close()
 
@@ -44,20 +44,23 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 	}
 
 	if !requiredFiles["manifest"].Found {
-		return d.throwError("Zip file is missing manifest.json", nil, "file_path", filePath, "mod_id", modId)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorInvalidArchive, "Zip file is missing manifest.json", nil, "file_path", filePath, "mod_id", modId)
 	}
 
 	rawManifestReader, err := requiredFiles["manifest"].FileObject.Open()
 	if err != nil {
-		return d.throwError("Failed to read manifest file", err, "file_path", filePath, "mod_id", modId)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorInvalidManifest, "Failed to read manifest file", err, "file_path", filePath, "mod_id", modId)
 	}
 
 	rawManifestBytes, err := io.ReadAll(rawManifestReader)
 	if err != nil {
-		return d.throwError("Failed to read manifest file", err, "file_path", filePath, "mod_id", modId)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorInvalidManifest, "Failed to read manifest file", err, "file_path", filePath, "mod_id", modId)
 	}
 
 	manifestData, err := files.ParseJSON[types.MetroMakerModManifest](rawManifestBytes, constants.MANIFEST_JSON)
+	if err != nil {
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorInvalidManifest, "Failed to parse manifest file", err, "file_path", filePath, "mod_id", modId)
+	}
 	for _, file := range reader.File {
 		if file.Name == manifestData.Main {
 			requiredFiles["manifest_target"] = types.FileFoundStruct{Found: true, FileObject: file, Required: true}
@@ -66,11 +69,11 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 	}
 
 	if !requiredFilesPresent(requiredFiles) {
-		return d.throwError("Zip file is missing one or more required files", nil, "file_path", filePath, "mod_id", modId)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorInvalidArchive, "Zip file is missing one or more required files", nil, "file_path", filePath, "mod_id", modId)
 	}
 
 	if err := os.MkdirAll(destFolder, os.ModePerm); err != nil {
-		return d.throwError("Failed to create destination folder", err, "destination", destFolder, "mod_id", modId)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorFilesystem, "Failed to create destination folder", err, "destination", destFolder, "mod_id", modId)
 	}
 
 	// First pass: create directories to avoid extract errors
@@ -78,7 +81,7 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 		if file.FileInfo().IsDir() {
 			destPath := path.Join(destFolder, file.Name)
 			if err := os.MkdirAll(destPath, os.ModePerm); err != nil {
-				return d.throwError("Failed to create directory during extraction", err, "directory_path", destPath, "mod_id", modId)
+				return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorFilesystem, "Failed to create directory during extraction", err, "directory_path", destPath, "mod_id", modId)
 			}
 		}
 	}
@@ -137,17 +140,18 @@ func extractMod(d *Downloader, filePath string, modId string) types.GenericRespo
 
 	if len(errChan) > 0 {
 		err := <-errChan
-		return d.throwError("Failed to extract file", err, "file_path", filePath, "mod_id", modId)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorExtractFailed, "Failed to extract file", err, "file_path", filePath, "mod_id", modId)
 	}
 
-	return d.successResponse("Mod extracted successfully", "file_path", filePath, "mod_id", modId)
+	return d.installSuccess(types.AssetTypeMod, modId, version, types.ConfigData{}, "Mod extracted successfully", "file_path", filePath, "mod_id", modId)
 }
 
 // extractMap processes the downloaded map zip file, validates required files, extracts them to the appropriate locations.
-func extractMap(d *Downloader, filePath string) types.MapExtractResponse {
+func extractMap(d *Downloader, filePath string, mapId string, version string) types.AssetInstallResponse {
+	configData := types.ConfigData{}
 	reader, err := zip.OpenReader(filePath)
 	if err != nil {
-		return d.throwMapExtractError("Failed to open zip file", err, "file_path", filePath)
+		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorInvalidArchive, "Failed to open zip file", err, "file_path", filePath)
 	}
 	defer reader.Close()
 
@@ -186,7 +190,7 @@ func extractMap(d *Downloader, filePath string) types.MapExtractResponse {
 	}
 
 	if !requiredFilesPresent(filesFound) {
-		return d.throwMapExtractError("Zip file is missing one or more required files", nil, "file_path", filePath)
+		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorInvalidArchive, "Zip file is missing one or more required files", nil, "file_path", filePath)
 	}
 
 	filesCount := 0
@@ -196,21 +200,20 @@ func extractMap(d *Downloader, filePath string) types.MapExtractResponse {
 		}
 	}
 
-	var configData types.ConfigData
 	configReader, err := filesFound["config"].FileObject.Open()
 	if err != nil {
-		return d.throwMapExtractError("Failed to read config file", err, "file_path", filePath)
+		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorInvalidManifest, "Failed to read config file", err, "file_path", filePath)
 	}
 	defer configReader.Close()
 
 	configBytes, err := io.ReadAll(configReader)
 	if err != nil {
-		return d.throwMapExtractError("Failed to read config file", err, "file_path", filePath)
+		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorInvalidManifest, "Failed to read config file", err, "file_path", filePath)
 	}
 
 	configData, err = files.ParseJSON[types.ConfigData](configBytes, "config")
 	if err != nil {
-		return d.throwMapExtractError("Failed to parse config file", err, "file_path", filePath)
+		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorInvalidManifest, "Failed to parse config file", err, "file_path", filePath)
 	}
 
 	if configData.ThumbnailBbox != nil && !filesFound["thumbnail"].Found {
@@ -218,21 +221,21 @@ func extractMap(d *Downloader, filePath string) types.MapExtractResponse {
 	}
 
 	if d.isMapCodeTaken(configData.Code) {
-		return d.throwMapExtractError("Cannot install map because its code matches a vanilla map included with the game or an already installed map.", nil, "map_code", configData.Code)
+		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorMapCodeConflict, "Cannot install map because its code matches a vanilla map included with the game or an already installed map.", nil, "map_code", configData.Code)
 	}
 
 	// Create necessary directories first
 	destFolder := path.Join(d.getMapDataPath(), configData.Code)
 	if err := os.MkdirAll(destFolder, os.ModePerm); err != nil {
-		return d.throwMapExtractError("Failed to create destination folder", err, "destination", destFolder)
+		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorFilesystem, "Failed to create destination folder", err, "destination", destFolder)
 	}
 
 	if err := os.MkdirAll(d.mapTilePath, os.ModePerm); err != nil {
-		return d.throwMapExtractError("Failed to create tiles directory", err, "tiles_path", d.mapTilePath)
+		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorFilesystem, "Failed to create tiles directory", err, "tiles_path", d.mapTilePath)
 	}
 
 	if err := os.MkdirAll(d.getMapThumbnailPath(), os.ModePerm); err != nil {
-		return d.throwMapExtractError("Failed to create thumbnail directory", err, "thumbnail_path", d.getMapThumbnailPath())
+		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorFilesystem, "Failed to create thumbnail directory", err, "thumbnail_path", d.getMapThumbnailPath())
 	}
 
 	// Process files in parallel
@@ -289,24 +292,24 @@ func extractMap(d *Downloader, filePath string) types.MapExtractResponse {
 
 	if len(errChan) > 0 {
 		err := <-errChan
-		return d.throwMapExtractError("Failed to extract file", err, "file_path", filePath)
+		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorExtractFailed, "Failed to extract file", err, "file_path", filePath)
 	}
 
 	if !filesFound["thumbnail"].Found {
 		srv, port, srvErr := utils.StartTempPMTilesServer()
 		if srvErr != nil {
-			return d.toMapExtractResponse(d.warnResponse("Failed to start PMTiles server for thumbnail generation, but map was extracted successfully.", "file_path", filePath, "map_code", configData.Code), configData)
+			return d.installWarn(types.AssetTypeMap, mapId, version, configData, "Failed to start PMTiles server for thumbnail generation, but map was extracted successfully.", "file_path", filePath, "map_code", configData.Code)
 		}
 		defer srv.Close()
 
 		thumbnailData, err := utils.GenerateThumbnail(configData.Code, configData, port)
 		if err != nil {
-			return d.toMapExtractResponse(d.warnResponse("Failed to generate thumbnail, but map was extracted successfully. You can try generating the thumbnail later from the map details page.", "file_path", filePath, "map_code", configData.Code), configData)
+			return d.installWarn(types.AssetTypeMap, mapId, version, configData, "Failed to generate thumbnail, but map was extracted successfully. You can try generating the thumbnail later from the map details page.", "file_path", filePath, "map_code", configData.Code)
 		}
 
 		thumbnailPath := path.Join(d.getMapThumbnailPath(), configData.Code+".svg")
 		if err := os.WriteFile(thumbnailPath, []byte(thumbnailData), os.ModePerm); err != nil {
-			return d.toMapExtractResponse(d.warnResponse("Failed to save generated thumbnail, but map was extracted successfully. You can try generating the thumbnail later from the map details page.", "file_path", filePath, "map_code", configData.Code, "thumbnail_path", thumbnailPath), configData)
+			return d.installWarn(types.AssetTypeMap, mapId, version, configData, "Failed to save generated thumbnail, but map was extracted successfully. You can try generating the thumbnail later from the map details page.", "file_path", filePath, "map_code", configData.Code, "thumbnail_path", thumbnailPath)
 		}
 		extractCount++
 		if d.OnExtractProgress != nil {
@@ -314,7 +317,7 @@ func extractMap(d *Downloader, filePath string) types.MapExtractResponse {
 		}
 	}
 
-	return d.toMapExtractResponse(d.successResponse("Map extracted successfully", "file_path", filePath, "map_code", configData.Code), configData)
+	return d.installSuccess(types.AssetTypeMap, mapId, version, configData, "Map extracted successfully", "file_path", filePath, "map_code", configData.Code)
 }
 
 func extractFileMap(path string, srcFile io.ReadCloser, errChan chan<- error, useGzip bool) {

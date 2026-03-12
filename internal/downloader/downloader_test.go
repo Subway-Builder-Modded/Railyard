@@ -2,6 +2,8 @@ package downloader
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -11,6 +13,7 @@ import (
 	"railyard/internal/config"
 	"railyard/internal/logger"
 	"railyard/internal/registry"
+	"railyard/internal/testutil/registrytest"
 	"railyard/internal/types"
 
 	"github.com/stretchr/testify/require"
@@ -24,6 +27,14 @@ func (testRegistryLogSink) Error(string, error, ...any) {}
 
 func newTestDownloader() *Downloader {
 	return &Downloader{}
+}
+
+func configureDownloaderConfig(t *testing.T, cfg *config.Config) {
+	t.Helper()
+	cfg.Cfg.MetroMakerDataPath = t.TempDir()
+	exePath := filepath.Join(t.TempDir(), "subway-builder.exe")
+	require.NoError(t, os.WriteFile(exePath, []byte("exe"), 0o644))
+	cfg.Cfg.ExecutablePath = exePath
 }
 
 func runInParallel(total int, fn func(index int)) {
@@ -310,7 +321,7 @@ func TestInstallMapForExistingIsNoOp(t *testing.T) {
 	}
 
 	// Validate that no-op response is returned at invocation time
-	response := d.InstallMap("map-a", "1.0.0")
+	response := d.InstallAsset(types.AssetTypeMap, "map-a", "1.0.0")
 	require.Equal(t, types.ResponseWarn, response.Status)
 	require.Contains(t, response.Message, "already installed at requested version")
 	require.Equal(t, expectedConfig, response.Config)
@@ -337,10 +348,10 @@ func TestInstallModPreservesNoOpThroughStateMutation(t *testing.T) {
 	}()
 	<-blockerStarted
 
-	responseCh := make(chan types.GenericResponse, 1)
+	responseCh := make(chan types.AssetInstallResponse, 1)
 	// Enqueue an install operation for mod-a
 	go func() {
-		responseCh <- d.InstallMod("mod-a", "1.0.0")
+		responseCh <- d.InstallAsset(types.AssetTypeMod, "mod-a", "1.0.0")
 	}()
 
 	waitForPendingOperation(t, d, downloadQueueKey{assetType: types.AssetTypeMod, assetID: "mod-a"})
@@ -352,6 +363,166 @@ func TestInstallModPreservesNoOpThroughStateMutation(t *testing.T) {
 	response := <-responseCh
 	require.Equal(t, types.ResponseWarn, response.Status)
 	require.Contains(t, response.Message, "already installed at requested version")
+}
+
+func TestInstallAssetError(t *testing.T) {
+	testCases := []struct {
+		name              string
+		assetType         types.AssetType
+		assetID           string
+		version           string
+		setup             func(t *testing.T, d *Downloader, reg *registry.Registry) func()
+		expectedStatus    types.Status
+		expectedErrorCode types.DownloaderErrorType
+	}{
+		{
+			name:              "Invalid asset type",
+			assetType:         types.AssetType("bad"),
+			assetID:           "asset-a",
+			version:           "1.0.0",
+			expectedStatus:    types.ResponseError,
+			expectedErrorCode: types.InstallErrorInvalidAssetType,
+		},
+		{
+			name:              "Invalid config",
+			assetType:         types.AssetTypeMod,
+			assetID:           "mod-a",
+			version:           "1.0.0",
+			expectedStatus:    types.ResponseError,
+			expectedErrorCode: types.InstallErrorInvalidConfig, // No config initialized
+		},
+		{
+			name:      "Registry lookup failed",
+			assetType: types.AssetTypeMod,
+			assetID:   "missing-mod",
+			version:   "1.0.0",
+			setup: func(t *testing.T, d *Downloader, _ *registry.Registry) func() {
+				t.Helper()
+				configureDownloaderConfig(t, d.Config)
+				return nil
+			},
+			expectedStatus:    types.ResponseError,
+			expectedErrorCode: types.InstallErrorRegistryLookup,
+		},
+		{
+			name:      "Version lookup failed",
+			assetType: types.AssetTypeMap,
+			assetID:   "map-a",
+			version:   "1.0.0",
+			setup: func(t *testing.T, d *Downloader, reg *registry.Registry) func() {
+				t.Helper()
+				configureDownloaderConfig(t, d.Config)
+				return registrytest.MockRegistryServer(t, reg, []registrytest.UpdateFixture{
+					{AssetID: "map-a", AssetType: types.AssetTypeMap, FailVersions: true, MapCode: "AAA"},
+				})
+			},
+			expectedStatus:    types.ResponseError,
+			expectedErrorCode: types.InstallErrorVersionLookup,
+		},
+		{
+			name:      "Version not found",
+			assetType: types.AssetTypeMod,
+			assetID:   "mod-a",
+			version:   "2.0.0",
+			setup: func(t *testing.T, d *Downloader, reg *registry.Registry) func() {
+				t.Helper()
+				configureDownloaderConfig(t, d.Config)
+				return registrytest.MockRegistryServer(t, reg, []registrytest.UpdateFixture{
+					{AssetID: "mod-a", AssetType: types.AssetTypeMod, Versions: []string{"1.0.0"}},
+				})
+			},
+			expectedStatus:    types.ResponseError,
+			expectedErrorCode: types.InstallErrorVersionNotFound,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			reg := registry.NewRegistry(testRegistryLogSink{})
+			cfg := config.NewConfig()
+			d := &Downloader{
+				Registry: reg,
+				Config:   cfg,
+				Logger:   logger.LoggerAtPath(""),
+			}
+			d.tempPath = t.TempDir()
+			d.mapTilePath = t.TempDir()
+
+			var cleanup func()
+			if tc.setup != nil {
+				cleanup = tc.setup(t, d, reg)
+			}
+			if cleanup != nil {
+				defer cleanup()
+			}
+
+			response := d.InstallAsset(tc.assetType, tc.assetID, tc.version)
+			require.Equal(t, tc.expectedStatus, response.Status)
+			require.Equal(t, tc.expectedErrorCode, response.ErrorType)
+		})
+	}
+}
+
+func TestInstallAssetSuccess(t *testing.T) {
+	testCases := []struct {
+		name          string
+		assetType     types.AssetType
+		assetID       string
+		version       string
+		fixtures      []registrytest.UpdateFixture
+		expectedCode  string
+		expectMapConf bool
+	}{
+		{
+			name:      "Map install success",
+			assetType: types.AssetTypeMap,
+			assetID:   "map-a",
+			version:   "1.0.0",
+			fixtures: []registrytest.UpdateFixture{
+				{AssetID: "map-a", AssetType: types.AssetTypeMap, Versions: []string{"1.0.0"}, MapCode: "AAA"},
+			},
+			expectedCode:  "AAA",
+			expectMapConf: true,
+		},
+		{
+			name:      "Mod install success",
+			assetType: types.AssetTypeMod,
+			assetID:   "mod-a",
+			version:   "1.0.0",
+			fixtures: []registrytest.UpdateFixture{
+				{AssetID: "mod-a", AssetType: types.AssetTypeMod, Versions: []string{"1.0.0"}},
+			},
+			expectedCode:  "", // No cityCode for mods
+			expectMapConf: false, // No config for mod
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			reg := registry.NewRegistry(testRegistryLogSink{})
+			cfg := config.NewConfig()
+			configureDownloaderConfig(t, cfg)
+			d := &Downloader{
+				Registry: reg,
+				Config:   cfg,
+				Logger:   logger.LoggerAtPath(""),
+			}
+			d.tempPath = t.TempDir()
+			d.mapTilePath = t.TempDir()
+
+			cleanup := registrytest.MockRegistryServer(t, reg, tc.fixtures)
+			defer cleanup()
+
+			response := d.InstallAsset(tc.assetType, tc.assetID, tc.version)
+			require.Equal(t, types.ResponseSuccess, response.Status, response.Message)
+			require.Equal(t, types.DownloaderErrorType(""), response.ErrorType)
+			if tc.expectMapConf {
+				require.Equal(t, tc.expectedCode, response.Config.Code)
+			} else {
+				require.Equal(t, types.ConfigData{}, response.Config)
+			}
+		})
+	}
 }
 
 func TestIsValidOperationAction(t *testing.T) {

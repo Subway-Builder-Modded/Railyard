@@ -111,21 +111,27 @@ func (s *UserProfiles) resolveLatestSubscriptionUpdates(profileID string, profil
 	updates := make(map[string]types.SubscriptionUpdateItem)
 	warnings := make([]types.UserProfilesError, 0)
 
-	latestAssetUpdates(latestSubscriptionArgs[types.MapManifest]{
-		assetType:     types.AssetTypeMap,
-		subscriptions: profile.Subscriptions.Maps,
-		getManifests:  s.Registry.GetMaps,
-		idFn:          func(m types.MapManifest) string { return m.ID },
-		updateFn:      func(m types.MapManifest) types.UpdateConfig { return m.Update },
-	}, profileID, s.Registry.GetVersions, updates, &warnings)
+	latestAssetUpdates(
+		latestSubscriptionArgs[types.MapManifest]{
+			assetType:     types.AssetTypeMap,
+			subscriptions: profile.Subscriptions.Maps,
+			getManifests:  s.Registry.GetMaps,
+			idFn:          func(m types.MapManifest) string { return m.ID },
+			updateFn:      func(m types.MapManifest) types.UpdateConfig { return m.Update },
+		},
+		profileID, s.Registry.GetVersions, updates, &warnings,
+	)
 
-	latestAssetUpdates(latestSubscriptionArgs[types.ModManifest]{
-		assetType:     types.AssetTypeMod,
-		subscriptions: profile.Subscriptions.Mods,
-		getManifests:  s.Registry.GetMods,
-		idFn:          func(m types.ModManifest) string { return m.ID },
-		updateFn:      func(m types.ModManifest) types.UpdateConfig { return m.Update },
-	}, profileID, s.Registry.GetVersions, updates, &warnings)
+	latestAssetUpdates(
+		latestSubscriptionArgs[types.ModManifest]{
+			assetType:     types.AssetTypeMod,
+			subscriptions: profile.Subscriptions.Mods,
+			getManifests:  s.Registry.GetMods,
+			idFn:          func(m types.ModManifest) string { return m.ID },
+			updateFn:      func(m types.ModManifest) types.UpdateConfig { return m.Update },
+		},
+		profileID, s.Registry.GetVersions, updates, &warnings,
+	)
 
 	return updates, warnings
 }

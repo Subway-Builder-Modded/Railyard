@@ -80,11 +80,12 @@ func newTestUserProfile(id string, name string) types.UserProfile {
 }
 
 type registryFixture struct {
-	assetID      string
-	assetType    types.AssetType
-	versions     []string
-	mapCode      string
-	failVersions bool
+	assetID            string
+	assetType          types.AssetType
+	versions           []string
+	mapCode            string
+	failVersions       bool
+	missingModManifest bool
 }
 
 func configureConfig(t *testing.T, cfg *config.Config) {
@@ -99,11 +100,12 @@ func mockRegistry(t *testing.T, reg *registry.Registry, fixtures []registryFixtu
 	sharedFixtures := make([]registrytest.UpdateFixture, 0, len(fixtures))
 	for _, f := range fixtures {
 		sharedFixtures = append(sharedFixtures, registrytest.UpdateFixture{
-			AssetID:      f.assetID,
-			AssetType:    f.assetType,
-			Versions:     f.versions,
-			MapCode:      f.mapCode,
-			FailVersions: f.failVersions,
+			AssetID:            f.assetID,
+			AssetType:          f.assetType,
+			Versions:           f.versions,
+			MapCode:            f.mapCode,
+			FailVersions:       f.failVersions,
+			MissingModManifest: f.missingModManifest,
 		})
 	}
 	return registrytest.MockRegistryServer(t, reg, sharedFixtures)
@@ -115,8 +117,70 @@ type assetSyncTestFixture struct {
 	availableVersions map[string]map[string]struct{}
 }
 
+func mockInstallResponseFn(
+	assetType types.AssetType,
+	callCount *int,
+	overrides map[string]types.AssetInstallResponse,
+) func(string, string) types.AssetInstallResponse {
+	return func(assetID string, version string) types.AssetInstallResponse {
+		if callCount != nil {
+			*callCount++
+		}
+		if override, ok := overrides[assetID]; ok {
+			override.GenericResponse = types.GenericResponse{
+				Status:  orDefault(override.Status, types.ResponseSuccess),
+				Message: orDefault(override.Message, "ok"),
+			}
+			override.AssetType = orDefault(override.AssetType, assetType)
+			override.AssetID = orDefault(override.AssetID, assetID)
+			override.Version = orDefault(override.Version, version)
+			return override
+		}
+		return types.AssetInstallResponse{
+			GenericResponse: types.GenericResponse{Status: types.ResponseSuccess, Message: "ok"},
+			AssetType:       assetType,
+			AssetID:         assetID,
+			Version:         version,
+		}
+	}
+}
+
+func mockUninstallResponseFn(
+	assetType types.AssetType,
+	callCount *int,
+	overrides map[string]types.AssetUninstallResponse,
+) func(string) types.AssetUninstallResponse {
+	return func(assetID string) types.AssetUninstallResponse {
+		if callCount != nil {
+			*callCount++
+		}
+		if override, ok := overrides[assetID]; ok {
+			override.GenericResponse = types.GenericResponse{
+				Status:  orDefault(override.Status, types.ResponseSuccess),
+				Message: orDefault(override.Message, "ok"),
+			}
+			override.AssetType = orDefault(override.AssetType, assetType)
+			override.AssetID = orDefault(override.AssetID, assetID)
+			return override
+		}
+		return types.AssetUninstallResponse{
+			GenericResponse: types.GenericResponse{Status: types.ResponseSuccess, Message: "ok"},
+			AssetType:       assetType,
+			AssetID:         assetID,
+		}
+	}
+}
+
+func orDefault[T comparable](value, fallback T) T {
+	var zero T
+	if value == zero {
+		return fallback
+	}
+	return value
+}
+
 // TODO: Let's make this a function within the profiles.go so that we don't have to invoke this both in the main file and the test file...
-func mockMapAssetSyncArgs(fixture assetSyncTestFixture, install func(string, string) types.GenericResponse, uninstall func(string) types.GenericResponse) assetSyncArgs[types.InstalledMapInfo, types.MapManifest] {
+func mockMapAssetSyncArgs(fixture assetSyncTestFixture, install func(string, string) types.AssetInstallResponse, uninstall func(string) types.AssetUninstallResponse) assetSyncArgs[types.InstalledMapInfo, types.MapManifest] {
 	return assetSyncArgs[types.InstalledMapInfo, types.MapManifest]{
 		assetType:     types.AssetTypeMap,
 		subscriptions: fixture.subscriptions,
@@ -160,7 +224,7 @@ func mockMapAssetSyncArgs(fixture assetSyncTestFixture, install func(string, str
 }
 
 // TODO: Let's make this a function within the profiles.go so that we don't have to invoke this both in the main file and the test file...
-func mockModAssetSyncArgs(fixture assetSyncTestFixture, install func(string, string) types.GenericResponse, uninstall func(string) types.GenericResponse) assetSyncArgs[types.InstalledModInfo, types.ModManifest] {
+func mockModAssetSyncArgs(fixture assetSyncTestFixture, install func(string, string) types.AssetInstallResponse, uninstall func(string) types.AssetUninstallResponse) assetSyncArgs[types.InstalledModInfo, types.ModManifest] {
 	return assetSyncArgs[types.InstalledModInfo, types.ModManifest]{
 		assetType:     types.AssetTypeMod,
 		subscriptions: fixture.subscriptions,
@@ -775,31 +839,43 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 
 func TestSyncActionErrorIgnoresWarnings(t *testing.T) {
 	t.Run("Duplicate install warning returns no error", func(t *testing.T) {
-		err := syncActionError(
+		err := syncInstallActionError(
 			types.SubscriptionActionSubscribe,
 			types.AssetTypeMap,
 			"map-a",
-			types.GenericResponse{Status: types.ResponseWarn, Message: "Duplicate request skipped: install already queued"},
+			types.AssetInstallResponse{
+				GenericResponse: types.GenericResponse{Status: types.ResponseWarn, Message: "Duplicate request skipped: install already queued"},
+				AssetType:       types.AssetTypeMap,
+				AssetID:         "map-a",
+			},
 		)
 		require.NoError(t, err)
 	})
 
 	t.Run("Duplicate uninstall warning returns no error", func(t *testing.T) {
-		err := syncActionError(
+		err := syncUninstallActionError(
 			types.SubscriptionActionUnsubscribe,
 			types.AssetTypeMod,
 			"mod-a",
-			types.GenericResponse{Status: types.ResponseWarn, Message: "Duplicate request skipped: uninstall already queued"},
+			types.AssetUninstallResponse{
+				GenericResponse: types.GenericResponse{Status: types.ResponseWarn, Message: "Duplicate request skipped: uninstall already queued"},
+				AssetType:       types.AssetTypeMod,
+				AssetID:         "mod-a",
+			},
 		)
 		require.NoError(t, err)
 	})
 
 	t.Run("Non-duplicate warning still returns error", func(t *testing.T) {
-		err := syncActionError(
+		err := syncInstallActionError(
 			types.SubscriptionActionSubscribe,
 			types.AssetTypeMap,
 			"map-a",
-			types.GenericResponse{Status: types.ResponseWarn, Message: "Map with ID map-a is not currently installed. No action taken."},
+			types.AssetInstallResponse{
+				GenericResponse: types.GenericResponse{Status: types.ResponseWarn, Message: "Map with ID map-a is not currently installed. No action taken."},
+				AssetType:       types.AssetTypeMap,
+				AssetID:         "map-a",
+			},
 		)
 		require.NoError(t, err)
 	})
@@ -818,10 +894,13 @@ func TestSyncSubscriptions(t *testing.T) {
 		initialMods []types.InstalledModInfo
 		initialMaps []types.InstalledMapInfo
 
-		prepare func(t *testing.T, cfg *config.Config, reg *registry.Registry) func()
+		prepare             func(t *testing.T, cfg *config.Config, reg *registry.Registry) func()
+		assertSubscriptions func(t *testing.T, svc *UserProfiles)
 
-		expectedErrors []string
-		expectedState  expectedState
+		expectedStatus     types.Status
+		expectedErrors     []string
+		expectedErrorTypes []types.UserProfilesErrorType
+		expectedState      expectedState
 	}{
 		{
 			name:  "No subscriptions with no installed assets is no-op",
@@ -829,6 +908,18 @@ func TestSyncSubscriptions(t *testing.T) {
 			expectedState: expectedState{
 				mods: nil,
 				maps: nil,
+			},
+			assertSubscriptions: func(t *testing.T, svc *UserProfiles) {
+				t.Helper()
+				active := svc.GetActiveProfile()
+				require.Equal(t, types.ResponseSuccess, active.Status)
+				_, exists := active.Profile.Subscriptions.Mods["mod-b"]
+				require.False(t, exists)
+
+				persisted, err := ReadUserProfilesState()
+				require.NoError(t, err)
+				_, exists = persisted.Profiles[types.DefaultProfileID].Subscriptions.Mods["mod-b"]
+				require.False(t, exists)
 			},
 		},
 		{
@@ -963,6 +1054,33 @@ func TestSyncSubscriptions(t *testing.T) {
 			},
 		},
 		{
+			name: "Sync errors when subscribed mod archive is missing manifest",
+			state: func() types.UserProfilesState {
+				state := types.InitialProfilesState()
+				profile := state.Profiles[types.DefaultProfileID]
+				profile.Subscriptions.Mods["mod-b"] = "1.0.0"
+				state.Profiles[types.DefaultProfileID] = profile
+				return state
+			}(),
+			prepare: func(t *testing.T, cfg *config.Config, reg *registry.Registry) func() {
+				t.Helper()
+				configureConfig(t, cfg)
+				return mockRegistry(t, reg, []registryFixture{
+					{
+						assetID:            "mod-b",
+						assetType:          types.AssetTypeMod,
+						versions:           []string{"1.0.0"},
+						missingModManifest: true,
+					},
+				})
+			},
+			expectedStatus: types.ResponseWarn,
+			expectedState: expectedState{
+				mods: nil,
+				maps: nil,
+			},
+		},
+		{
 			name: "Sync errors on attempted update to new version of asset that is not available",
 			state: func() types.UserProfilesState {
 				state := types.InitialProfilesState()
@@ -1061,10 +1179,17 @@ func TestSyncSubscriptions(t *testing.T) {
 			}
 
 			result := svc.SyncSubscriptions(types.DefaultProfileID)
-			if len(tc.expectedErrors) == 0 {
-				require.Equal(t, types.ResponseSuccess, result.Status)
-			} else {
-				require.Equal(t, types.ResponseError, result.Status)
+			expectedStatus := tc.expectedStatus
+			if expectedStatus == "" {
+				if len(tc.expectedErrors) == 0 {
+					expectedStatus = types.ResponseSuccess
+				} else {
+					expectedStatus = types.ResponseError
+				}
+			}
+			require.Equal(t, expectedStatus, result.Status)
+
+			if len(tc.expectedErrors) > 0 {
 				for _, expected := range tc.expectedErrors {
 					found := false
 					for _, profileErr := range result.Errors {
@@ -1073,12 +1198,25 @@ func TestSyncSubscriptions(t *testing.T) {
 							break
 						}
 					}
-					require.True(t, found)
+					require.Truef(t, found, "expected error substring %q not found in %+v", expected, result.Errors)
+				}
+				for _, expectedErrorType := range tc.expectedErrorTypes {
+					found := false
+					for _, profileErr := range result.Errors {
+						if profileErr.ErrorType == expectedErrorType {
+							found = true
+							break
+						}
+					}
+					require.Truef(t, found, "expected error type %q not found in %+v", expectedErrorType, result.Errors)
 				}
 			}
 
 			require.Equal(t, tc.expectedState.mods, reg.GetInstalledMods())
 			require.Equal(t, tc.expectedState.maps, reg.GetInstalledMaps())
+			if tc.assertSubscriptions != nil {
+				tc.assertSubscriptions(t, svc)
+			}
 		})
 	}
 }
@@ -1153,17 +1291,14 @@ func TestSyncAssetSubscriptionsInstallDecisionsMaps(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			installCalls := 0
 			uninstallCalls := 0
-			_, errs := syncAssetSubscriptions(testUserProfilesLogger(t), types.DefaultProfileID, mockMapAssetSyncArgs(assetSyncTestFixture{
+			_, errs, _ := syncAssetSubscriptions(testUserProfilesLogger(t), types.DefaultProfileID, mockMapAssetSyncArgs(assetSyncTestFixture{
 				subscriptions:     tc.subscriptions,
 				installedVersion:  tc.installedVersion,
 				availableVersions: tc.availableVersions,
-			}, func(assetID string, version string) types.GenericResponse {
-				installCalls++
-				return types.GenericResponse{Status: types.ResponseSuccess, Message: "ok"}
-			}, func(assetID string) types.GenericResponse {
-				uninstallCalls++
-				return types.GenericResponse{Status: types.ResponseSuccess, Message: "ok"}
-			}))
+			},
+				mockInstallResponseFn(types.AssetTypeMap, &installCalls, nil),
+				mockUninstallResponseFn(types.AssetTypeMap, &uninstallCalls, nil),
+			))
 
 			require.Equal(t, tc.expectedInstalls, installCalls)
 			require.Equal(t, tc.expectedUninstalls, uninstallCalls)
@@ -1196,32 +1331,188 @@ func TestSyncAssetSubscriptionsPropagatesInstallErrors(t *testing.T) {
 
 	installCalls := 0
 	uninstallCalls := 0
-	_, errs := syncAssetSubscriptions(testUserProfilesLogger(t), types.DefaultProfileID, mockMapAssetSyncArgs(
+	_, errs, assetsToPurge := syncAssetSubscriptions(testUserProfilesLogger(t), types.DefaultProfileID, mockMapAssetSyncArgs(
 		fixture,
-		func(assetID string, version string) types.GenericResponse {
-			installCalls++
-			return types.GenericResponse{
-				Status:  types.ResponseError,
-				Message: "Failed to extract map zip: Cannot install map because its code matches a vanilla map included with the game or an already installed map.",
-			}
-		},
-		func(assetID string) types.GenericResponse {
-			uninstallCalls++
-			return types.GenericResponse{Status: types.ResponseSuccess, Message: "ok"}
-		},
+		mockInstallResponseFn(types.AssetTypeMap, &installCalls, map[string]types.AssetInstallResponse{
+			"map-a": {
+				GenericResponse: types.GenericResponse{
+					Status:  types.ResponseError,
+					Message: "Failed to extract map zip: Cannot install map because its code matches a vanilla map included with the game or an already installed map.",
+				},
+				ErrorType: types.InstallErrorExtractFailed,
+			},
+		}),
+		mockUninstallResponseFn(types.AssetTypeMap, &uninstallCalls, nil),
 	))
 
 	require.Len(t, errs, 1)
 	require.Contains(t, errs[0].Error(), "Failed to extract map zip")
 	require.Equal(t, 1, installCalls)
 	require.Equal(t, 1, uninstallCalls)
+	require.Empty(t, assetsToPurge)
+}
+
+func TestSyncAssetSubscriptionsChecksumFailureProducesPurgeCandidate(t *testing.T) {
+	fixture := assetSyncTestFixture{
+		subscriptions: map[string]string{
+			"map-a": "1.0.1",
+		},
+		installedVersion: map[string]string{
+			"map-a": "1.0.0",
+		},
+		availableVersions: map[string]map[string]struct{}{
+			"map-a": {
+				"1.0.1": {},
+			},
+		},
+	}
+
+	_, errs, assetsToPurge := syncAssetSubscriptions(testUserProfilesLogger(t), types.DefaultProfileID, mockMapAssetSyncArgs(
+		fixture,
+		mockInstallResponseFn(types.AssetTypeMap, nil, map[string]types.AssetInstallResponse{
+			"map-a": {
+				GenericResponse: types.GenericResponse{
+					Status:  types.ResponseError,
+					Message: "checksum failed",
+				},
+				ErrorType: types.InstallErrorChecksumFailed,
+			},
+		}),
+		mockUninstallResponseFn(types.AssetTypeMap, nil, nil),
+	))
+
+	require.Empty(t, errs)
+	require.Len(t, assetsToPurge, 1)
+	require.Equal(t, types.AssetTypeMap, assetsToPurge[0].assetType)
+	require.Equal(t, "map-a", assetsToPurge[0].assetID)
+	require.Equal(t, "1.0.1", assetsToPurge[0].expectedVersion)
+	require.Equal(t, types.InstallErrorChecksumFailed, assetsToPurge[0].errorCode)
+}
+
+func TestApplyPurgeOperations(t *testing.T) {
+	testCases := []struct {
+		name        string
+		state       types.UserProfilesState
+		candidates  []assetPurgeArgs
+		expectOps   int
+		expectErrs  int
+		assertState func(t *testing.T, svc *UserProfiles)
+	}{
+		{
+			name: "Checksum candidate removes matching map subscription",
+			state: func() types.UserProfilesState {
+				state := types.InitialProfilesState()
+				profile := state.Profiles[types.DefaultProfileID]
+				profile.Subscriptions.Maps["map-a"] = "1.0.1"
+				state.Profiles[types.DefaultProfileID] = profile
+				return state
+			}(),
+			candidates: []assetPurgeArgs{
+				{
+					assetType:       types.AssetTypeMap,
+					assetID:         "map-a",
+					expectedVersion: "1.0.1",
+					errorCode:       types.InstallErrorChecksumFailed,
+				},
+			},
+			expectOps:  1,
+			expectErrs: 0,
+			assertState: func(t *testing.T, svc *UserProfiles) {
+				t.Helper()
+				active := svc.GetActiveProfile()
+				_, exists := active.Profile.Subscriptions.Maps["map-a"]
+				require.False(t, exists)
+			},
+		},
+		{
+			name: "Stale candidate version does not purge",
+			state: func() types.UserProfilesState {
+				state := types.InitialProfilesState()
+				profile := state.Profiles[types.DefaultProfileID]
+				profile.Subscriptions.Maps["map-a"] = "1.0.2"
+				state.Profiles[types.DefaultProfileID] = profile
+				return state
+			}(),
+			candidates: []assetPurgeArgs{
+				{
+					assetType:       types.AssetTypeMap,
+					assetID:         "map-a",
+					expectedVersion: "1.0.1",
+					errorCode:       types.InstallErrorInvalidManifest,
+				},
+			},
+			expectOps:  0,
+			expectErrs: 0,
+			assertState: func(t *testing.T, svc *UserProfiles) {
+				t.Helper()
+				active := svc.GetActiveProfile()
+				require.Equal(t, "1.0.2", active.Profile.Subscriptions.Maps["map-a"])
+			},
+		},
+		{
+			name: "Single pass purges map and mod",
+			state: func() types.UserProfilesState {
+				state := types.InitialProfilesState()
+				profile := state.Profiles[types.DefaultProfileID]
+				profile.Subscriptions.Maps["map-a"] = "1.0.1"
+				profile.Subscriptions.Mods["mod-b"] = "2.0.0"
+				state.Profiles[types.DefaultProfileID] = profile
+				return state
+			}(),
+			candidates: []assetPurgeArgs{
+				{
+					assetType:       types.AssetTypeMap,
+					assetID:         "map-a",
+					expectedVersion: "1.0.1",
+					errorCode:       types.InstallErrorInvalidArchive,
+				},
+				{
+					assetType:       types.AssetTypeMod,
+					assetID:         "mod-b",
+					expectedVersion: "2.0.0",
+					errorCode:       types.InstallErrorChecksumFailed,
+				},
+			},
+			expectOps:  2,
+			expectErrs: 0,
+			assertState: func(t *testing.T, svc *UserProfiles) {
+				t.Helper()
+				active := svc.GetActiveProfile()
+				_, mapExists := active.Profile.Subscriptions.Maps["map-a"]
+				_, modExists := active.Profile.Subscriptions.Mods["mod-b"]
+				require.False(t, mapExists)
+				require.False(t, modExists)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testutil.NewHarness(t)
+			svc := loadedUserProfilesService(t, tc.state)
+			operations, errs := svc.applyPurgeOperations(types.DefaultProfileID, tc.candidates)
+			require.Lenf(t, operations, tc.expectOps, "ops=%+v errs=%+v", operations, errs)
+			require.Lenf(t, errs, tc.expectErrs, "ops=%+v errs=%+v", operations, errs)
+			if tc.assertState != nil {
+				tc.assertState(t, svc)
+			}
+
+			persisted, err := ReadUserProfilesState()
+			require.NoError(t, err)
+			activeID := persisted.ActiveProfileID
+			activeProfile := persisted.Profiles[activeID]
+			liveProfile := svc.GetActiveProfile().Profile
+			require.Equal(t, liveProfile.Subscriptions.Maps, activeProfile.Subscriptions.Maps)
+			require.Equal(t, liveProfile.Subscriptions.Mods, activeProfile.Subscriptions.Mods)
+		})
+	}
 }
 
 // This test is intentionally concise given the Maps behavior is nearly identical
 func TestSyncAssetSubscriptionsInstallDecisionsMods(t *testing.T) {
 	installCalls := 0
 	uninstallCalls := 0
-	_, errs := syncAssetSubscriptions(testUserProfilesLogger(t), types.DefaultProfileID, mockModAssetSyncArgs(assetSyncTestFixture{
+	_, errs, _ := syncAssetSubscriptions(testUserProfilesLogger(t), types.DefaultProfileID, mockModAssetSyncArgs(assetSyncTestFixture{
 		subscriptions: map[string]string{
 			"mod-a": "1.0.1",
 		},
@@ -1233,13 +1524,10 @@ func TestSyncAssetSubscriptionsInstallDecisionsMods(t *testing.T) {
 				"1.0.1": {},
 			},
 		},
-	}, func(assetID string, version string) types.GenericResponse {
-		installCalls++
-		return types.GenericResponse{Status: types.ResponseSuccess, Message: "ok"}
-	}, func(assetID string) types.GenericResponse {
-		uninstallCalls++
-		return types.GenericResponse{Status: types.ResponseSuccess, Message: "ok"}
-	}))
+	},
+		mockInstallResponseFn(types.AssetTypeMod, &installCalls, nil),
+		mockUninstallResponseFn(types.AssetTypeMod, &uninstallCalls, nil),
+	))
 
 	require.Empty(t, errs)
 	require.Equal(t, 1, installCalls)

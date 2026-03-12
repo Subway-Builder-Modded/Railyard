@@ -3,12 +3,8 @@
 import {types} from '../models';
 import {context} from '../models';
 
-export function InstallMap(arg1:string,arg2:string):Promise<types.MapExtractResponse>;
-
-export function InstallMod(arg1:string,arg2:string):Promise<types.GenericResponse>;
+export function InstallAsset(arg1:types.AssetType,arg2:string,arg3:string):Promise<types.AssetInstallResponse>;
 
 export function SetContext(arg1:context.Context):Promise<void>;
 
-export function UninstallMap(arg1:string):Promise<types.GenericResponse>;
-
-export function UninstallMod(arg1:string):Promise<types.GenericResponse>;
+export function UninstallAsset(arg1:types.AssetType,arg2:string):Promise<types.AssetUninstallResponse>;

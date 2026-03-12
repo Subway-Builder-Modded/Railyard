@@ -25,9 +25,55 @@ type DownloadTempResponse struct {
 	Path string `json:"path,omitempty"`
 }
 
-type MapExtractResponse struct {
+type DownloaderErrorType string
+
+const (
+	InstallErrorInvalidAssetType   DownloaderErrorType = "install_invalid_asset_type"
+	InstallErrorInvalidConfig      DownloaderErrorType = "install_invalid_config"
+	InstallErrorRegistryLookup     DownloaderErrorType = "install_registry_lookup_failed"
+	InstallErrorVersionLookup      DownloaderErrorType = "install_version_lookup_failed"
+	InstallErrorVersionNotFound    DownloaderErrorType = "install_version_not_found"
+	InstallErrorDownloadFailed     DownloaderErrorType = "install_download_failed"
+	InstallErrorChecksumFailed     DownloaderErrorType = "install_checksum_failed"
+	InstallErrorExtractFailed      DownloaderErrorType = "install_extract_failed"
+	InstallErrorInvalidManifest    DownloaderErrorType = "install_invalid_manifest"
+	InstallErrorInvalidArchive     DownloaderErrorType = "install_invalid_archive"
+	InstallErrorMapCodeConflict    DownloaderErrorType = "install_map_code_conflict"
+	InstallErrorFilesystem         DownloaderErrorType = "install_filesystem_error"
+	InstallErrorPersistStateFailed DownloaderErrorType = "install_persist_state_failed"
+	UninstallErrorInvalidAssetType DownloaderErrorType = "uninstall_invalid_asset_type"
+	UninstallErrorNotInstalled     DownloaderErrorType = "uninstall_not_installed"
+	UninstallErrorFilesystem       DownloaderErrorType = "uninstall_filesystem_error"
+	UninstallErrorPersistState     DownloaderErrorType = "uninstall_persist_state_failed"
+)
+
+// List of deterministic install errors that should trigger automatic purge of the subscription without user confirmation, as they indicate the subscription is invalid/corrupt and cannot be resolved through retries.
+var autoPurgeDownloadErrorTypes = map[DownloaderErrorType]struct{}{
+	InstallErrorInvalidManifest: {},
+	InstallErrorInvalidArchive:  {},
+	InstallErrorChecksumFailed:  {},
+	// TODO: Add another error if the map/mod salt is not present in the installed folder
+}
+
+func AutoPurgeDownloadErrors(err DownloaderErrorType) bool {
+	_, ok := autoPurgeDownloadErrorTypes[err]
+	return ok
+}
+
+type AssetInstallResponse struct {
 	GenericResponse
-	Config ConfigData `json:"config,omitempty"`
+	AssetType AssetType           `json:"assetType"`
+	AssetID   string              `json:"assetId"`
+	Version   string              `json:"version"`
+	Config    ConfigData          `json:"config,omitempty"`
+	ErrorType DownloaderErrorType `json:"errorType,omitempty"`
+}
+
+type AssetUninstallResponse struct {
+	GenericResponse
+	AssetType AssetType           `json:"assetType"`
+	AssetID   string              `json:"assetId"`
+	ErrorType DownloaderErrorType `json:"errorType,omitempty"`
 }
 
 // errorResponse is a helper to create a consistent error response

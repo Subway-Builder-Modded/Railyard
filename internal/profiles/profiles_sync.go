@@ -38,17 +38,27 @@ func (s *UserProfiles) SyncSubscriptions(profileID string) types.SyncSubscriptio
 
 	syncErrors := make([]types.UserProfilesError, 0)
 	operations := make([]types.SubscriptionOperation, 0)
+	assetsToPurge := make([]assetPurgeArgs, 0)
 
 	// Run sync for each asset type in sequence.
 	s.Logger.Info("Syncing map subscriptions", "profile_id", profileID, "subscription_count", len(profile.Subscriptions.Maps))
-	mapOperations, mapErrors := syncAssetSubscriptions(s.Logger, profileID, mapArgs)
+	mapOperations, mapErrors, invalidMaps := syncAssetSubscriptions(s.Logger, profileID, mapArgs)
 	operations = append(operations, mapOperations...)
 	syncErrors = append(syncErrors, mapErrors...)
+	assetsToPurge = append(assetsToPurge, invalidMaps...)
 
 	s.Logger.Info("Syncing mod subscriptions", "profile_id", profileID, "subscription_count", len(profile.Subscriptions.Mods))
-	modOperations, modErrors := syncAssetSubscriptions(s.Logger, profileID, modArgs)
+	modOperations, modErrors, invalidMods := syncAssetSubscriptions(s.Logger, profileID, modArgs)
 	operations = append(operations, modOperations...)
 	syncErrors = append(syncErrors, modErrors...)
+	assetsToPurge = append(assetsToPurge, invalidMods...)
+
+	purgeOperations, purgeErrors := s.applyPurgeOperations(profileID, assetsToPurge)
+	if len(purgeOperations) > 0 {
+		s.Logger.Warn("Purged invalid subscriptions after sync failures", "profile_id", profileID, "purge_count", len(purgeOperations))
+		operations = append(operations, purgeOperations...)
+	}
+	syncErrors = append(syncErrors, purgeErrors...)
 
 	if len(syncErrors) > 0 {
 		s.Logger.Warn("Subscription sync completed with errors", "error_count", len(syncErrors))
@@ -61,6 +71,17 @@ func (s *UserProfiles) SyncSubscriptions(profileID string) types.SyncSubscriptio
 		)
 	}
 
+	if len(purgeOperations) > 0 {
+		s.Logger.Warn("Subscription sync completed with purge warnings", "purge_count", len(purgeOperations))
+		return newSyncSubscriptionsResult(
+			types.ResponseWarn,
+			fmt.Sprintf("subscription sync auto-purged %d invalid subscription(s)", len(purgeOperations)),
+			profileID,
+			operations,
+			[]types.UserProfilesError{},
+		)
+	}
+
 	return newSyncSubscriptionsResult(
 		types.ResponseSuccess,
 		"subscriptions synced",
@@ -70,14 +91,22 @@ func (s *UserProfiles) SyncSubscriptions(profileID string) types.SyncSubscriptio
 	)
 }
 
+// assetPurgeArgs captures the information needed to attempt a purge of an invalid subscription
+type assetPurgeArgs struct {
+	assetType       types.AssetType
+	assetID         string
+	expectedVersion string
+	errorCode       types.DownloaderErrorType
+}
+
 // Helper struct to capture which functions are required to update subscriptions for a specific asset type, generic on the installed asset info type (T) and the manifest type (U).
 type assetSyncArgs[T any, U any] struct {
-	assetType     types.AssetType                                            // The type of asset being synced: map or mod (or others in the future).
-	subscriptions map[string]string                                          // The desired subscription state for the profile, keyed by asset ID and valued by version.
-	installedArgs installedVersionArgs[T]                                    // Non-shared installed-version resolver args.
-	availableArgs availableVersionArgs[U]                                    // Non-shared available-version resolver args.
-	install       func(assetID string, version string) types.GenericResponse // The function to call to install the asset (using the downloader).
-	uninstall     func(assetID string) types.GenericResponse                 // The function to call to uninstall the asset (using the downloader).
+	assetType     types.AssetType                                                 // The type of asset being synced: map or mod (or others in the future).
+	subscriptions map[string]string                                               // The desired subscription state for the profile, keyed by asset ID and valued by version.
+	installedArgs installedVersionArgs[T]                                         // Non-shared installed-version resolver args.
+	availableArgs availableVersionArgs[U]                                         // Non-shared available-version resolver args.
+	install       func(assetID string, version string) types.AssetInstallResponse // The function to call to install the asset (using the downloader).
+	uninstall     func(assetID string) types.AssetUninstallResponse               // The function to call to uninstall the asset (using the downloader).
 }
 
 // Helper struct to capture what is needed to resolve installed versions for a specific asset type via the registry.
@@ -96,6 +125,7 @@ type availableVersionArgs[U any] struct {
 	getVersionsFn  func(string, string) ([]types.VersionInfo, error)
 }
 
+// TODO: Consolidate this into a generic argument builder using types.AssetType to reduce duplication
 func (s *UserProfiles) buildMapSyncArgs(profile types.UserProfile) assetSyncArgs[types.InstalledMapInfo, types.MapManifest] {
 	return assetSyncArgs[types.InstalledMapInfo, types.MapManifest]{
 		assetType:     types.AssetTypeMap,
@@ -112,10 +142,12 @@ func (s *UserProfiles) buildMapSyncArgs(profile types.UserProfile) assetSyncArgs
 			updateSourceFn: func(item types.MapManifest) string { return item.Update.Source() },
 			getVersionsFn:  s.Registry.GetVersions,
 		},
-		install: func(assetID string, version string) types.GenericResponse {
-			return s.Downloader.InstallMap(assetID, version).GenericResponse
+		install: func(assetID string, version string) types.AssetInstallResponse {
+			return s.Downloader.InstallAsset(types.AssetTypeMap, assetID, version)
 		},
-		uninstall: s.Downloader.UninstallMap,
+		uninstall: func(assetID string) types.AssetUninstallResponse {
+			return s.Downloader.UninstallAsset(types.AssetTypeMap, assetID)
+		},
 	}
 }
 
@@ -135,15 +167,20 @@ func (s *UserProfiles) buildModSyncArgs(profile types.UserProfile) assetSyncArgs
 			updateSourceFn: func(item types.ModManifest) string { return item.Update.Source() },
 			getVersionsFn:  s.Registry.GetVersions,
 		},
-		install:   s.Downloader.InstallMod,
-		uninstall: s.Downloader.UninstallMod,
+		install: func(assetID string, version string) types.AssetInstallResponse {
+			return s.Downloader.InstallAsset(types.AssetTypeMod, assetID, version)
+		},
+		uninstall: func(assetID string) types.AssetUninstallResponse {
+			return s.Downloader.UninstallAsset(types.AssetTypeMod, assetID)
+		},
 	}
 }
 
 // syncAssetSubscriptions is a generic type helper that performs the core logic of syncing subscriptions for a given asset type, with generic arguments corresponding to the asset's installed info type (T) and manifest type (U).
-func syncAssetSubscriptions[T any, U any](log logger.Logger, profileID string, args assetSyncArgs[T, U]) ([]types.SubscriptionOperation, []types.UserProfilesError) {
+func syncAssetSubscriptions[T any, U any](log logger.Logger, profileID string, args assetSyncArgs[T, U]) ([]types.SubscriptionOperation, []types.UserProfilesError, []assetPurgeArgs) {
 	errs := make([]types.UserProfilesError, 0)
 	operations := make([]types.SubscriptionOperation, 0)
+	assetsToPurge := make([]assetPurgeArgs, 0)
 	installedVersion := buildVersionIndexFromItems(args.installedArgs)
 	availableVersions := buildAvailableVersionIndex(args.availableArgs, profileID, args.subscriptions, args.assetType, &errs)
 
@@ -182,7 +219,7 @@ func syncAssetSubscriptions[T any, U any](log logger.Logger, profileID string, a
 		if current, ok := installedVersion[assetID]; ok && current != versionText {
 			log.Info("Uninstalling previous version before update", "asset_type", args.assetType, "asset_id", assetID, "current_version", current, "target_version", versionText)
 			uninstallResp := args.uninstall(assetID)
-			if err := syncActionError(types.SubscriptionActionUnsubscribe, args.assetType, assetID, uninstallResp); err != nil {
+			if err := syncUninstallActionError(types.SubscriptionActionUnsubscribe, args.assetType, assetID, uninstallResp); err != nil {
 				errs = append(errs, syncFailedError(profileID, assetID, args.assetType, err))
 				continue
 			}
@@ -198,9 +235,19 @@ func syncAssetSubscriptions[T any, U any](log logger.Logger, profileID string, a
 		log.Info("Installing asset", "asset_type", args.assetType, "asset_id", assetID, "version", versionText)
 		response := args.install(assetID, versionText)
 		// If installation fails, record the error but continue.
-		if err := syncActionError(types.SubscriptionActionSubscribe, args.assetType, assetID, response); err != nil {
-			log.Error("Install failed during sync", err, "asset_type", args.assetType, "asset_id", assetID, "version", versionText)
-			errs = append(errs, syncFailedError(profileID, assetID, args.assetType, err))
+		if err := syncInstallActionError(types.SubscriptionActionSubscribe, args.assetType, assetID, response); err != nil {
+			log.Error("Install failed during sync", err, "asset_type", args.assetType, "asset_id", assetID, "version", versionText, "install_error_code", response.ErrorType)
+			if types.AutoPurgeDownloadErrors(response.ErrorType) {
+				log.Warn("Queuing invalid subscription for purge", "asset_type", args.assetType, "asset_id", assetID, "version", versionText, "install_error_code", response.ErrorType)
+				assetsToPurge = append(assetsToPurge, assetPurgeArgs{
+					assetType:       args.assetType,
+					assetID:         assetID,
+					expectedVersion: versionText,
+					errorCode:       response.ErrorType,
+				})
+				continue
+			}
+			errs = append(errs, syncInstallFailedError(profileID, assetID, args.assetType, response, err))
 			continue
 		}
 		log.Info("Successfully installed asset", "asset_type", args.assetType, "asset_id", assetID, "version", versionText)
@@ -221,7 +268,7 @@ func syncAssetSubscriptions[T any, U any](log logger.Logger, profileID string, a
 		log.Info("Uninstalling asset no longer subscribed", "asset_type", args.assetType, "asset_id", assetID)
 		response := args.uninstall(assetID)
 		// If uninstallation fails, record the error but continue.
-		if err := syncActionError(types.SubscriptionActionUnsubscribe, args.assetType, assetID, response); err != nil {
+		if err := syncUninstallActionError(types.SubscriptionActionUnsubscribe, args.assetType, assetID, response); err != nil {
 			errs = append(errs, syncFailedError(profileID, assetID, args.assetType, err))
 			continue
 		}
@@ -233,7 +280,85 @@ func syncAssetSubscriptions[T any, U any](log logger.Logger, profileID string, a
 		})
 	}
 
-	return operations, errs
+	return operations, errs, assetsToPurge
+}
+
+func (s *UserProfiles) applyPurgeOperations(profileID string, args []assetPurgeArgs) ([]types.SubscriptionOperation, []types.UserProfilesError) {
+	if len(args) == 0 {
+		return []types.SubscriptionOperation{}, []types.UserProfilesError{}
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	profile, ok := s.state.Profiles[profileID]
+	if !ok {
+		// This really should not happen unless the user is able to delete profiles while a sync is in-flight
+		err := userProfilesError(profileID, "", "", types.ErrorProfileNotFound, fmt.Sprintf("Profile %q not found during purge", profileID))
+		return []types.SubscriptionOperation{}, []types.UserProfilesError{err}
+	}
+
+	purgeErrors := make([]types.UserProfilesError, 0)
+	assets := make(map[string]types.SubscriptionUpdateItem, len(args))
+
+	for _, arg := range args {
+		currentVersion, exists := subscriptionVersion(profile, arg.assetType, arg.assetID)
+		if !exists {
+			continue
+		}
+		// This could happen if the subscription was modified after the sync started (e.g. via a new request to profiles)
+		if currentVersion != arg.expectedVersion {
+			s.Logger.Info(
+				"Skipping purge due to stale subscription version",
+				"profile_id", profileID,
+				"asset_type", arg.assetType,
+				"asset_id", arg.assetID,
+				"expected_version", arg.expectedVersion,
+				"current_version", currentVersion,
+			)
+			continue
+		}
+
+		assets[arg.assetID] = types.SubscriptionUpdateItem{Type: arg.assetType}
+		s.Logger.Warn(
+			"Purging invalid subscription",
+			"profile_id", profileID,
+			"asset_type", arg.assetType,
+			"asset_id", arg.assetID,
+			"version", arg.expectedVersion,
+			"install_error_code", arg.errorCode,
+		)
+	}
+
+	// No valid assets to purge after re-check
+	if len(assets) == 0 {
+		return []types.SubscriptionOperation{}, purgeErrors
+	}
+
+	result := s.updateProfileSubscriptions(types.UpdateSubscriptionsRequest{
+		ProfileID: profileID,
+		Assets:    assets,
+		Action:    types.SubscriptionActionUnsubscribe,
+		ForceSync: true,
+	})
+	if result.Status == types.ResponseError {
+		return []types.SubscriptionOperation{}, append(purgeErrors, result.Errors...)
+	}
+
+	return result.Operations, purgeErrors
+}
+
+func subscriptionVersion(profile types.UserProfile, assetType types.AssetType, assetID string) (string, bool) {
+	switch assetType {
+	case types.AssetTypeMap:
+		version, ok := profile.Subscriptions.Maps[assetID]
+		return version, ok
+	case types.AssetTypeMod:
+		version, ok := profile.Subscriptions.Mods[assetID]
+		return version, ok
+	}
+
+	panic(fmt.Sprintf("unsupported asset type %q", assetType))
 }
 
 // buildVersionIndexFromItems makes use of the registry to build an index of installed assets.

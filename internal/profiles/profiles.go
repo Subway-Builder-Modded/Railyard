@@ -103,14 +103,31 @@ func syncFailedError(profileID, assetID string, assetType types.AssetType, err e
 	return userProfilesError(profileID, assetID, assetType, types.ErrorSyncFailed, fmt.Sprintf("Failed sync action: %v", err))
 }
 
-func syncActionError(action types.SubscriptionAction, assetType types.AssetType, assetID string, response types.GenericResponse) error {
-	if response.Status == types.ResponseSuccess {
+func syncInstallFailedError(profileID, assetID string, assetType types.AssetType, response types.AssetInstallResponse, err error) types.UserProfilesError {
+	if response.ErrorType == "" { // Programmer error; we should always have some sort of ErrorCode
+		panic(fmt.Sprintf("syncInstallFailedError received empty install error code for %s %q", assetType, assetID))
+	}
+	return userProfilesError(
+		profileID,
+		assetID,
+		assetType,
+		types.UserProfilesErrorType(response.ErrorType),
+		fmt.Sprintf("Failed sync action: %v", err),
+	)
+}
+
+func syncUninstallActionError(action types.SubscriptionAction, assetType types.AssetType, assetID string, response types.AssetUninstallResponse) error {
+	if response.Status != types.ResponseError {
 		return nil
 	}
-	if response.Status == types.ResponseWarn {
+	return fmt.Errorf("%s %s %q failed with status=%s code=%s: %s", action, assetType, assetID, response.Status, response.ErrorType, response.Message)
+}
+
+func syncInstallActionError(action types.SubscriptionAction, assetType types.AssetType, assetID string, response types.AssetInstallResponse) error {
+	if response.Status != types.ResponseError {
 		return nil
 	}
-	return fmt.Errorf("%s %s %q failed with status=%s: %s", action, assetType, assetID, response.Status, response.Message)
+	return fmt.Errorf("%s %s %q failed with status=%s code=%s: %s", action, assetType, assetID, response.Status, response.ErrorType, response.Message)
 }
 
 func (s *UserProfiles) archiveError(logMessage, responseMessage string, err error, attrs ...any) (types.GenericResponse, bool) {

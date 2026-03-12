@@ -21,6 +21,8 @@ type UpdateFixture struct {
 	Versions     []string
 	MapCode      string
 	FailVersions bool
+	// MissingModManifest serves a mod zip without manifest.json to exercise invalid-archive paths.
+	MissingModManifest bool
 }
 
 func MockZip(t *testing.T, files map[string][]byte) []byte {
@@ -58,6 +60,13 @@ func MockModZip(t *testing.T) []byte {
 	return MockZip(t, map[string][]byte{
 		"manifest.json": manifest,
 		"index.js":      []byte("export default {};"),
+	})
+}
+
+func MockModZipMissingManifest(t *testing.T) []byte {
+	t.Helper()
+	return MockZip(t, map[string][]byte{
+		"index.js": []byte("export default {};"),
 	})
 }
 
@@ -140,6 +149,10 @@ func MockRegistryServer(t *testing.T, reg any, fixtures []UpdateFixture) func() 
 					mapCode = "AAA"
 				}
 				zipByDownloadPath[downloadPath] = MockMapZip(t, mapCode)
+				continue
+			}
+			if current.MissingModManifest {
+				zipByDownloadPath[downloadPath] = MockModZipMissingManifest(t)
 				continue
 			}
 			zipByDownloadPath[downloadPath] = MockModZip(t)

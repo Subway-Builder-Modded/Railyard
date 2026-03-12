@@ -60,8 +60,9 @@ type downloadOperation struct {
 }
 
 type operationResult struct {
-	genericResponse    types.GenericResponse
-	mapExtractResponse types.MapExtractResponse
+	genericResponse        types.GenericResponse
+	assetInstallResponse   types.AssetInstallResponse
+	assetUninstallResponse types.AssetUninstallResponse
 }
 
 // operationAction is an internal type to categorize all possible download actions within the queue
@@ -140,7 +141,9 @@ func (d *Downloader) runQueue() {
 
 		op.completed <- result
 		close(op.completed)
-		wailsruntime.EventsEmit(d.ctx, "registry:update") // Emit update event after each operation completes to trigger UI refresh
+		if d.ctx != nil {
+			wailsruntime.EventsEmit(d.ctx, "registry:update") // Emit update event after each operation completes to trigger UI refresh
+		}
 	}
 }
 
@@ -244,10 +247,6 @@ func (d *Downloader) throwDownloadError(message string, err error, attrs ...any)
 	return d.toDownloadResponse(d.throwError(message, err, attrs...), "")
 }
 
-func (d *Downloader) throwMapExtractError(message string, err error, attrs ...any) types.MapExtractResponse {
-	return d.toMapExtractResponse(d.throwError(message, err, attrs...), types.ConfigData{})
-}
-
 func (d *Downloader) toDownloadResponse(base types.GenericResponse, path string) types.DownloadTempResponse {
 	return types.DownloadTempResponse{
 		GenericResponse: base,
@@ -255,11 +254,48 @@ func (d *Downloader) toDownloadResponse(base types.GenericResponse, path string)
 	}
 }
 
-func (d *Downloader) toMapExtractResponse(base types.GenericResponse, config types.ConfigData) types.MapExtractResponse {
-	return types.MapExtractResponse{
+func (d *Downloader) installResponse(assetType types.AssetType, assetID string, version string, config types.ConfigData, base types.GenericResponse, errorCode types.DownloaderErrorType) types.AssetInstallResponse {
+	return types.AssetInstallResponse{
 		GenericResponse: base,
+		AssetType:       assetType,
+		AssetID:         assetID,
+		Version:         version,
 		Config:          config,
+		ErrorType:       errorCode,
 	}
+}
+
+func (d *Downloader) installSuccess(assetType types.AssetType, assetID string, version string, config types.ConfigData, message string, attrs ...any) types.AssetInstallResponse {
+	return d.installResponse(assetType, assetID, version, config, d.successResponse(message, attrs...), "")
+}
+
+func (d *Downloader) installWarn(assetType types.AssetType, assetID string, version string, config types.ConfigData, message string, attrs ...any) types.AssetInstallResponse {
+	return d.installResponse(assetType, assetID, version, config, d.warnResponse(message, attrs...), "")
+}
+
+func (d *Downloader) installError(assetType types.AssetType, assetID string, version string, config types.ConfigData, errorCode types.DownloaderErrorType, message string, err error, attrs ...any) types.AssetInstallResponse {
+	return d.installResponse(assetType, assetID, version, config, d.throwError(message, err, attrs...), errorCode)
+}
+
+func (d *Downloader) uninstallResponse(assetType types.AssetType, assetID string, base types.GenericResponse, errorCode types.DownloaderErrorType) types.AssetUninstallResponse {
+	return types.AssetUninstallResponse{
+		GenericResponse: base,
+		AssetType:       assetType,
+		AssetID:         assetID,
+		ErrorType:       errorCode,
+	}
+}
+
+func (d *Downloader) uninstallSuccess(assetType types.AssetType, assetID string, message string, attrs ...any) types.AssetUninstallResponse {
+	return d.uninstallResponse(assetType, assetID, d.successResponse(message, attrs...), "")
+}
+
+func (d *Downloader) uninstallWarn(assetType types.AssetType, assetID string, errorCode types.DownloaderErrorType, message string, attrs ...any) types.AssetUninstallResponse {
+	return d.uninstallResponse(assetType, assetID, d.warnResponse(message, attrs...), errorCode)
+}
+
+func (d *Downloader) uninstallError(assetType types.AssetType, assetID string, errorCode types.DownloaderErrorType, message string, err error, attrs ...any) types.AssetUninstallResponse {
+	return d.uninstallResponse(assetType, assetID, d.throwError(message, err, attrs...), errorCode)
 }
 
 // getMapDataPath returns the filesystem path for installed map data.
@@ -309,29 +345,58 @@ func (d *Downloader) supersededOperationResult(action operationAction, assetType
 	message := "Operation superseded by newer queued request. No action taken."
 	base := d.successResponse(message, "asset_type", assetType, "asset_id", assetID, "action", action, "version", version)
 
-	if assetType == types.AssetTypeMap && action == operationActionInstall {
+	if action == operationActionInstall {
 		return operationResult{
-			mapExtractResponse: d.toMapExtractResponse(base, types.ConfigData{}),
+			assetInstallResponse: d.installResponse(assetType, assetID, version, types.ConfigData{}, base, ""),
 		}
 	}
 	return operationResult{
-		genericResponse: base,
+		genericResponse:        base,
+		assetUninstallResponse: d.uninstallResponse(assetType, assetID, base, ""),
 	}
 }
 
-func (d *Downloader) UninstallMod(modId string) types.GenericResponse {
-	// No version is specified for uninstall operations since mod version is irrelevant
-	key := d.operationKey(operationActionUninstall, types.AssetTypeMod, modId, "")
-	assetKey := downloadQueueKey{assetType: types.AssetTypeMod, assetID: modId}
+// UninstallAsset handles uninstallation for all supported asset types.
+func (d *Downloader) UninstallAsset(assetType types.AssetType, assetID string) types.AssetUninstallResponse {
+	if !types.IsValidAssetType(assetType) {
+		return d.uninstallError(
+			assetType,
+			assetID,
+			types.UninstallErrorInvalidAssetType,
+			"Invalid asset type",
+			nil,
+			"asset_type", assetType, "asset_id", assetID,
+		)
+	}
+
+	key := d.operationKey(operationActionUninstall, assetType, assetID, "")
+	assetKey := downloadQueueKey{assetType: assetType, assetID: assetID}
 	result := d.enqueueOperation(assetKey, key, func() operationResult {
-		return operationResult{genericResponse: d.uninstallModNow(modId)}
-	}, d.supersededOperationResult(operationActionUninstall, types.AssetTypeMod, modId, ""))
-	return result.genericResponse
+		switch assetType {
+		case types.AssetTypeMap:
+			return operationResult{assetUninstallResponse: d.uninstallMapNow(assetID)}
+		case types.AssetTypeMod:
+			return operationResult{assetUninstallResponse: d.uninstallModNow(assetID)}
+		default:
+			return operationResult{assetUninstallResponse: d.uninstallError(
+				assetType,
+				assetID,
+				types.UninstallErrorInvalidAssetType,
+				"Invalid asset type",
+				nil,
+				"asset_type", assetType, "asset_id", assetID,
+			)}
+		}
+	}, d.supersededOperationResult(operationActionUninstall, assetType, assetID, ""))
+	return result.assetUninstallResponse
 }
 
-func (d *Downloader) uninstallModNow(modId string) types.GenericResponse {
+func (d *Downloader) uninstallModNow(modId string) types.AssetUninstallResponse {
 	if _, ok := d.getInstalledState(types.AssetTypeMod, modId); !ok {
-		return d.warnResponse(
+		return d.uninstallWarn(
+			types.AssetTypeMod,
+			modId,
+			types.UninstallErrorNotInstalled,
 			fmt.Sprintf("%s with ID %s is not currently installed. No action taken.", assetTypeLabels[types.AssetTypeMod], modId),
 			"asset_type", types.AssetTypeMod,
 			"asset_id", modId,
@@ -339,29 +404,22 @@ func (d *Downloader) uninstallModNow(modId string) types.GenericResponse {
 	}
 	modPath := path.Join(d.getModPath(), modId)
 	if err := os.RemoveAll(modPath); err != nil {
-		return d.throwError("Failed to remove mod files", err, "mod_id", modId)
+		return d.uninstallError(types.AssetTypeMod, modId, types.UninstallErrorFilesystem, "Failed to remove mod files", err, "mod_id", modId)
 	}
 	d.Registry.RemoveInstalledMod(modId)
 	if err := d.Registry.WriteInstalledToDisk(); err != nil {
 		d.Logger.Warn("Failed to persist installed state after uninstalling mod", "error", err)
 	}
-	return d.successResponse("Mod uninstalled successfully", "mod_id", modId)
+	return d.uninstallSuccess(types.AssetTypeMod, modId, "Mod uninstalled successfully", "mod_id", modId)
 }
 
-func (d *Downloader) UninstallMap(mapId string) types.GenericResponse {
-	// No version is specified for uninstall operations since map version is irrelevant
-	key := d.operationKey(operationActionUninstall, types.AssetTypeMap, mapId, "")
-	assetKey := downloadQueueKey{assetType: types.AssetTypeMap, assetID: mapId}
-	result := d.enqueueOperation(assetKey, key, func() operationResult {
-		return operationResult{genericResponse: d.uninstallMapNow(mapId)}
-	}, d.supersededOperationResult(operationActionUninstall, types.AssetTypeMap, mapId, ""))
-	return result.genericResponse
-}
-
-func (d *Downloader) uninstallMapNow(mapId string) types.GenericResponse {
+func (d *Downloader) uninstallMapNow(mapId string) types.AssetUninstallResponse {
 	installedMap, ok := d.getInstalledState(types.AssetTypeMap, mapId)
 	if !ok {
-		return d.warnResponse(
+		return d.uninstallWarn(
+			types.AssetTypeMap,
+			mapId,
+			types.UninstallErrorNotInstalled,
 			fmt.Sprintf("%s with ID %s is not currently installed. No action taken.", assetTypeLabels[types.AssetTypeMap], mapId),
 			"asset_type", types.AssetTypeMap,
 			"asset_id", mapId,
@@ -371,35 +429,68 @@ func (d *Downloader) uninstallMapNow(mapId string) types.GenericResponse {
 
 	mapDataPath := path.Join(d.getMapDataPath(), mapConfig.Code)
 	if err := os.RemoveAll(mapDataPath); err != nil {
-		return d.throwError("Failed to remove map data files", err, "map_id", mapId)
+		return d.uninstallError(types.AssetTypeMap, mapId, types.UninstallErrorFilesystem, "Failed to remove map data files", err, "map_id", mapId)
 	}
 	tilePath := path.Join(d.getMapTilePath(), mapConfig.Code+".pmtiles")
 	if err := os.Remove(tilePath); err != nil {
-		return d.throwError("Failed to remove map tile files", err, "map_id", mapId)
+		return d.uninstallError(types.AssetTypeMap, mapId, types.UninstallErrorFilesystem, "Failed to remove map tile files", err, "map_id", mapId)
 	}
 	os.Remove(path.Join(d.getMapThumbnailPath(), mapConfig.Code+".svg")) // Doesn't matter if this fails, thumbnail is optional and may not exist
 	d.Registry.RemoveInstalledMap(mapId)
 	if err := d.Registry.WriteInstalledToDisk(); err != nil {
 		d.Logger.Warn("Failed to persist installed state after uninstalling map", "error", err)
 	}
-	return d.successResponse("Map uninstalled successfully", "map_id", mapId)
+	return d.uninstallSuccess(types.AssetTypeMap, mapId, "Map uninstalled successfully", "map_id", mapId)
 }
 
-// InstallMod handles the installation of a mod given its ID and version, including downloading, extracting, and updating the registry.
-func (d *Downloader) InstallMod(modId string, version string) types.GenericResponse {
-	key := d.operationKey(operationActionInstall, types.AssetTypeMod, modId, version)
-	assetKey := downloadQueueKey{assetType: types.AssetTypeMod, assetID: modId}
+// InstallAsset handles installation for all supported asset types.
+func (d *Downloader) InstallAsset(assetType types.AssetType, assetID string, version string) types.AssetInstallResponse {
+	if !types.IsValidAssetType(assetType) {
+		return d.installError(
+			assetType,
+			assetID,
+			version,
+			types.ConfigData{},
+			types.InstallErrorInvalidAssetType,
+			"Invalid asset type",
+			nil,
+			"asset_type", assetType, "asset_id", assetID, "version", version,
+		)
+	}
+
+	key := d.operationKey(operationActionInstall, assetType, assetID, version)
+	assetKey := downloadQueueKey{assetType: assetType, assetID: assetID}
 	result := d.enqueueOperation(assetKey, key, func() operationResult {
-		return operationResult{genericResponse: d.installModNow(modId, version)}
-	}, d.supersededOperationResult(operationActionInstall, types.AssetTypeMod, modId, version))
-	return result.genericResponse
+		switch assetType {
+		case types.AssetTypeMap:
+			return operationResult{assetInstallResponse: d.installMapNow(assetID, version)}
+		case types.AssetTypeMod:
+			return operationResult{assetInstallResponse: d.installModNow(assetID, version)}
+		default:
+			return operationResult{assetInstallResponse: d.installError(
+				assetType,
+				assetID,
+				version,
+				types.ConfigData{},
+				types.InstallErrorInvalidAssetType,
+				"Invalid asset type",
+				nil,
+				"asset_type", assetType, "asset_id", assetID, "version", version,
+			)}
+		}
+	}, d.supersededOperationResult(operationActionInstall, assetType, assetID, version))
+	return result.assetInstallResponse
 }
 
 // installModNow handles the installation of a mod given its ID and version, including downloading, extracting, and updating the registry.
-func (d *Downloader) installModNow(modId string, version string) types.GenericResponse {
+func (d *Downloader) installModNow(modId string, version string) types.AssetInstallResponse {
 	d.Logger.Info("InstallMod started", "mod_id", modId, "version", version)
 	if state, installed := d.getInstalledState(types.AssetTypeMod, modId); installed && state.version == version {
-		return d.warnResponse(
+		return d.installWarn(
+			types.AssetTypeMod,
+			modId,
+			version,
+			types.ConfigData{},
 			fmt.Sprintf("%s already installed at requested version. No action taken.", assetTypeLabels[types.AssetTypeMod]),
 			"asset_type", types.AssetTypeMod,
 			"asset_id", modId,
@@ -407,12 +498,19 @@ func (d *Downloader) installModNow(modId string, version string) types.GenericRe
 		)
 	}
 	if !d.Config.GetConfig().Validation.IsValid() {
-		return d.throwError("Cannot install mod because app config paths are not properly configured. "+
-			"Please set valid paths in the config before installing mods.", nil)
+		return d.installError(
+			types.AssetTypeMod,
+			modId,
+			version,
+			types.ConfigData{},
+			types.InstallErrorInvalidConfig,
+			"Cannot install mod because app config paths are not properly configured. Please set valid paths in the config before installing mods.",
+			nil,
+		)
 	}
 	modInfo, err := d.Registry.GetMod(modId)
 	if err != nil {
-		return d.throwError("Failed to get mod info from registry", err, "mod_id", modId)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorRegistryLookup, "Failed to get mod info from registry", err, "mod_id", modId)
 	}
 
 	source := modInfo.Update.URL
@@ -422,7 +520,7 @@ func (d *Downloader) installModNow(modId string, version string) types.GenericRe
 	d.Logger.Info("Fetching available versions", "mod_id", modId, "update_type", modInfo.Update.Type, "source", source)
 	versions, err := d.Registry.GetVersions(modInfo.Update.Type, source)
 	if err != nil {
-		return d.throwError("Failed to get mod versions from registry", err, "mod_id", modId)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorVersionLookup, "Failed to get mod versions from registry", err, "mod_id", modId)
 	}
 
 	availableVersions := make([]string, len(versions))
@@ -431,7 +529,7 @@ func (d *Downloader) installModNow(modId string, version string) types.GenericRe
 	}
 	d.Logger.Info("Fetched available versions", "mod_id", modId, "requested_version", version, "available_versions", availableVersions)
 
-	var versionInfo *types.VersionInfo = nil
+	var versionInfo *types.VersionInfo
 	for _, v := range versions {
 		if v.Version == version {
 			versionInfo = &v
@@ -439,26 +537,26 @@ func (d *Downloader) installModNow(modId string, version string) types.GenericRe
 		}
 	}
 	if versionInfo == nil {
-		return d.throwError("Specified version not found for mod", nil, "mod_id", modId, "version", version, "available_versions", availableVersions)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorVersionNotFound, "Specified version not found for mod", nil, "mod_id", modId, "version", version, "available_versions", availableVersions)
 	}
 
 	d.Logger.Info("Downloading mod", "mod_id", modId, "version", version, "download_url", versionInfo.DownloadURL)
 	downloadResp := d.downloadTempZip(versionInfo.DownloadURL, modId)
 	if downloadResp.Status != types.ResponseSuccess {
 		os.Remove(downloadResp.Path)
-		return d.throwError("Failed to download mod zip: "+downloadResp.Message, nil, "mod_id", modId, "version", version)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorDownloadFailed, "Failed to download mod zip: "+downloadResp.Message, nil, "mod_id", modId, "version", version)
 	}
 
 	if err := d.verifySHA256(downloadResp.Path, versionInfo.SHA256); err != nil {
 		os.Remove(downloadResp.Path)
-		return d.throwError("SHA-256 integrity check failed", err, "mod_id", modId, "version", version)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorChecksumFailed, "SHA-256 integrity check failed", err, "mod_id", modId, "version", version)
 	}
 
 	d.Logger.Info("Extracting mod", "mod_id", modId, "version", version, "temp_path", downloadResp.Path)
-	extractResp := d.handleModExtract(downloadResp.Path, modId)
+	extractResp := d.handleModExtract(downloadResp.Path, modId, version)
 	if extractResp.Status != types.ResponseSuccess {
 		os.Remove(downloadResp.Path)
-		return d.throwError("Failed to extract mod zip: "+extractResp.Message, nil, "mod_id", modId, "version", version)
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, extractResp.ErrorType, "Failed to extract mod zip: "+extractResp.Message, nil, "mod_id", modId, "version", version)
 	}
 	os.Remove(downloadResp.Path)
 	d.Registry.AddInstalledMod(modId, version)
@@ -466,39 +564,30 @@ func (d *Downloader) installModNow(modId string, version string) types.GenericRe
 		d.Logger.Warn("Failed to persist installed state after installing mod", "error", err)
 	}
 	d.Logger.Info("InstallMod completed", "mod_id", modId, "version", version)
-	return d.successResponse("Mod installed successfully", "mod_id", modId, "version", version)
-}
-
-// InstallMap handles the installation of a map given its ID and version, including downloading, extracting, validating files, and updating the registry.
-func (d *Downloader) InstallMap(mapId string, version string) types.MapExtractResponse {
-	key := d.operationKey(operationActionInstall, types.AssetTypeMap, mapId, version)
-	assetKey := downloadQueueKey{assetType: types.AssetTypeMap, assetID: mapId}
-	result := d.enqueueOperation(assetKey, key, func() operationResult {
-		return operationResult{mapExtractResponse: d.installMapNow(mapId, version)}
-	}, d.supersededOperationResult(operationActionInstall, types.AssetTypeMap, mapId, version))
-	return result.mapExtractResponse
+	return d.installSuccess(types.AssetTypeMod, modId, version, types.ConfigData{}, "Mod installed successfully", "mod_id", modId, "version", version)
 }
 
 // installMapNow handles the installation of a map given its ID and version, including downloading, extracting, validating files, and updating the registry.
-func (d *Downloader) installMapNow(mapId string, version string) types.MapExtractResponse {
+func (d *Downloader) installMapNow(mapId string, version string) types.AssetInstallResponse {
 	d.Logger.Info("InstallMap started", "map_id", mapId, "version", version)
 	if state, installed := d.getInstalledState(types.AssetTypeMap, mapId); installed && state.version == version {
-		return d.toMapExtractResponse(
-			d.warnResponse(
-				fmt.Sprintf("%s already installed at requested version. No action taken.", assetTypeLabels[types.AssetTypeMap]),
-				"asset_type", types.AssetTypeMap,
-				"asset_id", mapId,
-				"version", version,
-			),
+		return d.installWarn(
+			types.AssetTypeMap,
+			mapId,
+			version,
 			state.mapConfig,
+			fmt.Sprintf("%s already installed at requested version. No action taken.", assetTypeLabels[types.AssetTypeMap]),
+			"asset_type", types.AssetTypeMap,
+			"asset_id", mapId,
+			"version", version,
 		)
 	}
 	if !d.Config.GetConfig().Validation.IsValid() {
-		return d.throwMapExtractError("Invalid configuration", nil, "map_id", mapId, "version", version)
+		return d.installError(types.AssetTypeMap, mapId, version, types.ConfigData{}, types.InstallErrorInvalidConfig, "Invalid configuration", nil, "map_id", mapId, "version", version)
 	}
 	mapInfo, err := d.Registry.GetMap(mapId)
 	if err != nil {
-		return d.throwMapExtractError("Failed to get map info from registry", err, "map_id", mapId)
+		return d.installError(types.AssetTypeMap, mapId, version, types.ConfigData{}, types.InstallErrorRegistryLookup, "Failed to get map info from registry", err, "map_id", mapId)
 	}
 
 	source := mapInfo.Update.URL
@@ -508,7 +597,7 @@ func (d *Downloader) installMapNow(mapId string, version string) types.MapExtrac
 	d.Logger.Info("Fetching available versions", "map_id", mapId, "update_type", mapInfo.Update.Type, "source", source)
 	versions, err := d.Registry.GetVersions(mapInfo.Update.Type, source)
 	if err != nil {
-		return d.throwMapExtractError("Failed to get map versions from registry", err, "map_id", mapId)
+		return d.installError(types.AssetTypeMap, mapId, version, types.ConfigData{}, types.InstallErrorVersionLookup, "Failed to get map versions from registry", err, "map_id", mapId)
 	}
 
 	availableVersions := make([]string, len(versions))
@@ -517,7 +606,7 @@ func (d *Downloader) installMapNow(mapId string, version string) types.MapExtrac
 	}
 	d.Logger.Info("Fetched available versions", "map_id", mapId, "requested_version", version, "available_versions", availableVersions)
 
-	var versionInfo *types.VersionInfo = nil
+	var versionInfo *types.VersionInfo
 	for _, v := range versions {
 		if v.Version == version {
 			versionInfo = &v
@@ -525,26 +614,26 @@ func (d *Downloader) installMapNow(mapId string, version string) types.MapExtrac
 		}
 	}
 	if versionInfo == nil {
-		return d.throwMapExtractError("Specified version not found for map", nil, "map_id", mapId, "version", version, "available_versions", availableVersions)
+		return d.installError(types.AssetTypeMap, mapId, version, types.ConfigData{}, types.InstallErrorVersionNotFound, "Specified version not found for map", nil, "map_id", mapId, "version", version, "available_versions", availableVersions)
 	}
 
 	d.Logger.Info("Downloading map", "map_id", mapId, "version", version, "download_url", versionInfo.DownloadURL)
 	downloadResp := d.downloadTempZip(versionInfo.DownloadURL, mapId)
 	if downloadResp.Status != types.ResponseSuccess {
 		os.Remove(downloadResp.Path)
-		return d.throwMapExtractError("Failed to download map zip: "+downloadResp.Message, nil, "map_id", mapId, "version", version)
+		return d.installError(types.AssetTypeMap, mapId, version, types.ConfigData{}, types.InstallErrorDownloadFailed, "Failed to download map zip: "+downloadResp.Message, nil, "map_id", mapId, "version", version)
 	}
 
 	if err := d.verifySHA256(downloadResp.Path, versionInfo.SHA256); err != nil {
 		os.Remove(downloadResp.Path)
-		return d.throwMapExtractError("SHA-256 integrity check failed", err, "map_id", mapId, "version", version)
+		return d.installError(types.AssetTypeMap, mapId, version, types.ConfigData{}, types.InstallErrorChecksumFailed, "SHA-256 integrity check failed", err, "map_id", mapId, "version", version)
 	}
 
 	d.Logger.Info("Extracting map", "map_id", mapId, "version", version, "temp_path", downloadResp.Path)
-	extractResp := d.handleMapExtract(downloadResp.Path)
+	extractResp := d.handleMapExtract(downloadResp.Path, mapId, version)
 	if extractResp.Status == types.ResponseError {
 		os.Remove(downloadResp.Path)
-		return d.throwMapExtractError("Failed to extract map zip: "+extractResp.Message, nil, "map_id", mapId, "version", version)
+		return d.installError(types.AssetTypeMap, mapId, version, types.ConfigData{}, extractResp.ErrorType, "Failed to extract map zip: "+extractResp.Message, nil, "map_id", mapId, "version", version)
 	}
 	os.Remove(downloadResp.Path)
 	d.Registry.AddInstalledMap(mapId, version, extractResp.Config)
@@ -654,13 +743,13 @@ func (d *Downloader) isMapCodeTaken(code string) bool {
 }
 
 // handleModExtract processes the downloaded mod zip file, extracts it to the appropriate location, and returns a success or error message.
-func (d *Downloader) handleModExtract(filePath string, modId string) types.GenericResponse {
-	return extractMod(d, filePath, modId)
+func (d *Downloader) handleModExtract(filePath string, modId string, version string) types.AssetInstallResponse {
+	return extractMod(d, filePath, modId, version)
 }
 
 // handleMapExtract processes the downloaded map zip file, validates required files, extracts them to the appropriate locations, and returns the map config or an error message.
-func (d *Downloader) handleMapExtract(filePath string) types.MapExtractResponse {
-	return extractMap(d, filePath)
+func (d *Downloader) handleMapExtract(filePath string, mapId string, version string) types.AssetInstallResponse {
+	return extractMap(d, filePath, mapId, version)
 }
 
 func requiredFilesPresent(filesFound map[string]types.FileFoundStruct) bool {
