@@ -26,6 +26,10 @@ export function ManuallyCheckForUpdates() {
   return window['go']['main']['App']['ManuallyCheckForUpdates']();
 }
 
+export function OpenInFileExplorer(arg1) {
+  return window['go']['main']['App']['OpenInFileExplorer'](arg1);
+}
+
 export function StopGame() {
   return window['go']['main']['App']['StopGame']();
 }

@@ -127,11 +127,26 @@
   html,
   body,
   #root {
-    @apply min-h-screen bg-background text-foreground;
+    @apply min-h-screen bg-background text-foreground overflow-x-hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     }
   body {
     @apply bg-background text-foreground;
     }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
+  #root::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
 }
 
 
