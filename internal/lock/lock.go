@@ -1,7 +1,6 @@
 package lock
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -10,8 +9,6 @@ import (
 
 	"github.com/gofrs/flock"
 )
-
-var ErrAlreadyRunning = errors.New("The Railyard application is already running. Only one instance can be open at a time.")
 
 // Handle is a releasable app-level instance lock.
 type Handle interface {
@@ -25,36 +22,22 @@ type Lock struct {
 	released bool
 }
 
-// ObtainLock acquires the process-wide app lock used to prevent multiple Railyard instances.
-func ObtainLock() (Handle, bool, error) {
+// Acquire acquires the process-wide app lock used to prevent multiple Railyard instances.
+func Acquire() (Handle, bool, error) {
 	if err := os.MkdirAll(paths.AppDataRoot(), 0o755); err != nil {
 		return nil, false, err
 	}
 
-	lock, err := Acquire(paths.LockFilePath())
-	if err != nil {
-		if errors.Is(err, ErrAlreadyRunning) {
-			return nil, true, nil
-		}
-		return nil, false, err
-	}
-
-	return lock, false, nil
-}
-
-// Acquire attempts to obtain a non-blocking process lock at lockPath.
-func Acquire(lockPath string) (*Lock, error) {
-	fileLock := flock.New(lockPath)
+	fileLock := flock.New(paths.LockFilePath())
 	locked, err := fileLock.TryLock()
 	if err != nil {
-		return nil, fmt.Errorf("failed to acquire instance lock: %w", err)
+		return nil, false, fmt.Errorf("failed to acquire instance lock: %w", err)
 	}
-	// If the file is locked, another instance is running and we should throw an error
 	if !locked {
-		return nil, ErrAlreadyRunning
+		return nil, true, nil
 	}
 
-	return &Lock{lock: fileLock}, nil
+	return &Lock{lock: fileLock}, false, nil
 }
 
 // Release unlocks the held lock.
