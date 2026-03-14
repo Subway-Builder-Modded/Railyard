@@ -1,7 +1,7 @@
 import { types } from "../../../wailsjs/go/models";
-import type { ProfileUpdateRequestType } from "@/lib/profile-update-request-type";
+import type { UpdateSubscriptionsRequestType } from "@/lib/profile-update-request-type";
 
-const UPDATE_SUBSCRIPTIONS: ProfileUpdateRequestType = "update_subscriptions";
+const UPDATE_SUBSCRIPTIONS: UpdateSubscriptionsRequestType = "update_subscriptions";
 
 export function activeProfileFixture(profileId: string = "__default__", existingSubscriptions: types.Subscriptions = { maps: {}, mods: {} }): types.UserProfile {
   return new types.UserProfile({

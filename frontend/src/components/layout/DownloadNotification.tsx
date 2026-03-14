@@ -30,15 +30,19 @@ export function DownloadNotification() {
         const existingId = toastIds.current.get(itemId);
         if (existingId) {
           // Show brief "Downloaded" state before dismissing
-          const { completed, total: queueTotal } = useDownloadQueueStore.getState();
-          const queueLabel = queueTotal > 1 ? `${completed + 1}/${queueTotal}` : null;
+          const { completed, total: queueTotal } =
+            useDownloadQueueStore.getState();
+          const queueLabel =
+            queueTotal > 1 ? `${completed + 1}/${queueTotal}` : null;
 
           toast(
             <div className="flex flex-col gap-1.5 w-full">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <CheckCircle className="h-4 w-4 shrink-0 text-primary" />
-                  <span className="text-sm font-medium truncate">Downloaded {itemId}</span>
+                  <span className="text-sm font-medium truncate">
+                    Downloaded {itemId}
+                  </span>
                 </div>
                 {queueLabel && (
                   <span className="text-xs font-medium text-muted-foreground shrink-0 tabular-nums">
@@ -55,7 +59,8 @@ export function DownloadNotification() {
       }
 
       const { completed, total: queueTotal } = useDownloadQueueStore.getState();
-      const queueLabel = queueTotal > 1 ? `${completed + 1}/${queueTotal}` : null;
+      const queueLabel =
+        queueTotal > 1 ? `${completed + 1}/${queueTotal}` : null;
 
       const description =
         percent >= 0
@@ -67,7 +72,9 @@ export function DownloadNotification() {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <Download className="h-4 w-4 shrink-0" />
-              <span className="text-sm font-medium truncate">Downloading {itemId}</span>
+              <span className="text-sm font-medium truncate">
+                Downloading {itemId}
+              </span>
             </div>
             {queueLabel && (
               <span className="text-xs font-medium text-muted-foreground shrink-0 tabular-nums">
@@ -96,17 +103,18 @@ export function DownloadNotification() {
       }
     });
 
-    const offCancelled = onDownloadCancelled(({ itemId }) => {
+    const removeToastOnCancellation = onDownloadCancelled(({ itemId }) => {
       const existingId = toastIds.current.get(itemId);
       if (!existingId) {
         return;
       }
+      // Dismiss the toast immediately on cancellation without showing an error
       toast.dismiss(existingId);
       toastIds.current.delete(itemId);
     });
 
     return () => {
-      offCancelled();
+      removeToastOnCancellation();
       cancel();
     };
   }, []);

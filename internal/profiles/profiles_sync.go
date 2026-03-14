@@ -226,6 +226,8 @@ func syncAssetSubscriptions[T any, U any](log logger.Logger, profileID string, a
 		log.Info("Installing asset", "asset_type", args.assetType, "asset_id", assetID, "version", versionText)
 		response := args.install(assetID, versionText)
 		if response.Status == types.ResponseWarn {
+			// Occurs when installation skipped due to a newer subscription update (different version) or a cancellation (from a newer uninstall request). 
+			// These should be treated as warnings, not errors, since this is an expected set of events.
 			log.Warn("Install skipped during sync", "asset_type", args.assetType, "asset_id", assetID, "version", versionText, "message", response.Message)
 			continue
 		}
