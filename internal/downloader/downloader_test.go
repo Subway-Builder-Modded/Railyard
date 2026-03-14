@@ -1,6 +1,7 @@
 package downloader
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -423,6 +424,29 @@ func TestCancelDuringExtractRemovesInstalledFiles(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "expected tile path removed: %s", tilePath)
 	_, err = os.Stat(thumbnailPath)
 	require.True(t, os.IsNotExist(err), "expected thumbnail path removed: %s", thumbnailPath)
+}
+
+func TestDownloadTempZipCancelledCleansUpArtifact(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+
+	d := &Downloader{
+		tempPath: t.TempDir(),
+		Logger:   logger.LoggerAtPath(""),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	resp := d.downloadTempZip(ctx, server.URL, "map-a")
+	require.Equal(t, types.ResponseWarn, resp.Status)
+	require.Empty(t, resp.Path)
+
+	entries, err := os.ReadDir(d.tempPath)
+	require.NoError(t, err)
+	require.Len(t, entries, 0)
 }
 
 func TestEnqueueOperationRunsSequentially(t *testing.T) {

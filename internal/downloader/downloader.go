@@ -685,7 +685,15 @@ func (d *Downloader) downloadTempZip(ctx context.Context, url string, itemId str
 	if err != nil {
 		return d.throwDownloadError("Failed to create temp file", err, "url", url)
 	}
-	defer file.Close()
+	tempPath := file.Name()
+	keepTemp := false
+	// Clean up temp zips on non-success paths (including cancellation) to avoid artifact buildup.
+	defer func() {
+		_ = file.Close()
+		if !keepTemp {
+			_ = os.Remove(tempPath)
+		}
+	}()
 	zip, err := d.downloadRequest(ctx, url, d.Config.GetGithubToken())
 
 	// Return a warning response instead of an error on cancellation
@@ -716,7 +724,8 @@ func (d *Downloader) downloadTempZip(ctx context.Context, url string, itemId str
 		return d.throwDownloadError("Failed to save file", err, "url", url)
 	}
 
-	return d.toDownloadResponse(d.successResponse("File downloaded successfully", "url", url), file.Name())
+	keepTemp = true
+	return d.toDownloadResponse(d.successResponse("File downloaded successfully", "url", url), tempPath)
 }
 
 // downloadRequest performs an HTTP GET request to the specified URL, including an optional authentication for GitHub URL
