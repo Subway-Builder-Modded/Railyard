@@ -1,4 +1,7 @@
 import { types } from "../../../wailsjs/go/models";
+import type { ProfileUpdateRequestType } from "@/lib/profile-update-request-type";
+
+const UPDATE_SUBSCRIPTIONS: ProfileUpdateRequestType = "update_subscriptions";
 
 export function activeProfileFixture(profileId: string = "__default__", existingSubscriptions: types.Subscriptions = { maps: {}, mods: {} }): types.UserProfile {
   return new types.UserProfile({
@@ -43,6 +46,10 @@ export function updateSubscriptionsSuccess(message: string = "ok"): types.Update
   return new types.UpdateSubscriptionsResult({
     status: "success",
     message,
+    requestType: UPDATE_SUBSCRIPTIONS,
+    hasUpdates: false,
+    pendingCount: 0,
+    applied: true,
     profile: activeProfileFixture(),
     persisted: true,
     operations: [],
@@ -54,6 +61,10 @@ export function updateSubscriptionsError(message: string): types.UpdateSubscript
   return new types.UpdateSubscriptionsResult({
     status: "error",
     message,
+    requestType: UPDATE_SUBSCRIPTIONS,
+    hasUpdates: false,
+    pendingCount: 0,
+    applied: false,
     profile: activeProfileFixture(),
     persisted: false,
     operations: [],
@@ -65,6 +76,10 @@ export function updateSubscriptionsWarn(message: string): types.UpdateSubscripti
   return new types.UpdateSubscriptionsResult({
     status: "warn",
     message,
+    requestType: UPDATE_SUBSCRIPTIONS,
+    hasUpdates: false,
+    pendingCount: 0,
+    applied: true,
     profile: activeProfileFixture(),
     persisted: true,
     operations: [],

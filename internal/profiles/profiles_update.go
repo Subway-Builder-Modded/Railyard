@@ -46,17 +46,17 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 
 // UpdateAllSubscriptionsToLatest resolves the latest available registry versions for all current profile subscriptions,
 // updates those that are behind, persists updates to disk, and runs sync/install-uninstall routines.
-func (s *UserProfiles) UpdateAllSubscriptionsToLatest(req types.UpdateAllSubscriptionsToLatestRequest) types.UpdateAllSubscriptionsToLatestResult {
+func (s *UserProfiles) UpdateAllSubscriptionsToLatest(req types.UpdateAllSubscriptionsToLatestRequest) types.UpdateSubscriptionsResult {
 	s.logRequest("UpdateAllSubscriptionsToLatest", "profile_id", req.ProfileID, "apply", req.Apply)
 
 	profile, requiredUpdates, resultWarnings, profileErr := s.resolveLatestUpdatesForProfile(req.ProfileID)
 	if profileErr != nil {
-		return types.UpdateAllSubscriptionsToLatestResult{
+		return types.UpdateSubscriptionsResult{
 			GenericResponse: types.GenericResponse{
 				Status:  types.ResponseError,
 				Message: "Profile not found",
 			},
-			ProfileID:    req.ProfileID,
+			RequestType:  types.LatestCheck,
 			HasUpdates:   false,
 			PendingCount: 0,
 			Applied:      false,
@@ -96,12 +96,16 @@ func (s *UserProfiles) UpdateAllSubscriptionsToLatest(req types.UpdateAllSubscri
 			}
 		}
 
-		return types.UpdateAllSubscriptionsToLatestResult{
+		requestType := types.LatestCheck
+		if req.Apply {
+			requestType = types.LatestApply
+		}
+		return types.UpdateSubscriptionsResult{
 			GenericResponse: types.GenericResponse{
 				Status:  status,
 				Message: message,
 			},
-			ProfileID:    req.ProfileID,
+			RequestType:  requestType,
 			HasUpdates:   hasUpdates,
 			PendingCount: pendingCount,
 			Applied:      false,
@@ -130,12 +134,12 @@ func (s *UserProfiles) UpdateAllSubscriptionsToLatest(req types.UpdateAllSubscri
 		errors = append(errors, resultWarnings...)
 	}
 
-	return types.UpdateAllSubscriptionsToLatestResult{
+	return types.UpdateSubscriptionsResult{
 		GenericResponse: types.GenericResponse{
 			Status:  status,
 			Message: message,
 		},
-		ProfileID:    req.ProfileID,
+		RequestType:  types.LatestApply,
 		HasUpdates:   hasUpdates,
 		PendingCount: pendingCount,
 		Applied:      true,
@@ -147,7 +151,7 @@ func (s *UserProfiles) UpdateAllSubscriptionsToLatest(req types.UpdateAllSubscri
 }
 
 func (s *UserProfiles) resolveLatestUpdatesForProfile(profileID string) (types.UserProfile, map[string]types.SubscriptionUpdateItem, []types.UserProfilesError, *types.UserProfilesError) {
-	profile, profileErr := s.snapshotProfile(profileID)
+	profile, profileErr := s.profileSnapshot(profileID)
 	if profileErr != nil {
 		return types.UserProfile{}, map[string]types.SubscriptionUpdateItem{}, []types.UserProfilesError{}, profileErr
 	}
@@ -277,6 +281,7 @@ func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsR
 		return newUpdateSubscriptionsResult(
 			types.ResponseError,
 			"profile not found",
+			false,
 			types.UserProfile{},
 			false,
 			[]types.SubscriptionOperation{},
@@ -295,6 +300,7 @@ func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsR
 			return newUpdateSubscriptionsResult(
 				types.ResponseError,
 				"Failed to apply subscription mutation",
+				false,
 				profile,
 				false,
 				[]types.SubscriptionOperation{},
@@ -312,6 +318,7 @@ func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsR
 			return newUpdateSubscriptionsResult(
 				types.ResponseError,
 				"Failed to persist subscriptions",
+				false,
 				profile,
 				false,
 				operations,
@@ -326,6 +333,7 @@ func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsR
 	result := newUpdateSubscriptionsResult(
 		types.ResponseSuccess,
 		"Subscriptions updated",
+		true,
 		profile,
 		req.ForceSync,
 		operations,

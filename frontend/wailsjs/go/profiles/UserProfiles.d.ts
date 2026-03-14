@@ -16,7 +16,7 @@ export function RestoreProfileArchive(arg1:string):Promise<types.GenericResponse
 
 export function SyncSubscriptions(arg1:string):Promise<types.SyncSubscriptionsResult>;
 
-export function UpdateAllSubscriptionsToLatest(arg1:types.UpdateAllSubscriptionsToLatestRequest):Promise<types.UpdateAllSubscriptionsToLatestResult>;
+export function UpdateAllSubscriptionsToLatest(arg1:types.UpdateAllSubscriptionsToLatestRequest):Promise<types.UpdateSubscriptionsResult>;
 
 export function UpdateSubscriptions(arg1:types.UpdateSubscriptionsRequest):Promise<types.UpdateSubscriptionsResult>;
 

@@ -49,6 +49,7 @@ func (s *UserProfiles) logRequest(method string, attrs ...any) {
 func newUpdateSubscriptionsResult(
 	status types.Status,
 	message string,
+	applied bool,
 	profile types.UserProfile,
 	persisted bool,
 	operations []types.SubscriptionOperation,
@@ -59,10 +60,14 @@ func newUpdateSubscriptionsResult(
 			Status:  status,
 			Message: message,
 		},
-		Profile:    profile,
-		Persisted:  persisted,
-		Operations: operations,
-		Errors:     profileErrors,
+		RequestType:  types.UpdateSubscriptions,
+		HasUpdates:   false,
+		PendingCount: 0,
+		Applied:      applied,
+		Profile:      profile,
+		Persisted:    persisted,
+		Operations:   operations,
+		Errors:       profileErrors,
 	}
 }
 
@@ -109,10 +114,11 @@ func profileFromState(state types.UserProfilesState, profileID string) (types.Us
 	return profile, nil
 }
 
-func (s *UserProfiles) snapshotProfile(profileID string) (types.UserProfile, *types.UserProfilesError) {
+func (s *UserProfiles) profileSnapshot(profileID string) (types.UserProfile, *types.UserProfilesError) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Read a snapshot of current subscriptions at invocation time.
 	profile, profileErr := profileFromState(s.state, profileID)
 	if profileErr != nil {
 		return types.UserProfile{}, profileErr

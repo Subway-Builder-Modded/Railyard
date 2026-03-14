@@ -758,6 +758,43 @@ export namespace types {
 	        this.apply = source["apply"];
 	    }
 	}
+	
+	export class UpdateSubscriptionsRequest {
+	    profileId: string;
+	    assets: Record<string, SubscriptionUpdateItem>;
+	    action: string;
+	    forceSync: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateSubscriptionsRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.profileId = source["profileId"];
+	        this.assets = this.convertValues(source["assets"], SubscriptionUpdateItem, true);
+	        this.action = source["action"];
+	        this.forceSync = source["forceSync"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class UserProfile {
 	    id: string;
 	    uuid: string;
@@ -800,94 +837,13 @@ export namespace types {
 		    return a;
 		}
 	}
-	export class UpdateAllSubscriptionsToLatestResult {
-	    status: string;
-	    message: string;
-	    profileId: string;
-	    hasUpdates: boolean;
-	    pendingCount: number;
-	    applied: boolean;
-	    profile: UserProfile;
-	    persisted: boolean;
-	    operations: SubscriptionOperation[];
-	    errors: UserProfilesError[];
-	
-	    static createFrom(source: any = {}) {
-	        return new UpdateAllSubscriptionsToLatestResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.status = source["status"];
-	        this.message = source["message"];
-	        this.profileId = source["profileId"];
-	        this.hasUpdates = source["hasUpdates"];
-	        this.pendingCount = source["pendingCount"];
-	        this.applied = source["applied"];
-	        this.profile = this.convertValues(source["profile"], UserProfile);
-	        this.persisted = source["persisted"];
-	        this.operations = this.convertValues(source["operations"], SubscriptionOperation);
-	        this.errors = this.convertValues(source["errors"], UserProfilesError);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	
-	export class UpdateSubscriptionsRequest {
-	    profileId: string;
-	    assets: Record<string, SubscriptionUpdateItem>;
-	    action: string;
-	    forceSync: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new UpdateSubscriptionsRequest(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.profileId = source["profileId"];
-	        this.assets = this.convertValues(source["assets"], SubscriptionUpdateItem, true);
-	        this.action = source["action"];
-	        this.forceSync = source["forceSync"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 	export class UpdateSubscriptionsResult {
 	    status: string;
 	    message: string;
+	    requestType: string;
+	    hasUpdates: boolean;
+	    pendingCount: number;
+	    applied: boolean;
 	    profile: UserProfile;
 	    persisted: boolean;
 	    operations: SubscriptionOperation[];
@@ -901,6 +857,10 @@ export namespace types {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.status = source["status"];
 	        this.message = source["message"];
+	        this.requestType = source["requestType"];
+	        this.hasUpdates = source["hasUpdates"];
+	        this.pendingCount = source["pendingCount"];
+	        this.applied = source["applied"];
 	        this.profile = this.convertValues(source["profile"], UserProfile);
 	        this.persisted = source["persisted"];
 	        this.operations = this.convertValues(source["operations"], SubscriptionOperation);

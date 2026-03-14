@@ -585,6 +585,7 @@ func TestUpdateSubscriptionsForceSyncErrors(t *testing.T) {
 func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 	type expectation struct {
 		expectedStatus          types.Status
+		expectedRequestType     types.UpdateSubscriptionRequestType
 		expectedHasUpdates      bool
 		expectedPendingCount    int
 		expectedApplied         bool
@@ -604,7 +605,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 		state        types.UserProfilesState
 		setup        func(t *testing.T, cfg *config.Config, reg *registry.Registry) func()
 		expected     expectation
-		assertResult func(t *testing.T, svc *UserProfiles, reg *registry.Registry, result types.UpdateAllSubscriptionsToLatestResult)
+		assertResult func(t *testing.T, svc *UserProfiles, reg *registry.Registry, result types.UpdateSubscriptionsResult)
 	}{
 		{
 			name:      "Updates map and mod to latest semver and syncs",
@@ -637,6 +638,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 			},
 			expected: expectation{
 				expectedStatus:          types.ResponseSuccess,
+				expectedRequestType:     types.LatestApply,
 				expectedHasUpdates:      true,
 				expectedPendingCount:    2,
 				expectedApplied:         true,
@@ -646,7 +648,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 				expectedModID:           "mod-a",
 				expectedModSubscription: "1.5.0",
 			},
-			assertResult: func(t *testing.T, _ *UserProfiles, reg *registry.Registry, _ types.UpdateAllSubscriptionsToLatestResult) {
+			assertResult: func(t *testing.T, _ *UserProfiles, reg *registry.Registry, _ types.UpdateSubscriptionsResult) {
 				t.Helper()
 				require.Len(t, reg.GetInstalledMaps(), 1)
 				require.Equal(t, "map-a", reg.GetInstalledMaps()[0].ID)
@@ -686,6 +688,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 			},
 			expected: expectation{
 				expectedStatus:          types.ResponseSuccess,
+				expectedRequestType:     types.LatestApply,
 				expectedHasUpdates:      false,
 				expectedPendingCount:    0,
 				expectedApplied:         false,
@@ -724,6 +727,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 			},
 			expected: expectation{
 				expectedStatus:          types.ResponseWarn,
+				expectedRequestType:     types.LatestApply,
 				expectedHasUpdates:      true,
 				expectedPendingCount:    1,
 				expectedApplied:         true,
@@ -753,6 +757,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 			},
 			expected: expectation{
 				expectedStatus:          types.ResponseWarn,
+				expectedRequestType:     types.LatestApply,
 				expectedHasUpdates:      false,
 				expectedPendingCount:    0,
 				expectedApplied:         false,
@@ -788,6 +793,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 			},
 			expected: expectation{
 				expectedStatus:          types.ResponseError,
+				expectedRequestType:     types.LatestApply,
 				expectedHasUpdates:      true,
 				expectedPendingCount:    1,
 				expectedApplied:         true,
@@ -827,6 +833,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 			},
 			expected: expectation{
 				expectedStatus:          types.ResponseSuccess,
+				expectedRequestType:     types.LatestCheck,
 				expectedHasUpdates:      true,
 				expectedPendingCount:    2,
 				expectedApplied:         false,
@@ -856,6 +863,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 				Apply:     tc.apply,
 			})
 			require.Equal(t, tc.expected.expectedStatus, result.Status)
+			require.Equal(t, tc.expected.expectedRequestType, result.RequestType)
 			require.Equal(t, tc.expected.expectedHasUpdates, result.HasUpdates)
 			require.Equal(t, tc.expected.expectedPendingCount, result.PendingCount)
 			require.Equal(t, tc.expected.expectedApplied, result.Applied)

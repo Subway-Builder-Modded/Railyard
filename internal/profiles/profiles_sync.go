@@ -12,7 +12,7 @@ import (
 func (s *UserProfiles) SyncSubscriptions(profileID string) types.SyncSubscriptionsResult {
 	s.logRequest("SyncSubscriptions", "profile_id", profileID)
 
-	profile, profileErr := s.snapshotProfile(profileID)
+	profile, profileErr := s.profileSnapshot(profileID)
 	if profileErr != nil {
 		s.Logger.Error("Profile not found for sync", profileErr, "profile_id", profileID)
 		return newSyncSubscriptionsResult(

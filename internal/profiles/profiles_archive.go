@@ -13,7 +13,7 @@ import (
 
 // CreateProfileArchive generates a tar archive of the profile's current state, including installed maps/mods and their data, and saves it to disk. Returns a GenericResponse indicating success or failure with an appropriate message.
 func (s *UserProfiles) CreateProfileArchive(profileID string) types.GenericResponse {
-	profile, profileErr := s.snapshotProfile(profileID)
+	profile, profileErr := s.profileSnapshot(profileID)
 	if profileErr != nil {
 		s.Logger.Error("Profile not found for archive creation", profileErr, "profile_id", profileID)
 		return types.ErrorResponse(profileErr.Error())
@@ -145,7 +145,7 @@ func (s *UserProfiles) writeInstalledMetadata(tempDir, profileID string) (types.
 }
 
 func (s *UserProfiles) RestoreProfileArchive(profileID string) types.GenericResponse {
-	profile, profileErr := s.snapshotProfile(profileID)
+	profile, profileErr := s.profileSnapshot(profileID)
 	if profileErr != nil {
 		s.Logger.Error("Profile not found for archive restoration", profileErr, "profile_id", profileID)
 		return types.ErrorResponse(profileErr.Error())
