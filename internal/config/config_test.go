@@ -77,6 +77,7 @@ func TestUpdateConfigWithPersist(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, testConfig(), updated.Config)
+	require.False(t, updated.HasGithubToken)
 	require.Equal(t, updated.Config, h.persisted())
 }
 
@@ -136,6 +137,40 @@ func TestResolveConfigOverridesRuntimeState(t *testing.T) {
 	reloaded, err := cfg.ResolveConfig()
 	require.NoError(t, err)
 	require.Equal(t, updated, reloaded.Config)
+}
+
+func TestHasGithubTokenFlag(t *testing.T) {
+	h := setup(t, types.AppConfig{
+		GithubToken: "ghp_example",
+	})
+
+	resolved := h.runtime()
+	require.True(t, resolved.HasGithubToken)
+	require.Empty(t, resolved.Config.GithubToken)
+}
+
+func TestUpdateAndClearGithubToken(t *testing.T) {
+	h := setup(t, types.AppConfig{})
+
+	updated, err := h.cfg.UpdateGithubToken("  mrao_token  ")
+	require.NoError(t, err)
+	require.True(t, updated.HasGithubToken)
+	require.Empty(t, updated.Config.GithubToken)
+	require.Equal(t, "  mrao_token  ", h.cfg.GetGithubToken())
+
+	// Runtime-only update should not mutate persisted config until SaveConfig.
+	require.Equal(t, types.AppConfig{}, h.persisted())
+
+	_, err = h.cfg.SaveConfig()
+	require.NoError(t, err)
+	// After persisting, the config should reflect the updated GitHub token
+	require.Equal(t, "  mrao_token  ", h.persisted().GithubToken)
+
+	cleared, err := h.cfg.ClearGithubToken()
+	require.NoError(t, err)
+	require.False(t, cleared.HasGithubToken)
+	require.Empty(t, cleared.Config.GithubToken)
+	require.Empty(t, h.cfg.GetGithubToken())
 }
 
 func TestSetConfigOverwritesRuntime(t *testing.T) {

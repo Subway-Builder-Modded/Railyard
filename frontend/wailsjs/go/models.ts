@@ -3,6 +3,7 @@ export namespace types {
 	export class AppConfig {
 	    metroMakerDataPath?: string;
 	    executablePath?: string;
+	    githubToken?: string;
 	    checkForUpdatesOnLaunch: boolean;
 	    setupCompleted: boolean;
 	
@@ -14,6 +15,7 @@ export namespace types {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.metroMakerDataPath = source["metroMakerDataPath"];
 	        this.executablePath = source["executablePath"];
+	        this.githubToken = source["githubToken"];
 	        this.checkForUpdatesOnLaunch = source["checkForUpdatesOnLaunch"];
 	        this.setupCompleted = source["setupCompleted"];
 	    }
@@ -535,6 +537,7 @@ export namespace types {
 	export class ResolveConfigResult {
 	    config: AppConfig;
 	    validation: ConfigPathValidation;
+	    hasGithubToken: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ResolveConfigResult(source);
@@ -544,6 +547,7 @@ export namespace types {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.config = this.convertValues(source["config"], AppConfig);
 	        this.validation = this.convertValues(source["validation"], ConfigPathValidation);
+	        this.hasGithubToken = source["hasGithubToken"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

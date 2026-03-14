@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"railyard/internal/config"
 	"railyard/internal/testutil/registrytest"
 	"railyard/internal/types"
 
@@ -18,7 +19,7 @@ func mustUnix(t *testing.T, value string) int64 {
 	return parsed.Unix()
 }
 func TestResolveLastUpdated(t *testing.T) {
-	reg := NewRegistry(testLogSink{})
+	reg := NewRegistry(testLogSink{}, config.NewConfig())
 	closeServer := registrytest.MockLastUpdatedServer(t, reg, []registrytest.LastUpdatedFixture{
 		{
 			AssetID:   "mod-a",
@@ -86,7 +87,7 @@ func TestDetermineLatestTimestampRejectsWrongLayout(t *testing.T) {
 }
 
 func TestLoadLastUpdatedFallsBackToEpochOnFailures(t *testing.T) {
-	reg := NewRegistry(testLogSink{})
+	reg := NewRegistry(testLogSink{}, config.NewConfig())
 	closeServer := registrytest.MockLastUpdatedServer(t, reg, []registrytest.LastUpdatedFixture{
 		{
 			AssetID:   "mod-bad",

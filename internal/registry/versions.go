@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"railyard/internal/constants"
+	"railyard/internal/requests"
 	"railyard/internal/types"
 )
 
@@ -19,18 +20,40 @@ type modManifestDeps struct {
 	Dependencies map[string]string `json:"dependencies"`
 }
 
+var registryGitHubAPIBaseURL = types.GitHubAPIBaseURL
+
 // GetVersions fetches available versions for a mod or map.
 // updateType must be "github" or "custom".
 // repoOrURL is "owner/repo" for github, or a URL for custom.
 func (r *Registry) GetVersions(updateType string, repoOrURL string) ([]types.VersionInfo, error) {
+	// Check cache first to avoid redundant network requests
+	cacheKey := updateType + "|" + repoOrURL
+	if cached, ok := r.getCachedVersions(cacheKey); ok {
+		return cached, nil
+	}
+
+	var (
+		versions []types.VersionInfo
+		err      error
+	)
+
 	switch updateType {
 	case "github":
-		return r.getGitHubVersions(repoOrURL)
+		versions, err = r.getGitHubVersions(repoOrURL)
 	case "custom":
-		return r.getCustomVersions(repoOrURL)
+		versions, err = r.getCustomVersions(repoOrURL)
 	default:
 		return nil, fmt.Errorf("unsupported update type: %q", updateType)
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// If version resolution succeeded, cache the results for future calls
+	r.setCachedVersions(cacheKey, versions)
+	// Return a copy of the versions to prevent external mutation by callers
+	return cloneVersionInfos(versions), nil
 }
 
 func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
@@ -39,23 +62,30 @@ func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
 		return nil, fmt.Errorf("invalid GitHub repo format %q: expected \"owner/repo\"", repo)
 	}
 
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/releases", repo)
-	req, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create GitHub API request: %w", err)
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "Railyard-Desktop-App")
+	baseURL := strings.TrimRight(registryGitHubAPIBaseURL, "/")
+	apiURL := fmt.Sprintf("%s/repos/%s/releases", baseURL, repo)
 
-	resp, err := r.httpClient.Do(req)
+	resp, err := requests.GetWithGithubToken(r.httpClient, requests.GithubTokenRequestArgs{
+		URL:              apiURL,
+		GitHubToken:      r.config.GetGithubToken(),
+		ForceAuthByToken: true,
+		Headers: map[string]string{
+			"Accept": "application/vnd.github+json",
+		},
+		OnTokenRejected: func(statusCode int) {
+			r.logger.Warn("GitHub token rejected; retrying unauthenticated request", "repo", repo, "status", statusCode)
+		},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch GitHub releases for %q: %w", repo, err)
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API returned status %d for %q", resp.StatusCode, repo)
+		status := resp.StatusCode
+		resp.Body.Close()
+		return nil, fmt.Errorf("GitHub API returned status %d for %q", status, repo)
 	}
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
 	if err != nil {
@@ -106,13 +136,12 @@ func (r *Registry) enrichGameVersions(versions []types.VersionInfo) {
 		wg.Add(1)
 		go func(v *types.VersionInfo) {
 			defer wg.Done()
-			req, err := http.NewRequest("GET", v.Manifest, nil)
-			if err != nil {
-				return
-			}
-			req.Header.Set("User-Agent", "Railyard-Desktop-App")
-			req.Header.Set("Accept", "application/octet-stream")
-			resp, err := r.httpClient.Do(req)
+			resp, err := requests.GetWithGithubToken(r.httpClient, requests.GithubTokenRequestArgs{
+				URL: v.Manifest,
+				Headers: map[string]string{
+					"Accept": "application/octet-stream",
+				},
+			})
 			if err != nil {
 				return
 			}
@@ -142,13 +171,9 @@ func (r *Registry) getCustomVersions(updateURL string) ([]types.VersionInfo, err
 		return nil, fmt.Errorf("invalid custom update URL %q: must be http or https", updateURL)
 	}
 
-	req, err := http.NewRequest("GET", updateURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request for custom update URL: %w", err)
-	}
-	req.Header.Set("User-Agent", "Railyard-Desktop-App")
-
-	resp, err := r.httpClient.Do(req)
+	resp, err := requests.GetWithGithubToken(r.httpClient, requests.GithubTokenRequestArgs{
+		URL: updateURL,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch custom update from %q: %w", updateURL, err)
 	}
@@ -198,4 +223,32 @@ func (r *Registry) filterSemverVersions(
 		filtered = append(filtered, version)
 	}
 	return filtered
+}
+
+func cloneVersionInfos(input []types.VersionInfo) []types.VersionInfo {
+	output := make([]types.VersionInfo, len(input))
+	copy(output, input)
+	return output
+}
+
+func (r *Registry) getCachedVersions(key string) ([]types.VersionInfo, bool) {
+	r.versionsMu.RLock()
+	defer r.versionsMu.RUnlock()
+	versions, ok := r.versionsCache[key]
+	if !ok {
+		return nil, false
+	}
+	return cloneVersionInfos(versions), true
+}
+
+func (r *Registry) setCachedVersions(key string, versions []types.VersionInfo) {
+	r.versionsMu.Lock()
+	defer r.versionsMu.Unlock()
+	r.versionsCache[key] = cloneVersionInfos(versions)
+}
+
+func (r *Registry) clearVersionsCache() {
+	r.versionsMu.Lock()
+	defer r.versionsMu.Unlock()
+	r.versionsCache = map[string][]types.VersionInfo{}
 }

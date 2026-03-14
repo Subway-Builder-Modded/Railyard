@@ -5,9 +5,13 @@ import {context} from '../models';
 
 export function ClearConfig():Promise<types.AppConfig>;
 
+export function ClearGithubToken():Promise<types.ResolveConfigResult>;
+
 export function CompleteSetup():Promise<types.ResolveConfigResult>;
 
 export function GetConfig():Promise<types.ResolveConfigResult>;
+
+export function GetGithubToken():Promise<string>;
 
 export function OpenExecutableDialog(arg1:types.SetConfigPathOptions):Promise<types.SetConfigPathResult>;
 
@@ -28,5 +32,7 @@ export function UpdateCheckForUpdatesOnLaunch(arg1:boolean):Promise<types.Resolv
 export function UpdateConfig(arg1:any,arg2:boolean):Promise<types.ResolveConfigResult>;
 
 export function UpdateExecutable(arg1:string):Promise<types.ResolveConfigResult>;
+
+export function UpdateGithubToken(arg1:string):Promise<types.ResolveConfigResult>;
 
 export function UpdateMetroMakerDataFolder(arg1:string):Promise<types.ResolveConfigResult>;

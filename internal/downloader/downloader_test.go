@@ -2,6 +2,8 @@ package downloader
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -305,7 +307,8 @@ func TestEnqueueOperationRunsSequentially(t *testing.T) {
 }
 
 func TestInstallMapForExistingIsNoOp(t *testing.T) {
-	reg := registry.NewRegistry(testRegistryLogSink{})
+	cfg := config.NewConfig()
+	reg := registry.NewRegistry(testRegistryLogSink{}, cfg)
 	expectedConfig := types.ConfigData{
 		Code:        "ABC",
 		Name:        "Map A",
@@ -317,6 +320,7 @@ func TestInstallMapForExistingIsNoOp(t *testing.T) {
 
 	d := &Downloader{
 		Registry: reg,
+		Config:   cfg,
 		Logger:   logger.LoggerAtPath(""),
 	}
 
@@ -328,10 +332,11 @@ func TestInstallMapForExistingIsNoOp(t *testing.T) {
 }
 
 func TestInstallModPreservesNoOpThroughStateMutation(t *testing.T) {
-	reg := registry.NewRegistry(testRegistryLogSink{})
+	cfg := config.NewConfig()
+	reg := registry.NewRegistry(testRegistryLogSink{}, cfg)
 	d := &Downloader{
 		Registry: reg,
-		Config:   config.NewConfig(),
+		Config:   cfg,
 		Logger:   logger.LoggerAtPath(""),
 	}
 
@@ -438,8 +443,8 @@ func TestInstallAssetError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			reg := registry.NewRegistry(testRegistryLogSink{})
 			cfg := config.NewConfig()
+			reg := registry.NewRegistry(testRegistryLogSink{}, cfg)
 			d := &Downloader{
 				Registry: reg,
 				Config:   cfg,
@@ -492,15 +497,15 @@ func TestInstallAssetSuccess(t *testing.T) {
 			fixtures: []registrytest.UpdateFixture{
 				{AssetID: "mod-a", AssetType: types.AssetTypeMod, Versions: []string{"1.0.0"}},
 			},
-			expectedCode:  "", // No cityCode for mods
+			expectedCode:  "",    // No cityCode for mods
 			expectMapConf: false, // No config for mod
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			reg := registry.NewRegistry(testRegistryLogSink{})
 			cfg := config.NewConfig()
+			reg := registry.NewRegistry(testRegistryLogSink{}, cfg)
 			configureDownloaderConfig(t, cfg)
 			d := &Downloader{
 				Registry: reg,
@@ -536,4 +541,39 @@ func TestOperationKeyPanicsOnInvalidAction(t *testing.T) {
 	require.Panics(t, func() {
 		_ = d.operationKey(operationAction("invalid"), types.AssetTypeMap, "map-a", "1.0.0")
 	})
+}
+
+func TestDownloadTempZipGithubAuthFallback(t *testing.T) {
+	originalHostCheck := isGitHubDownloadHost
+	isGitHubDownloadHost = func(string) bool { return true }
+	defer func() { isGitHubDownloadHost = originalHostCheck }()
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		if requestCount == 1 {
+			// On first request, return a 403 on the Github token based request
+			require.Equal(t, "Bearer ghp_test_token", r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		// Validate that an unauthenticated request is made on retry
+		require.Empty(t, r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("zip-content"))
+	}))
+	defer server.Close()
+
+	cfg := config.NewConfig()
+	cfg.Cfg.GithubToken = "ghp_test_token"
+	d := &Downloader{
+		Config:   cfg,
+		Logger:   logger.LoggerAtPath(""),
+		tempPath: t.TempDir(),
+	}
+
+	resp := d.downloadTempZip(server.URL+"/asset.zip", "asset-a")
+	require.Equal(t, types.ResponseSuccess, resp.Status)
+	require.NotEmpty(t, resp.Path)
+	require.Equal(t, 2, requestCount)
 }

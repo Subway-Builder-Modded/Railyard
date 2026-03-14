@@ -23,6 +23,8 @@ type projection struct {
 	offsetX, offsetY   float64
 }
 
+var thumbnailHTTPClient = &http.Client{Timeout: types.RequestTimeout}
+
 func newProjection(minTileX, minTileY, maxTileX, maxTileY int) projection {
 	tileGridWidth := float64((maxTileX - minTileX + 1) * 4096)
 	tileGridHeight := float64((maxTileY - minTileY + 1) * 4096)
@@ -60,7 +62,7 @@ func lat2tile(lat float64, zoom int) int {
 func fetchWithRetry(url string, retries int, delay time.Duration) ([]byte, error) {
 	var lastErr error
 	for attempt := 1; attempt <= retries; attempt++ {
-		resp, err := http.Get(url)
+		resp, err := thumbnailHTTPClient.Get(url)
 		if err != nil {
 			lastErr = err
 			time.Sleep(delay)

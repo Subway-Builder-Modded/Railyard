@@ -83,7 +83,7 @@ func (a *App) OpenInFileExplorer(targetPath string) types.GenericResponse {
 func NewApp() *App {
 	cfg := config.NewConfig()
 	l := logger.NewAppLogger()
-	reg := registry.NewRegistry(l)
+	reg := registry.NewRegistry(l, cfg)
 	dl := downloader.NewDownloader(cfg, reg, l)
 	return &App{
 		Registry:   reg,
@@ -139,7 +139,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	if a.Config.Cfg.CheckForUpdatesOnLaunch {
-		updater.CheckForUpdates(a.ctx, a.Downloader.OnProgress, a.Logger)
+		updater.CheckForUpdates(a.ctx, a.Downloader.OnProgress, a.Logger, a.Config.GetGithubToken())
 	}
 
 	// Registry must be initialized + startup profile ready so that initial Frontend state is viable.
@@ -401,7 +401,7 @@ func (a *App) StopGame() error {
 
 func (a *App) ManuallyCheckForUpdates() {
 	a.Logger.Info("Manually checking for updates")
-	updater.CheckForUpdates(a.ctx, a.Downloader.OnProgress, a.Logger)
+	updater.CheckForUpdates(a.ctx, a.Downloader.OnProgress, a.Logger, a.Config.GetGithubToken())
 }
 
 func (a *App) GetCurrentVersion() string {

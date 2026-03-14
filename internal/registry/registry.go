@@ -7,9 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
+	"sync"
 
+	"railyard/internal/config"
 	"railyard/internal/paths"
+	"railyard/internal/requests"
 	"railyard/internal/types"
 )
 
@@ -23,37 +25,41 @@ type logSink interface {
 
 // Registry manages the local clone of The Railyard registry repository.
 type Registry struct {
-	repoPath       string
-	httpClient     *http.Client
-	logger         logSink
-	mods           []types.ModManifest
-	maps           []types.MapManifest
-	downloadCounts map[types.AssetType]map[string]map[string]int
-	installedMods  []types.InstalledModInfo
-	installedMaps  []types.InstalledMapInfo
-	integrityMaps  types.RegistryIntegrityReport
-	integrityMods  types.RegistryIntegrityReport
+	repoPath        string
+	httpClient      *http.Client
+	logger          logSink
+	config          *config.Config
+	mods            []types.ModManifest
+	maps            []types.MapManifest
+	downloadCounts  map[types.AssetType]map[string]map[string]int
+	versionsCache   map[string][]types.VersionInfo
+	versionsMu      sync.RWMutex
+	installedMods   []types.InstalledModInfo
+	installedMaps   []types.InstalledMapInfo
+	integrityMaps   types.RegistryIntegrityReport
+	integrityMods   types.RegistryIntegrityReport
 }
 
 // NewRegistry creates a new Registry instance with the platform-appropriate
 // storage path.
-func NewRegistry(l logSink) *Registry {
+func NewRegistry(l logSink, cfg *config.Config) *Registry {
 	return &Registry{
-		repoPath: paths.RegistryRepoPath(),
-		httpClient: &http.Client{
-			Timeout: 15 * time.Second,
-		},
-		logger: l,
+		repoPath:   paths.RegistryRepoPath(),
+		httpClient: requests.NewAPIClient(),
+		logger:     l,
+		config:     cfg,
 		downloadCounts: map[types.AssetType]map[string]map[string]int{
 			types.AssetTypeMap: {},
 			types.AssetTypeMod: {},
 		},
+		versionsCache: map[string][]types.VersionInfo{},
 	}
 }
 
 // Initialize ensures a valid local registry repo exists.
 // It does not force a remote refresh.
 func (r *Registry) Initialize() error {
+	r.clearVersionsCache()
 	if err := r.openOrClone(); err != nil {
 		return err
 	}
@@ -67,6 +73,7 @@ func (r *Registry) Initialize() error {
 
 // Refresh forces a pull of the latest registry changes.
 func (r *Registry) Refresh() error {
+	r.clearVersionsCache() // Clear versions cache on refresh to ensure we fetch fresh version 
 	if err := r.refreshRepo(); err != nil {
 		return err
 	}

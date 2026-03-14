@@ -6,12 +6,20 @@ export function ClearConfig() {
   return window['go']['config']['Config']['ClearConfig']();
 }
 
+export function ClearGithubToken() {
+  return window['go']['config']['Config']['ClearGithubToken']();
+}
+
 export function CompleteSetup() {
   return window['go']['config']['Config']['CompleteSetup']();
 }
 
 export function GetConfig() {
   return window['go']['config']['Config']['GetConfig']();
+}
+
+export function GetGithubToken() {
+  return window['go']['config']['Config']['GetGithubToken']();
 }
 
 export function OpenExecutableDialog(arg1) {
@@ -52,6 +60,10 @@ export function UpdateConfig(arg1, arg2) {
 
 export function UpdateExecutable(arg1) {
   return window['go']['config']['Config']['UpdateExecutable'](arg1);
+}
+
+export function UpdateGithubToken(arg1) {
+  return window['go']['config']['Config']['UpdateGithubToken'](arg1);
 }
 
 export function UpdateMetroMakerDataFolder(arg1) {

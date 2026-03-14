@@ -3,6 +3,7 @@ package registry
 import (
 	"testing"
 
+	"railyard/internal/config"
 	"railyard/internal/testutil"
 	"railyard/internal/testutil/registrytest"
 	"railyard/internal/types"
@@ -33,7 +34,7 @@ func loadedRegistryWithDownloads(t *testing.T) *Registry {
 		},
 	})
 
-	reg := NewRegistry(testLogSink{})
+	reg := NewRegistry(testLogSink{}, config.NewConfig())
 	require.NoError(t, reg.fetchFromDisk())
 	return reg
 }

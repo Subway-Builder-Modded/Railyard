@@ -18,6 +18,7 @@ import (
 	"railyard/internal/logger"
 	"railyard/internal/paths"
 	"railyard/internal/registry"
+	"railyard/internal/requests"
 	"railyard/internal/types"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -25,6 +26,9 @@ import (
 )
 
 type ExtractProgressFunc func(itemId string, extracted int64, total int64)
+
+// TODO: Consider adding this as an injectable dependency for other services
+var downloaderHTTPClient = requests.NewDownloadClient()
 
 type Downloader struct {
 	tempPath          string
@@ -655,7 +659,8 @@ func (d *Downloader) downloadTempZip(url string, itemId string) types.DownloadTe
 		return d.throwDownloadError("Failed to create temp file", err, "url", url)
 	}
 	defer file.Close()
-	zip, err := http.Get(url)
+
+	zip, err := d.downloadRequest(url, d.Config.GetGithubToken())
 
 	if err != nil {
 		return d.throwDownloadError("Failed to download file", err, "url", url)
@@ -683,6 +688,17 @@ func (d *Downloader) downloadTempZip(url string, itemId string) types.DownloadTe
 
 	return d.toDownloadResponse(d.successResponse("File downloaded successfully", "url", url), file.Name())
 }
+
+// downloadRequest performs an HTTP GET request to the specified URL, including an optional authentication for GitHub URL
+func (d *Downloader) downloadRequest(downloadURL, githubToken string) (*http.Response, error) {
+	return requests.GetWithGithubToken(downloaderHTTPClient, requests.GithubTokenRequestArgs{
+		URL:                    downloadURL,
+		GitHubToken:            githubToken,
+		ShouldAuthenticateHost: isGitHubDownloadHost,
+	})
+}
+
+var isGitHubDownloadHost = requests.IsGitHubHost
 
 // verifySHA256 checks the SHA-256 hash of a downloaded file against an expected hash.
 // If expectedHash is empty, the check is skipped (GitHub releases rely on GitHub's own integrity).

@@ -3,6 +3,7 @@ package types
 import (
 	"io"
 	"strings"
+	"time"
 
 	"golang.org/x/mod/semver"
 )
@@ -14,6 +15,10 @@ const (
 	ResponseError   Status = "error"
 	ResponseWarn    Status = "warn"
 )
+
+const RequestTimeout = 15 * time.Second
+const RequestUserAgent = "Railyard-Desktop-App"
+const GitHubAPIBaseURL = "https://api.github.com"
 
 type GenericResponse struct {
 	Status  Status `json:"status"`

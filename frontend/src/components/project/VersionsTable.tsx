@@ -51,11 +51,25 @@ interface VersionsTableProps {
   gameVersion: string;
 }
 
-export function VersionsTable({ type, itemId, itemName, versions, loading, error, gameVersion }: VersionsTableProps) {
-  const { getInstalledVersion, installMod, installMap, isOperating } = useInstalledStore();
+export function VersionsTable({
+  type,
+  itemId,
+  itemName,
+  versions,
+  loading,
+  error,
+  gameVersion,
+}: VersionsTableProps) {
+  const { getInstalledVersion, installMod, installMap, isOperating } =
+    useInstalledStore();
   const installedVersion = getInstalledVersion(itemId);
-  const [installError, setInstallError] = useState<{ version: string; message: string } | null>(null);
-  const [prereleasePrompt, setPrereleasePrompt] = useState<{ version: string } | null>(null);
+  const [installError, setInstallError] = useState<{
+    version: string;
+    message: string;
+  } | null>(null);
+  const [prereleasePrompt, setPrereleasePrompt] = useState<{
+    version: string;
+  } | null>(null);
   const [subscriptionSyncError, setSubscriptionSyncError] = useState<{
     version: string;
     message: string;
@@ -80,7 +94,10 @@ export function VersionsTable({ type, itemId, itemName, versions, loading, error
         });
         setSubscriptionSyncError(syncError);
       } else {
-        setInstallError({ version, message: err instanceof Error ? err.message : String(err) });
+        setInstallError({
+          version,
+          message: err instanceof Error ? err.message : String(err),
+        });
       }
     }
   };
@@ -148,7 +165,7 @@ export function VersionsTable({ type, itemId, itemName, versions, loading, error
               {hasAnyGameVersion && <TableHead>Game Version</TableHead>}
               <TableHead>Changelog</TableHead>
               <TableHead>Downloads</TableHead>
-              <TableHead className="w-[100px]"></TableHead>
+              <TableHead className="w-25"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -159,12 +176,18 @@ export function VersionsTable({ type, itemId, itemName, versions, loading, error
               const incompatible = compat === false;
 
               return (
-                <TableRow key={v.version} className={incompatible ? "opacity-50" : ""}>
+                <TableRow
+                  key={v.version}
+                  className={incompatible ? "opacity-50" : ""}
+                >
                   <TableCell className="font-mono font-medium">
                     <span className="flex items-center gap-2">
                       {v.version}
                       {v.prerelease && (
-                        <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                        <Badge
+                          variant="outline"
+                          className="text-yellow-600 border-yellow-600"
+                        >
                           Beta
                         </Badge>
                       )}
@@ -204,8 +227,8 @@ export function VersionsTable({ type, itemId, itemName, versions, loading, error
                             </span>
                           </TooltipTrigger>
                           <TooltipContent>
-                            Not compatible with your installed game version
-                            (you have {gameVersion}, need {v.game_version})
+                            Not compatible with your installed game version (you
+                            have {gameVersion}, need {v.game_version})
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -214,7 +237,11 @@ export function VersionsTable({ type, itemId, itemName, versions, loading, error
                         <Loader2 className="h-4 w-4 animate-spin" />
                       </Button>
                     ) : (
-                      <Button variant="outline" size="sm" onClick={() => handleInstall(v.version, v.prerelease)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleInstall(v.version, v.prerelease)}
+                      >
                         <Download className="h-4 w-4" />
                       </Button>
                     )}
@@ -229,7 +256,9 @@ export function VersionsTable({ type, itemId, itemName, versions, loading, error
       {prereleasePrompt && (
         <PrereleaseConfirmDialog
           open={!!prereleasePrompt}
-          onOpenChange={(open) => { if (!open) setPrereleasePrompt(null); }}
+          onOpenChange={(open) => {
+            if (!open) setPrereleasePrompt(null);
+          }}
           itemName={itemName}
           version={prereleasePrompt.version}
           onConfirm={() => doInstall(prereleasePrompt.version)}
@@ -239,7 +268,9 @@ export function VersionsTable({ type, itemId, itemName, versions, loading, error
       {installError && (
         <InstallErrorDialog
           open={!!installError}
-          onOpenChange={(open) => { if (!open) setInstallError(null); }}
+          onOpenChange={(open) => {
+            if (!open) setInstallError(null);
+          }}
           itemName={itemName}
           version={installError.version}
           error={installError.message}

@@ -10,6 +10,7 @@ import (
 	"railyard/internal/constants"
 	"railyard/internal/files"
 	"railyard/internal/logger"
+	"railyard/internal/requests"
 	"railyard/internal/types"
 	"runtime"
 	"strconv"
@@ -18,6 +19,10 @@ import (
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+var updaterGitHubAPIBaseURL = types.GitHubAPIBaseURL
+var updaterHTTPClient = requests.NewAPIClient()
+var updaterDownloadHTTPClient = requests.NewDownloadClient()
 
 func deleteOldTempInstallers() error {
 	files, err := os.ReadDir(os.TempDir())
@@ -36,12 +41,12 @@ func deleteOldTempInstallers() error {
 	return nil
 }
 
-func CheckForUpdates(ctx context.Context, progressFunc types.ProgressFunc, log logger.Logger) error {
+func CheckForUpdates(ctx context.Context, progressFunc types.ProgressFunc, log logger.Logger, githubToken string) error {
 	err := deleteOldTempInstallers()
 	if err != nil {
 		fmt.Printf("Error cleaning up old installers: %v\n", err)
 	}
-	versions, err := pullReleases(log)
+	versions, err := pullReleases(log, githubToken)
 	if err != nil {
 		fmt.Printf("Error checking for updates: %v\n", err)
 		return err
@@ -99,7 +104,9 @@ func CheckForUpdates(ctx context.Context, progressFunc types.ProgressFunc, log l
 }
 
 func downloadAndRunInstaller(downloadURL string, ctx context.Context, downloadProgress types.ProgressFunc) error {
-	resp, err := http.Get(downloadURL)
+	resp, err := requests.GetWithGithubToken(updaterDownloadHTTPClient, requests.GithubTokenRequestArgs{
+		URL: downloadURL,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to download installer from %q: %w", downloadURL, err)
 	}
@@ -201,25 +208,29 @@ func VersionIsNewerThanInstalled(version string) bool {
 	return false
 }
 
-func pullReleases(log logger.Logger) ([]types.RailyardVersionInfo, error) {
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/releases", constants.RAILYARD_REPO)
-	req, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create GitHub API request: %w", err)
-	}
-
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "Railyard-Desktop-App")
-
-	resp, err := http.DefaultClient.Do(req)
+func pullReleases(log logger.Logger, githubToken string) ([]types.RailyardVersionInfo, error) {
+	baseURL := strings.TrimRight(updaterGitHubAPIBaseURL, "/")
+	apiURL := fmt.Sprintf("%s/repos/%s/releases", baseURL, constants.RAILYARD_REPO)
+	resp, err := requests.GetWithGithubToken(updaterHTTPClient, requests.GithubTokenRequestArgs{
+		URL:            apiURL,
+		GitHubToken:    githubToken,
+		ForceAuthByToken: true,
+		Headers: map[string]string{
+			"Accept": "application/vnd.github+json",
+		},
+		OnTokenRejected: func(statusCode int) {
+			log.Warn("GitHub token rejected during updater check; retrying unauthenticated request", "status", statusCode)
+		},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch GitHub releases for %q: %w", constants.RAILYARD_REPO, err)
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
 		return nil, fmt.Errorf("GitHub API returned status %d for %q", resp.StatusCode, constants.RAILYARD_REPO)
 	}
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
 	if err != nil {
