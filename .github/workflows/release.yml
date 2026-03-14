@@ -107,7 +107,7 @@ jobs:
           echo -e $VERSION > internal/constants/version.txt
           cp build/linux/org.SBM.Railyard.yml .
           flatpak-builder --force-clean --repo="./out" build/build-linux org.SBM.Railyard.yml
-          flatpak build-bundle out railyard-${VERSION}-current-linux-amd64.flatpak org.SBM.Railyard
+          flatpak build-bundle out ./build/bin/railyard-${VERSION}-current-linux-amd64.flatpak org.SBM.Railyard
 
       - uses: actions/upload-artifact@v4
         with:
