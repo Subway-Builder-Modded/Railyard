@@ -46,21 +46,24 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 
 // UpdateAllSubscriptionsToLatest resolves the latest available registry versions for all current profile subscriptions,
 // updates those that are behind, persists updates to disk, and runs sync/install-uninstall routines.
-func (s *UserProfiles) UpdateAllSubscriptionsToLatest(profileID string) types.UpdateSubscriptionsResult {
-	s.logRequest("UpdateAllSubscriptionsToLatest", "profile_id", profileID)
+func (s *UserProfiles) UpdateAllSubscriptionsToLatest(req types.UpdateAllSubscriptionsToLatestRequest) types.UpdateAllSubscriptionsToLatestResult {
+	s.logRequest("UpdateAllSubscriptionsToLatest", "profile_id", req.ProfileID, "apply", req.Apply)
 
-	profile, requiredUpdates, resultWarnings, ok := s.resolveLatestUpdatesForProfile(profileID)
-	if !ok {
-		profileErr := userProfilesError(profileID, "", "", types.ErrorProfileNotFound, fmt.Sprintf("Profile %q not found", profileID))
-		return types.UpdateSubscriptionsResult{
+	profile, requiredUpdates, resultWarnings, profileErr := s.resolveLatestUpdatesForProfile(req.ProfileID)
+	if profileErr != nil {
+		return types.UpdateAllSubscriptionsToLatestResult{
 			GenericResponse: types.GenericResponse{
 				Status:  types.ResponseError,
 				Message: "Profile not found",
 			},
-			Profile:    profile,
-			Persisted:  false,
-			Operations: []types.SubscriptionOperation{},
-			Errors:     []types.UserProfilesError{profileErr},
+			ProfileID:    req.ProfileID,
+			HasUpdates:   false,
+			PendingCount: 0,
+			Applied:      false,
+			Profile:      types.UserProfile{},
+			Persisted:    false,
+			Operations:   []types.SubscriptionOperation{},
+			Errors:       []types.UserProfilesError{*profileErr},
 		}
 	}
 
@@ -75,103 +78,82 @@ func (s *UserProfiles) UpdateAllSubscriptionsToLatest(profileID string) types.Up
 		)
 	}
 
-	// If no updates are required, return early
-	if len(requiredUpdates) == 0 {
-		result := types.UpdateSubscriptionsResult{
-			GenericResponse: types.GenericResponse{
-				Status:  types.ResponseSuccess,
-				Message: "All subscriptions already at latest version; no updates applied",
-			},
-			Profile:    profile,
-			Persisted:  false,
-			Operations: []types.SubscriptionOperation{},
-			Errors:     resultWarnings,
+	pendingCount := len(requiredUpdates)
+	hasUpdates := pendingCount > 0
+
+	if !req.Apply || !hasUpdates {
+		status := types.ResponseSuccess
+		message := "Resolved subscription update availability"
+		if req.Apply && !hasUpdates {
+			message = "All subscriptions already at latest version; no updates applied"
 		}
 		if len(resultWarnings) > 0 {
-			result.Status = types.ResponseWarn
-			result.Message = fmt.Sprintf("no updates applied; skipped %d subscriptions during latest-version resolution", len(resultWarnings))
+			status = types.ResponseWarn
+			if req.Apply && !hasUpdates {
+				message = fmt.Sprintf("no updates applied; skipped %d subscriptions during latest-version resolution", len(resultWarnings))
+			} else {
+				message = fmt.Sprintf("Resolved update availability with %d warning(s)", len(resultWarnings))
+			}
 		}
-		return result
+
+		return types.UpdateAllSubscriptionsToLatestResult{
+			GenericResponse: types.GenericResponse{
+				Status:  status,
+				Message: message,
+			},
+			ProfileID:    req.ProfileID,
+			HasUpdates:   hasUpdates,
+			PendingCount: pendingCount,
+			Applied:      false,
+			Profile:      profile,
+			Persisted:    false,
+			Operations:   []types.SubscriptionOperation{},
+			Errors:       resultWarnings,
+		}
 	}
 
-	// Otherwise, run the UpdateSubscriptions flow with the pre-calculated updates
-	result := s.UpdateSubscriptions(types.UpdateSubscriptionsRequest{
-		ProfileID: profileID,
+	updateResult := s.UpdateSubscriptions(types.UpdateSubscriptionsRequest{
+		ProfileID: req.ProfileID,
 		Assets:    requiredUpdates,
 		Action:    types.SubscriptionActionSubscribe,
 		ForceSync: true,
 	})
 
+	status := updateResult.Status
+	message := updateResult.Message
+	errors := updateResult.Errors
 	if len(resultWarnings) > 0 {
-		if result.Status == types.ResponseSuccess {
-			result.Status = types.ResponseWarn
+		if status == types.ResponseSuccess {
+			status = types.ResponseWarn
 		}
-		result.Message = fmt.Sprintf("Updated %d subscriptions; skipped %d subscriptions during latest-version resolution", len(result.Operations), len(resultWarnings))
-		result.Errors = append(result.Errors, resultWarnings...)
+		message = fmt.Sprintf("Updated %d subscriptions; skipped %d subscriptions during latest-version resolution", len(updateResult.Operations), len(resultWarnings))
+		errors = append(errors, resultWarnings...)
 	}
 
-	return result
-}
-
-func (s *UserProfiles) HasSubscriptionUpdates(profileID string) types.SubscriptionUpdatesAvailabilityResult {
-	s.logRequest("HasSubscriptionUpdates", "profile_id", profileID)
-
-	_, requiredUpdates, warnings, ok := s.resolveLatestUpdatesForProfile(profileID)
-	if !ok {
-		profileErr := userProfilesError(profileID, "", "", types.ErrorProfileNotFound, fmt.Sprintf("Profile %q not found", profileID))
-		return types.SubscriptionUpdatesAvailabilityResult{
-			GenericResponse: types.GenericResponse{
-				Status:  types.ResponseError,
-				Message: "Profile not found",
-			},
-			ProfileID:    profileID,
-			HasUpdates:   false,
-			PendingCount: 0,
-			Errors:       []types.UserProfilesError{profileErr},
-		}
-	}
-
-	hasUpdates := len(requiredUpdates) > 0
-
-	result := types.SubscriptionUpdatesAvailabilityResult{
+	return types.UpdateAllSubscriptionsToLatestResult{
 		GenericResponse: types.GenericResponse{
-			Status:  types.ResponseSuccess,
-			Message: "Resolved subscription update availability",
+			Status:  status,
+			Message: message,
 		},
-		ProfileID:    profileID,
+		ProfileID:    req.ProfileID,
 		HasUpdates:   hasUpdates,
-		PendingCount: len(requiredUpdates),
-		Errors:       warnings,
+		PendingCount: pendingCount,
+		Applied:      true,
+		Profile:      updateResult.Profile,
+		Persisted:    updateResult.Persisted,
+		Operations:   updateResult.Operations,
+		Errors:       errors,
 	}
-
-	if len(warnings) > 0 {
-		result.Status = types.ResponseWarn
-		result.Message = fmt.Sprintf("Resolved update availability with %d warning(s)", len(warnings))
-	}
-
-	return result
 }
 
-func (s *UserProfiles) snapshotProfileSubscriptions(profileID string) (types.UserProfile, bool) {
-	s.mu.Lock()
-	profile, ok := s.state.Profiles[profileID]
-	if ok {
-		profile.Subscriptions.Maps = utils.CloneMap(profile.Subscriptions.Maps)
-		profile.Subscriptions.Mods = utils.CloneMap(profile.Subscriptions.Mods)
-	}
-	s.mu.Unlock()
-
-	return profile, ok
-}
-
-func (s *UserProfiles) resolveLatestUpdatesForProfile(profileID string) (types.UserProfile, map[string]types.SubscriptionUpdateItem, []types.UserProfilesError, bool) {
-	profile, ok := s.snapshotProfileSubscriptions(profileID)
-	if !ok {
-		return profile, map[string]types.SubscriptionUpdateItem{}, []types.UserProfilesError{}, false
+func (s *UserProfiles) resolveLatestUpdatesForProfile(profileID string) (types.UserProfile, map[string]types.SubscriptionUpdateItem, []types.UserProfilesError, *types.UserProfilesError) {
+	profile, profileErr := s.snapshotProfile(profileID)
+	if profileErr != nil {
+		return types.UserProfile{}, map[string]types.SubscriptionUpdateItem{}, []types.UserProfilesError{}, profileErr
 	}
 
 	requiredUpdates, warnings := s.resolveLatestSubscriptionUpdates(profileID, profile)
-	return profile, requiredUpdates, warnings, true
+	return profile, requiredUpdates, warnings, nil
 }
 
 // ===== Registry Helpers ===== //
@@ -289,9 +271,8 @@ func resolveLatestVersionForManifest(
 
 func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsRequest) types.UpdateSubscriptionsResult {
 	stateCopy := copyProfilesState(s.state)
-	profile, ok := stateCopy.Profiles[req.ProfileID]
-	if !ok {
-		profileErr := userProfilesError(req.ProfileID, "", "", types.ErrorProfileNotFound, fmt.Sprintf("Profile %q not found", req.ProfileID))
+	profile, profileErr := profileFromState(stateCopy, req.ProfileID)
+	if profileErr != nil {
 		s.Logger.Error("Profile not found", profileErr, "profile_id", req.ProfileID)
 		return newUpdateSubscriptionsResult(
 			types.ResponseError,
@@ -299,7 +280,7 @@ func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsR
 			types.UserProfile{},
 			false,
 			[]types.SubscriptionOperation{},
-			[]types.UserProfilesError{profileErr},
+			[]types.UserProfilesError{*profileErr},
 		)
 	}
 

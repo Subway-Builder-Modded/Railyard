@@ -6,30 +6,21 @@ import (
 
 	"railyard/internal/logger"
 	"railyard/internal/types"
-	"railyard/internal/utils"
 )
 
 // SyncSubscriptions iterates through a profile's subscriptions and attempts to reconcile the state of asset installation on disk to the desired state in the profile by installing/uninstalling maps and mods as needed.
 func (s *UserProfiles) SyncSubscriptions(profileID string) types.SyncSubscriptionsResult {
 	s.logRequest("SyncSubscriptions", "profile_id", profileID)
 
-	s.mu.Lock()
-	profile, ok := s.state.Profiles[profileID]
-	// Read a snapshot of current subscriptions at invocation time.
-	profile.Subscriptions.Maps = utils.CloneMap(profile.Subscriptions.Maps)
-	profile.Subscriptions.Mods = utils.CloneMap(profile.Subscriptions.Mods)
-	s.mu.Unlock()
-
-	// This should not occur under calls from UpdateSubscriptions (or the startup call).
-	if !ok {
-		profileErr := userProfilesError(profileID, "", "", types.ErrorProfileNotFound, fmt.Sprintf("Profile %q not found", profileID))
+	profile, profileErr := s.snapshotProfile(profileID)
+	if profileErr != nil {
 		s.Logger.Error("Profile not found for sync", profileErr, "profile_id", profileID)
 		return newSyncSubscriptionsResult(
 			types.ResponseError,
 			"Profile not found for sync",
 			profileID,
 			[]types.SubscriptionOperation{},
-			[]types.UserProfilesError{profileErr},
+			[]types.UserProfilesError{*profileErr},
 		)
 	}
 
@@ -294,7 +285,7 @@ func (s *UserProfiles) applyPurgeOperations(profileID string, args []assetPurgeA
 	profile, ok := s.state.Profiles[profileID]
 	if !ok {
 		// This really should not happen unless the user is able to delete profiles while a sync is in-flight
-		err := userProfilesError(profileID, "", "", types.ErrorProfileNotFound, fmt.Sprintf("Profile %q not found during purge", profileID))
+		err := profileNotFoundError(profileID)
 		return []types.SubscriptionOperation{}, []types.UserProfilesError{err}
 	}
 

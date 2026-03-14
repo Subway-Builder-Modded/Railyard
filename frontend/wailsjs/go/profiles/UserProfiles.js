@@ -10,10 +10,6 @@ export function GetActiveProfile() {
   return window['go']['profiles']['UserProfiles']['GetActiveProfile']();
 }
 
-export function HasSubscriptionUpdates(arg1) {
-  return window['go']['profiles']['UserProfiles']['HasSubscriptionUpdates'](arg1);
-}
-
 export function LoadProfiles() {
   return window['go']['profiles']['UserProfiles']['LoadProfiles']();
 }

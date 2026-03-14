@@ -10,6 +10,7 @@ import (
 	"railyard/internal/logger"
 	"railyard/internal/registry"
 	"railyard/internal/types"
+	"railyard/internal/utils"
 )
 
 type UserProfiles struct {
@@ -93,6 +94,33 @@ func userProfilesError(profileID, assetID string, assetType types.AssetType, err
 		ErrorType: errorType,
 		Message:   strings.TrimSpace(message),
 	}
+}
+
+func profileNotFoundError(profileID string) types.UserProfilesError {
+	return userProfilesError(profileID, "", "", types.ErrorProfileNotFound, fmt.Sprintf("Profile %q not found", profileID))
+}
+
+func profileFromState(state types.UserProfilesState, profileID string) (types.UserProfile, *types.UserProfilesError) {
+	profile, ok := state.Profiles[profileID]
+	if !ok {
+		err := profileNotFoundError(profileID)
+		return types.UserProfile{}, &err
+	}
+	return profile, nil
+}
+
+func (s *UserProfiles) snapshotProfile(profileID string) (types.UserProfile, *types.UserProfilesError) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	profile, profileErr := profileFromState(s.state, profileID)
+	if profileErr != nil {
+		return types.UserProfile{}, profileErr
+	}
+
+	profile.Subscriptions.Maps = utils.CloneMap(profile.Subscriptions.Maps)
+	profile.Subscriptions.Mods = utils.CloneMap(profile.Subscriptions.Mods)
+	return profile, nil
 }
 
 func updateSubscriptionError(profileID, assetID string, assetType types.AssetType, errorType types.UserProfilesErrorType, err error) types.UserProfilesError {

@@ -646,6 +646,20 @@ export namespace types {
 	        this.type = source["type"];
 	    }
 	}
+	export class Subscriptions {
+	    maps: Record<string, string>;
+	    mods: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new Subscriptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.maps = source["maps"];
+	        this.mods = source["mods"];
+	    }
+	}
 	export class UserProfilesError {
 	    profileId: string;
 	    assetId: string;
@@ -664,60 +678,6 @@ export namespace types {
 	        this.assetType = source["assetType"];
 	        this.errorType = source["errorType"];
 	        this.message = source["message"];
-	    }
-	}
-	export class SubscriptionUpdatesAvailabilityResult {
-	    status: string;
-	    message: string;
-	    profileId: string;
-	    hasUpdates: boolean;
-	    pendingCount: number;
-	    errors: UserProfilesError[];
-	
-	    static createFrom(source: any = {}) {
-	        return new SubscriptionUpdatesAvailabilityResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.status = source["status"];
-	        this.message = source["message"];
-	        this.profileId = source["profileId"];
-	        this.hasUpdates = source["hasUpdates"];
-	        this.pendingCount = source["pendingCount"];
-	        this.errors = this.convertValues(source["errors"], UserProfilesError);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class Subscriptions {
-	    maps: Record<string, string>;
-	    mods: Record<string, string>;
-	
-	    static createFrom(source: any = {}) {
-	        return new Subscriptions(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.maps = source["maps"];
-	        this.mods = source["mods"];
 	    }
 	}
 	export class SyncSubscriptionsResult {
@@ -784,42 +744,19 @@ export namespace types {
 	        this.defaultPerPage = source["defaultPerPage"];
 	    }
 	}
-	
-	export class UpdateSubscriptionsRequest {
+	export class UpdateAllSubscriptionsToLatestRequest {
 	    profileId: string;
-	    assets: Record<string, SubscriptionUpdateItem>;
-	    action: string;
-	    forceSync: boolean;
+	    apply: boolean;
 	
 	    static createFrom(source: any = {}) {
-	        return new UpdateSubscriptionsRequest(source);
+	        return new UpdateAllSubscriptionsToLatestRequest(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.profileId = source["profileId"];
-	        this.assets = this.convertValues(source["assets"], SubscriptionUpdateItem, true);
-	        this.action = source["action"];
-	        this.forceSync = source["forceSync"];
+	        this.apply = source["apply"];
 	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class UserProfile {
 	    id: string;
@@ -843,6 +780,91 @@ export namespace types {
 	        this.systemPreferences = this.convertValues(source["systemPreferences"], SystemPreferences);
 	        this.subscriptions = this.convertValues(source["subscriptions"], Subscriptions);
 	        this.favorites = this.convertValues(source["favorites"], Favorites);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class UpdateAllSubscriptionsToLatestResult {
+	    status: string;
+	    message: string;
+	    profileId: string;
+	    hasUpdates: boolean;
+	    pendingCount: number;
+	    applied: boolean;
+	    profile: UserProfile;
+	    persisted: boolean;
+	    operations: SubscriptionOperation[];
+	    errors: UserProfilesError[];
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateAllSubscriptionsToLatestResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.profileId = source["profileId"];
+	        this.hasUpdates = source["hasUpdates"];
+	        this.pendingCount = source["pendingCount"];
+	        this.applied = source["applied"];
+	        this.profile = this.convertValues(source["profile"], UserProfile);
+	        this.persisted = source["persisted"];
+	        this.operations = this.convertValues(source["operations"], SubscriptionOperation);
+	        this.errors = this.convertValues(source["errors"], UserProfilesError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class UpdateSubscriptionsRequest {
+	    profileId: string;
+	    assets: Record<string, SubscriptionUpdateItem>;
+	    action: string;
+	    forceSync: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateSubscriptionsRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.profileId = source["profileId"];
+	        this.assets = this.convertValues(source["assets"], SubscriptionUpdateItem, true);
+	        this.action = source["action"];
+	        this.forceSync = source["forceSync"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

@@ -79,6 +79,11 @@ type UpdateSubscriptionsRequest struct {
 	ForceSync bool                              `json:"forceSync"`
 }
 
+type UpdateAllSubscriptionsToLatestRequest struct {
+	ProfileID string `json:"profileId"`
+	Apply     bool   `json:"apply"`
+}
+
 type SubscriptionOperation struct {
 	AssetID string             `json:"assetId"`
 	Type    AssetType          `json:"type"`
@@ -137,12 +142,16 @@ type SyncSubscriptionsResult struct {
 	Errors     []UserProfilesError     `json:"errors"`
 }
 
-type SubscriptionUpdatesAvailabilityResult struct {
+type UpdateAllSubscriptionsToLatestResult struct {
 	GenericResponse
-	ProfileID     string              `json:"profileId"`
-	HasUpdates    bool                `json:"hasUpdates"`
-	PendingCount  int                 `json:"pendingCount"`
-	Errors        []UserProfilesError `json:"errors"`
+	ProfileID    string                  `json:"profileId"`
+	HasUpdates   bool                    `json:"hasUpdates"`
+	PendingCount int                     `json:"pendingCount"`
+	Applied      bool                    `json:"applied"`
+	Profile      UserProfile             `json:"profile"`
+	Persisted    bool                    `json:"persisted"`
+	Operations   []SubscriptionOperation `json:"operations"`
+	Errors       []UserProfilesError     `json:"errors"`
 }
 
 // UserProfile represents a profile within the application.

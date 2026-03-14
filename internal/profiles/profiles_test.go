@@ -585,6 +585,9 @@ func TestUpdateSubscriptionsForceSyncErrors(t *testing.T) {
 func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 	type expectation struct {
 		expectedStatus          types.Status
+		expectedHasUpdates      bool
+		expectedPendingCount    int
+		expectedApplied         bool
 		expectedPersisted       bool
 		expectedOperationByID   map[string]string
 		expectedMapSubscription string
@@ -597,14 +600,16 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 	testCases := []struct {
 		name         string
 		profileID    string
+		apply        bool
 		state        types.UserProfilesState
 		setup        func(t *testing.T, cfg *config.Config, reg *registry.Registry) func()
 		expected     expectation
-		assertResult func(t *testing.T, svc *UserProfiles, reg *registry.Registry, result types.UpdateSubscriptionsResult)
+		assertResult func(t *testing.T, svc *UserProfiles, reg *registry.Registry, result types.UpdateAllSubscriptionsToLatestResult)
 	}{
 		{
 			name:      "Updates map and mod to latest semver and syncs",
 			profileID: types.DefaultProfileID,
+			apply:     true,
 			state: func() types.UserProfilesState {
 				state := types.InitialProfilesState()
 				profile := state.Profiles[types.DefaultProfileID]
@@ -632,13 +637,16 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 			},
 			expected: expectation{
 				expectedStatus:          types.ResponseSuccess,
+				expectedHasUpdates:      true,
+				expectedPendingCount:    2,
+				expectedApplied:         true,
 				expectedPersisted:       true,
 				expectedOperationByID:   map[string]string{"map-a": "2.0.0", "mod-a": "1.5.0"},
 				expectedMapSubscription: "2.0.0", // middle version is skipped
 				expectedModID:           "mod-a",
 				expectedModSubscription: "1.5.0",
 			},
-			assertResult: func(t *testing.T, _ *UserProfiles, reg *registry.Registry, _ types.UpdateSubscriptionsResult) {
+			assertResult: func(t *testing.T, _ *UserProfiles, reg *registry.Registry, _ types.UpdateAllSubscriptionsToLatestResult) {
 				t.Helper()
 				require.Len(t, reg.GetInstalledMaps(), 1)
 				require.Equal(t, "map-a", reg.GetInstalledMaps()[0].ID)
@@ -651,6 +659,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 		{
 			name:      "No-op when all subscriptions are up-to-date",
 			profileID: types.DefaultProfileID,
+			apply:     true,
 			state: func() types.UserProfilesState {
 				state := types.InitialProfilesState()
 				profile := state.Profiles[types.DefaultProfileID]
@@ -677,6 +686,9 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 			},
 			expected: expectation{
 				expectedStatus:          types.ResponseSuccess,
+				expectedHasUpdates:      false,
+				expectedPendingCount:    0,
+				expectedApplied:         false,
 				expectedPersisted:       false,
 				expectedOperationByID:   map[string]string{},
 				expectedMapSubscription: "2.0.0",
@@ -687,6 +699,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 		{
 			name:      "Lookup failures warn but do not prevent request completion",
 			profileID: types.DefaultProfileID,
+			apply:     true,
 			state: func() types.UserProfilesState {
 				state := types.InitialProfilesState()
 				profile := state.Profiles[types.DefaultProfileID]
@@ -711,6 +724,9 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 			},
 			expected: expectation{
 				expectedStatus:          types.ResponseWarn,
+				expectedHasUpdates:      true,
+				expectedPendingCount:    1,
+				expectedApplied:         true,
 				expectedPersisted:       true, // state is updated for map-a but not mod-missing
 				expectedOperationByID:   map[string]string{"map-a": "1.1.0"},
 				expectedMapSubscription: "1.1.0",
@@ -722,6 +738,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 		{
 			name:      "All lookups fail returns warning and no operations but requests completes",
 			profileID: types.DefaultProfileID,
+			apply:     true,
 			state: func() types.UserProfilesState {
 				state := types.InitialProfilesState()
 				profile := state.Profiles[types.DefaultProfileID]
@@ -736,6 +753,9 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 			},
 			expected: expectation{
 				expectedStatus:          types.ResponseWarn,
+				expectedHasUpdates:      false,
+				expectedPendingCount:    0,
+				expectedApplied:         false,
 				expectedPersisted:       false, // no state updates occur
 				expectedOperationByID:   map[string]string{},
 				expectedMapSubscription: "1.0.0",
@@ -747,6 +767,7 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 		{
 			name:      "Sync failure is propagated as error",
 			profileID: types.DefaultProfileID,
+			apply:     true,
 			state: func() types.UserProfilesState {
 				state := types.InitialProfilesState()
 				profile := state.Profiles[types.DefaultProfileID]
@@ -767,10 +788,53 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 			},
 			expected: expectation{
 				expectedStatus:          types.ResponseError,
+				expectedHasUpdates:      true,
+				expectedPendingCount:    1,
+				expectedApplied:         true,
 				expectedPersisted:       true, // state is updated to desired but sync fails
 				expectedOperationByID:   map[string]string{"map-a": "1.1.0"},
 				expectedMapSubscription: "1.1.0",
 				expectedErrContains:     `Failed sync action: subscribe map "map-a" failed`,
+			},
+		},
+		{
+			name:      "Check mode reports pending updates without applying",
+			profileID: types.DefaultProfileID,
+			apply:     false,
+			state: func() types.UserProfilesState {
+				state := types.InitialProfilesState()
+				profile := state.Profiles[types.DefaultProfileID]
+				profile.Subscriptions.Maps["map-a"] = "1.0.0"
+				profile.Subscriptions.Mods["mod-a"] = "1.0.0"
+				state.Profiles[types.DefaultProfileID] = profile
+				return state
+			}(),
+			setup: func(t *testing.T, _ *config.Config, reg *registry.Registry) func() {
+				t.Helper()
+				return mockRegistry(t, reg, []registryFixture{
+					{
+						assetID:   "map-a",
+						assetType: types.AssetTypeMap,
+						versions:  []string{"1.0.0", "1.2.0"},
+						mapCode:   "AAA",
+					},
+					{
+						assetID:   "mod-a",
+						assetType: types.AssetTypeMod,
+						versions:  []string{"1.0.0", "1.5.0"},
+					},
+				})
+			},
+			expected: expectation{
+				expectedStatus:          types.ResponseSuccess,
+				expectedHasUpdates:      true,
+				expectedPendingCount:    2,
+				expectedApplied:         false,
+				expectedPersisted:       false,
+				expectedOperationByID:   map[string]string{},
+				expectedMapSubscription: "1.0.0",
+				expectedModID:           "mod-a",
+				expectedModSubscription: "1.0.0",
 			},
 		},
 	}
@@ -787,8 +851,14 @@ func TestUpdateAllSubscriptionsToLatest(t *testing.T) {
 				defer cleanup()
 			}
 
-			result := svc.UpdateAllSubscriptionsToLatest(tc.profileID)
+			result := svc.UpdateAllSubscriptionsToLatest(types.UpdateAllSubscriptionsToLatestRequest{
+				ProfileID: tc.profileID,
+				Apply:     tc.apply,
+			})
 			require.Equal(t, tc.expected.expectedStatus, result.Status)
+			require.Equal(t, tc.expected.expectedHasUpdates, result.HasUpdates)
+			require.Equal(t, tc.expected.expectedPendingCount, result.PendingCount)
+			require.Equal(t, tc.expected.expectedApplied, result.Applied)
 			if tc.expected.expectedErrContains != "" {
 				require.NotEmpty(t, result.Errors)
 				found := false
