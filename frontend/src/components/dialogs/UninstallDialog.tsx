@@ -36,7 +36,7 @@ export function UninstallDialog({
   name,
   targets,
 }: UninstallDialogProps) {
-  const { uninstallMod, uninstallMap } = useInstalledStore();
+  const { uninstallAssets } = useInstalledStore();
   const [loading, setLoading] = useState(false);
 
   const uninstallTargets: UninstallTarget[] = targets
@@ -53,13 +53,10 @@ export function UninstallDialog({
 
     setLoading(true);
     try {
-      for (const target of uninstallTargets) {
-        if (target.type === "mod") {
-          await uninstallMod(target.id);
-        } else {
-          await uninstallMap(target.id);
-        }
-      }
+      await uninstallAssets(uninstallTargets.map((target) => ({
+        id: target.id,
+        type: target.type,
+      })));
 
       toast.success(
         itemCount === 1

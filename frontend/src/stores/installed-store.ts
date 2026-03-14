@@ -47,6 +47,7 @@ interface InstalledState {
   installMap: (id: string, version: string) => Promise<types.UpdateSubscriptionsResult>;
   uninstallMod: (id: string) => Promise<types.UpdateSubscriptionsResult>;
   uninstallMap: (id: string) => Promise<types.UpdateSubscriptionsResult>;
+  uninstallAssets: (assets: Array<{ id: string; type: AssetType }>) => Promise<types.UpdateSubscriptionsResult>;
   isInstalled: (id: string) => boolean;
   getInstalledVersion: (id: string) => string | null;
   isOperating: (id: string) => boolean;
@@ -80,24 +81,40 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
     });
   };
 
+  const setOperationStateForIds = (
+    key: "installing" | "uninstalling",
+    ids: string[],
+    active: boolean,
+  ) => {
+    set((state) => {
+      const next = new Set(state[key]);
+      for (const id of ids) {
+        if (active) {
+          next.add(id);
+        } else {
+          next.delete(id);
+        }
+      }
+
+      return { [key]: next } as Pick<InstalledState, typeof key>;
+    });
+  };
+
   const applySubscriptionMutation = async (
-    id: string,
-    version: string,
-    assetType: AssetType,
+    assets: Record<string, types.SubscriptionUpdateItem>,
     action: "subscribe" | "unsubscribe",
   ) => {
+    if (Object.keys(assets).length === 0) {
+      throw new Error("No assets provided for subscription update");
+    }
+
     const activeProfileResult = await GetActiveProfile();
     if (activeProfileResult.status !== "success") {
       throw new Error(activeProfileResult.message || "Failed to resolve active profile");
     }
     const request = new types.UpdateSubscriptionsRequest({
       profileId: activeProfileResult.profile.id,
-      assets: {
-        [id]: new types.SubscriptionUpdateItem({
-          version,
-          type: assetType,
-        }),
-      },
+      assets,
       action,
       forceSync: true,
     });
@@ -122,7 +139,15 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
     set({ error: null });
 
     try {
-      const response = await applySubscriptionMutation(id, version, assetType, "subscribe");
+      const response = await applySubscriptionMutation(
+        {
+          [id]: new types.SubscriptionUpdateItem({
+            version,
+            type: assetType,
+          }),
+        },
+        "subscribe",
+      );
       set({ ...await getInstalledLists() });
       return response;
     } catch (err) {
@@ -134,22 +159,37 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
     }
   };
 
-  const uninstallAsset = async (
-    id: string,
-    assetType: AssetType,
+  const uninstallAssets = async (
+    assets: Array<{ id: string; type: AssetType }>,
   ) => {
-    setOperationState("uninstalling", id, true);
+    if (assets.length === 0) {
+      throw new Error("No assets provided for uninstall");
+    }
+
+    const ids = assets.map((asset) => asset.id);
+    const subscriptionAssets = assets.reduce<Record<string, types.SubscriptionUpdateItem>>(
+      (accumulator, asset) => {
+        accumulator[asset.id] = new types.SubscriptionUpdateItem({
+          version: "",
+          type: asset.type,
+        });
+        return accumulator;
+      },
+      {},
+    );
+
+    setOperationStateForIds("uninstalling", ids, true);
     set({ error: null });
 
     try {
-      const response = await applySubscriptionMutation(id, "", assetType, "unsubscribe");
+      const response = await applySubscriptionMutation(subscriptionAssets, "unsubscribe");
       set({ ...await getInstalledLists() });
       return response;
     } catch (err) {
       set({ error: err instanceof Error ? err.message : String(err) });
       throw err;
     } finally {
-      setOperationState("uninstalling", id, false);
+      setOperationStateForIds("uninstalling", ids, false);
     }
   };
 
@@ -188,10 +228,12 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
     installAsset(id, version, "map"),
 
   uninstallMod: (id: string) =>
-    uninstallAsset(id, "mod"),
+    uninstallAssets([{ id, type: "mod" }]),
 
   uninstallMap: (id: string) =>
-    uninstallAsset(id, "map"),
+    uninstallAssets([{ id, type: "map" }]),
+
+  uninstallAssets,
 
   isInstalled: (id: string) => {
     const { installedMods, installedMaps } = get();

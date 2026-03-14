@@ -44,8 +44,8 @@ const typeOptions: Array<{
   label: string;
   icon: typeof MapPin;
 }> = [
-  { value: "mod", label: "Mods", icon: Package },
   { value: "map", label: "Maps", icon: MapPin },
+  { value: "mod", label: "Mods", icon: Package },
 ];
 
 export function LibrarySidebar({
