@@ -22,16 +22,15 @@ import (
 	"railyard/internal/requests"
 	"railyard/internal/types"
 
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"go.yaml.in/yaml/v4"
 )
 
 type ExtractProgressFunc func(itemId string, extracted int64, total int64)
 type CancelledFunc func(itemID string, assetType types.AssetType, phase string)
+type RegistryUpdateFunc func()
 
 // TODO: Consider adding this as an injectable dependency for other services
 var downloaderHTTPClient = requests.NewDownloadClient()
-var emitRuntimeEvent = wailsruntime.EventsEmit
 
 type Downloader struct {
 	tempPath          string
@@ -42,6 +41,7 @@ type Downloader struct {
 	OnProgress        types.ProgressFunc
 	OnExtractProgress ExtractProgressFunc
 	OnCancelled       CancelledFunc
+	OnRegistryUpdate  RegistryUpdateFunc
 
 	downloadMu   sync.Mutex
 	downloadCond *sync.Cond
@@ -50,7 +50,6 @@ type Downloader struct {
 	pending map[downloadQueueKey]*downloadOperation
 	// Track running operations to prevent concurrent operations for the same asset
 	running map[downloadQueueKey]*downloadOperation
-	ctx     context.Context
 }
 
 // downloadQueueKey is used to coalesce download operations for a specific asset (mod/map) ensuring that only one operation is in process or queued at a given time
@@ -84,9 +83,8 @@ const (
 )
 
 const (
-	downloadCancelledEventName = "download:cancelled"
-	cancelledPhaseQueued       = "queued"
-	cancelledPhaseRunning      = "running"
+	cancelledPhaseQueued  = "queued"
+	cancelledPhaseRunning = "running"
 )
 
 func isValidOperationAction(action operationAction) bool {
@@ -109,10 +107,6 @@ func NewDownloader(cfg *config.Config, reg *registry.Registry, l logger.Logger) 
 	}
 	d.startQueue()
 	return d
-}
-
-func (d *Downloader) SetContext(ctx context.Context) {
-	d.ctx = ctx
 }
 
 // startQueue initializes the download queue and starts the worker goroutine if it hasn't been started yet.
@@ -157,15 +151,10 @@ func (d *Downloader) runQueue() {
 
 		op.completed <- result
 		close(op.completed)
-		d.emitEvent("registry:update") // Emit update event after each operation completes to trigger UI refresh
+		if d.OnRegistryUpdate != nil {
+			d.OnRegistryUpdate() // Trigger UI refresh after each operation completes.
+		}
 	}
-}
-
-func (d *Downloader) emitEvent(eventName string, data ...any) {
-	if d.ctx == nil {
-		return
-	}
-	emitRuntimeEvent(d.ctx, eventName, data...)
 }
 
 func (d *Downloader) emitDownloadCancelled(assetType types.AssetType, assetID, phase string) {

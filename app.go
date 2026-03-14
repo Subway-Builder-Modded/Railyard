@@ -99,7 +99,6 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.setStartupReady(false)
 	a.ctx = ctx
-	a.Downloader.SetContext(ctx)
 	a.Config.SetContext(ctx)
 	a.Downloader.OnExtractProgress = func(itemId string, extracted int64, total int64) {
 		wailsruntime.EventsEmit(ctx, "extract:progress", map[string]interface{}{
@@ -121,6 +120,9 @@ func (a *App) startup(ctx context.Context) {
 			"assetType": string(assetType),
 			"phase":     phase,
 		})
+	}
+	a.Downloader.OnRegistryUpdate = func() {
+		wailsruntime.EventsEmit(ctx, "registry:update")
 	}
 	if _, err := a.Config.ResolveConfig(); err != nil {
 		log.Printf("Warning: failed to resolve config on startup: %v", err)
