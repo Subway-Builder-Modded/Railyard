@@ -307,7 +307,8 @@ func TestEnqueueOperationRunsSequentially(t *testing.T) {
 }
 
 func TestInstallMapForExistingIsNoOp(t *testing.T) {
-	reg := registry.NewRegistry(testRegistryLogSink{})
+	cfg := config.NewConfig()
+	reg := registry.NewRegistry(testRegistryLogSink{}, cfg)
 	expectedConfig := types.ConfigData{
 		Code:        "ABC",
 		Name:        "Map A",
@@ -319,6 +320,7 @@ func TestInstallMapForExistingIsNoOp(t *testing.T) {
 
 	d := &Downloader{
 		Registry: reg,
+		Config:   cfg,
 		Logger:   logger.LoggerAtPath(""),
 	}
 
@@ -330,10 +332,11 @@ func TestInstallMapForExistingIsNoOp(t *testing.T) {
 }
 
 func TestInstallModPreservesNoOpThroughStateMutation(t *testing.T) {
-	reg := registry.NewRegistry(testRegistryLogSink{})
+	cfg := config.NewConfig()
+	reg := registry.NewRegistry(testRegistryLogSink{}, cfg)
 	d := &Downloader{
 		Registry: reg,
-		Config:   config.NewConfig(),
+		Config:   cfg,
 		Logger:   logger.LoggerAtPath(""),
 	}
 
@@ -440,8 +443,8 @@ func TestInstallAssetError(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			reg := registry.NewRegistry(testRegistryLogSink{})
 			cfg := config.NewConfig()
+			reg := registry.NewRegistry(testRegistryLogSink{}, cfg)
 			d := &Downloader{
 				Registry: reg,
 				Config:   cfg,
@@ -501,8 +504,8 @@ func TestInstallAssetSuccess(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			reg := registry.NewRegistry(testRegistryLogSink{})
 			cfg := config.NewConfig()
+			reg := registry.NewRegistry(testRegistryLogSink{}, cfg)
 			configureDownloaderConfig(t, cfg)
 			d := &Downloader{
 				Registry: reg,
@@ -549,10 +552,12 @@ func TestDownloadTempZipGithubAuthFallback(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestCount++
 		if requestCount == 1 {
+			// On first request, return a 403 on the Github token based request
 			require.Equal(t, "Bearer ghp_test_token", r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
+		// Validate that an unauthenticated request is made on retry
 		require.Empty(t, r.Header.Get("Authorization"))
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("zip-content"))

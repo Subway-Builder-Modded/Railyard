@@ -49,7 +49,7 @@ func userProfilesServiceWithDependencies(t *testing.T) (*UserProfiles, *config.C
 	t.Helper()
 	cfg := config.NewConfig()
 	l := testUserProfilesLogger(t)
-	reg := registry.NewRegistry(l)
+	reg := registry.NewRegistry(l, cfg)
 	dl := downloader.NewDownloader(cfg, reg, l)
 	return NewUserProfiles(reg, dl, l, cfg), cfg, reg
 }

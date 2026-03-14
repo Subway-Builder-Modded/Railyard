@@ -104,10 +104,10 @@ func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
 }
 
 func (r *Registry) getGithubToken() string {
-	if r.githubTokenGetter == nil {
+	if r.config == nil {
 		return ""
 	}
-	return r.githubTokenGetter()
+	return r.config.GetGithubToken()
 }
 
 func (r *Registry) doGitHubRequestWithOptionalToken(apiURL, repo string) (*http.Response, error) {

@@ -7,13 +7,14 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"railyard/internal/config"
 	"railyard/internal/types"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestFilterSemverVersions(t *testing.T) {
-	reg := NewRegistry(testLogSink{})
+	reg := NewRegistry(testLogSink{}, config.NewConfig())
 	filtered := reg.filterSemverVersions([]types.VersionInfo{
 		{Version: "1.2.3"},
 		{Version: "v2.3.4"},
@@ -30,7 +31,10 @@ func TestFilterSemverVersions(t *testing.T) {
 }
 
 func TestGetGitHubVersionsAuthFallbackAndCache(t *testing.T) {
-	reg := NewRegistry(testLogSink{})
+	cfg := config.NewConfig()
+	_, err := cfg.UpdateGithubToken("ghp_test_token")
+	require.NoError(t, err)
+	reg := NewRegistry(testLogSink{}, cfg)
 
 	var requestCount int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -51,8 +55,6 @@ func TestGetGitHubVersionsAuthFallbackAndCache(t *testing.T) {
 	defer server.Close()
 
 	reg.githubAPIBaseURL = server.URL
-	reg.SetGithubTokenGetter(func() string { return "ghp_test_token" })
-
 	versions, err := reg.GetVersions("github", "owner/repo")
 	require.NoError(t, err)
 	require.Len(t, versions, 1)
@@ -67,7 +69,7 @@ func TestGetGitHubVersionsAuthFallbackAndCache(t *testing.T) {
 }
 
 func TestClearVersionsCache(t *testing.T) {
-	reg := NewRegistry(testLogSink{})
+	reg := NewRegistry(testLogSink{}, config.NewConfig())
 	reg.setCachedVersions("github|owner/repo", []types.VersionInfo{{Version: "v1.0.0"}})
 
 	_, ok := reg.getCachedVersions("github|owner/repo")

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"railyard/internal/config"
 	"railyard/internal/paths"
 	"railyard/internal/types"
 )
@@ -23,31 +24,32 @@ type logSink interface {
 
 // Registry manages the local clone of The Railyard registry repository.
 type Registry struct {
-	repoPath          string
-	httpClient        *http.Client
-	logger            logSink
-	githubAPIBaseURL  string
-	githubTokenGetter func() string
-	mods              []types.ModManifest
-	maps              []types.MapManifest
-	downloadCounts    map[types.AssetType]map[string]map[string]int
-	versionsCache     map[string][]types.VersionInfo
-	versionsCacheMu   sync.RWMutex
-	installedMods     []types.InstalledModInfo
-	installedMaps     []types.InstalledMapInfo
-	integrityMaps     types.RegistryIntegrityReport
-	integrityMods     types.RegistryIntegrityReport
+	repoPath         string
+	httpClient       *http.Client
+	logger           logSink
+	config           *config.Config
+	githubAPIBaseURL string
+	mods             []types.ModManifest
+	maps             []types.MapManifest
+	downloadCounts   map[types.AssetType]map[string]map[string]int
+	versionsCache    map[string][]types.VersionInfo
+	versionsCacheMu  sync.RWMutex
+	installedMods    []types.InstalledModInfo
+	installedMaps    []types.InstalledMapInfo
+	integrityMaps    types.RegistryIntegrityReport
+	integrityMods    types.RegistryIntegrityReport
 }
 
 // NewRegistry creates a new Registry instance with the platform-appropriate
 // storage path.
-func NewRegistry(l logSink) *Registry {
+func NewRegistry(l logSink, cfg *config.Config) *Registry {
 	return &Registry{
 		repoPath: paths.RegistryRepoPath(),
 		httpClient: &http.Client{
 			Timeout: types.RequestTimeout,
 		},
 		logger:           l,
+		config:           cfg,
 		githubAPIBaseURL: "https://api.github.com",
 		downloadCounts: map[types.AssetType]map[string]map[string]int{
 			types.AssetTypeMap: {},
@@ -55,10 +57,6 @@ func NewRegistry(l logSink) *Registry {
 		},
 		versionsCache: map[string][]types.VersionInfo{},
 	}
-}
-
-func (r *Registry) SetGithubTokenGetter(getter func() string) {
-	r.githubTokenGetter = getter
 }
 
 // Initialize ensures a valid local registry repo exists.

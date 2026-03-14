@@ -83,8 +83,7 @@ func (a *App) OpenInFileExplorer(targetPath string) types.GenericResponse {
 func NewApp() *App {
 	cfg := config.NewConfig()
 	l := logger.NewAppLogger()
-	reg := registry.NewRegistry(l)
-	reg.SetGithubTokenGetter(cfg.GetGithubToken)
+	reg := registry.NewRegistry(l, cfg)
 	dl := downloader.NewDownloader(cfg, reg, l)
 	return &App{
 		Registry:   reg,
