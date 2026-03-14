@@ -50,6 +50,11 @@ jobs:
           cd build/bin
           ditto -c -k --sequesterRsrc --keepParent railyard.app railyard-${VERSION}-macos-universal.zip
 
+      - name: Free up Space for DMG Creation
+        run: |
+          rm -rf build/bin/railyard-${VERSION}-macos-universal.zip
+          rm -rf frontend/node_modules
+
       - name: Create DMG
         run: |
           hdiutil create -volname "Railyard" -srcfolder build/bin/railyard.app -ov -format UDZO build/bin/railyard-${VERSION}-macos-universal.dmg
@@ -107,6 +112,7 @@ jobs:
           echo -e $VERSION > internal/constants/version.txt
           cp build/linux/org.SBM.Railyard.yml .
           flatpak-builder --force-clean --repo="./out" build/build-linux org.SBM.Railyard.yml
+          mkdir -p build/bin
           flatpak build-bundle out ./build/bin/railyard-${VERSION}-current-linux-amd64.flatpak org.SBM.Railyard
 
       - uses: actions/upload-artifact@v4

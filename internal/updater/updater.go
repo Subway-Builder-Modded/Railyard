@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"railyard/internal/constants"
 	"railyard/internal/files"
@@ -15,7 +16,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -78,14 +78,7 @@ func CheckForUpdates(ctx context.Context, progressFunc types.ProgressFunc, log l
 				case "darwin":
 					downloadURL = v.MacOSDownloadURL
 				case "linux":
-					if constants.LINUX_TYPE == "current" && v.LinuxCurrentDownloadURL != "" {
-						downloadURL = v.LinuxCurrentDownloadURL
-					}
-					if constants.LINUX_TYPE == "legacy" && v.LinuxLegacyDownloadURL != "" {
-						downloadURL = v.LinuxLegacyDownloadURL
-					} else {
-						return fmt.Errorf("unknown linux type %q and no suitable installer found for version %s", constants.LINUX_TYPE, v.Version)
-					}
+					downloadURL = v.LinuxCurrentDownloadURL
 				}
 				if downloadURL == "" {
 					fmt.Printf("No suitable installer found for this platform in version %s\n", v.Version)
@@ -142,21 +135,17 @@ func downloadAndRunInstaller(downloadURL string, ctx context.Context, downloadPr
 	}
 
 	if runtime.GOOS == "linux" {
-		err = os.Chmod(tempFile.Name(), 0755)
 		if err != nil {
 			os.Remove(tempFile.Name())
 			return fmt.Errorf("failed to make installer executable: %w", err)
 		}
-		proc, err := os.StartProcess(tempFile.Name(), []string{tempFile.Name()}, &os.ProcAttr{
-			Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
-			Sys:   &syscall.SysProcAttr{},
-		})
+		proc := exec.Command("flatpak", "--user", "install", "--assumeyes", tempFile.Name())
+		err := proc.Start()
 		if err != nil {
 			os.Remove(tempFile.Name())
 			return fmt.Errorf("failed to start installer: %w", err)
 		}
-		proc.Release()
-
+		proc.Process.Release()
 	}
 	if runtime.GOOS == "windows" {
 		err = launchElevated(tempFile.Name(), "", "")
@@ -212,8 +201,8 @@ func pullReleases(log logger.Logger, githubToken string) ([]types.RailyardVersio
 	baseURL := strings.TrimRight(updaterGitHubAPIBaseURL, "/")
 	apiURL := fmt.Sprintf("%s/repos/%s/releases", baseURL, constants.RAILYARD_REPO)
 	resp, err := requests.GetWithGithubToken(updaterHTTPClient, requests.GithubTokenRequestArgs{
-		URL:            apiURL,
-		GitHubToken:    githubToken,
+		URL:              apiURL,
+		GitHubToken:      githubToken,
 		ForceAuthByToken: true,
 		Headers: map[string]string{
 			"Accept": "application/vnd.github+json",
@@ -255,9 +244,6 @@ func pullReleases(log logger.Logger, githubToken string) ([]types.RailyardVersio
 			if strings.Contains(asset.Name, "current-linux") {
 				v.LinuxCurrentDownloadURL = asset.BrowserDownloadURL
 			}
-			if strings.Contains(asset.Name, "legacy-linux") {
-				v.LinuxLegacyDownloadURL = asset.BrowserDownloadURL
-			}
 			if strings.Contains(asset.Name, "macos-universal.dmg") {
 				v.MacOSDownloadURL = asset.BrowserDownloadURL
 			}
@@ -281,10 +267,6 @@ func returnMissingDownloads(version types.RailyardVersionInfo) []string {
 
 	if version.LinuxCurrentDownloadURL == "" {
 		missing = append(missing, "linux")
-	}
-
-	if version.LinuxLegacyDownloadURL == "" {
-		missing = append(missing, "linux-legacy")
 	}
 
 	if version.MacOSDownloadURL == "" {

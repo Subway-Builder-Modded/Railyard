@@ -10,5 +10,4 @@ type RailyardVersionInfo struct {
 	WindowsARMDownloadURL   string `json:"windows_arm_download_url,omitempty"`
 	WindowsX64DownloadURL   string `json:"windows_x64_download_url,omitempty"`
 	LinuxCurrentDownloadURL string `json:"linux_download_url,omitempty"`
-	LinuxLegacyDownloadURL  string `json:"linux_legacy_download_url,omitempty"`
 }
