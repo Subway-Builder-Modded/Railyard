@@ -1,0 +1,34 @@
+id: org.SBM.Railyard
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.golang
+  - org.freedesktop.Sdk.Extension.node24
+command: railyard
+finish-args:
+  # Needs X11, Wayland, Network, Filesystem
+  - --share=network
+  - --filesystem=host
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+
+modules:
+  - name: Railyard
+    sources:
+      - type: dir
+        path: .
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/node24/bin:/usr/lib/sdk/golang/bin
+      env:
+        GOROOT: /usr/lib/sdk/golang
+        GOFLAGS: "-mod=vendor"
+    build-commands:
+      - go install
+      - cd frontend && npm run build
+      - go build -mod=vendor -tags "desktop,production,webkit2_41" -ldflags "-s -w" -o /app/bin/railyard .
+      - install ./build/linux/railyard.desktop /app/share/applications/railyard.desktop
+      - install ./build/appicon.png /app/share/icons/hicolor/512x512/apps/railyard.png

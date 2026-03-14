@@ -63,11 +63,6 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        type: ["legacy", "current"]
-    env:
-      TYPE: ${{matrix.type}}
     steps:
       - uses: actions/checkout@v4
 
@@ -78,7 +73,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
 
       - uses: pnpm/action-setup@v4
         with:
@@ -91,16 +86,12 @@ jobs:
           key: pnpm-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
           restore-keys: pnpm-${{ runner.os }}-
 
-      - name: Install Linux dependencies (Legacy)
-        if: ${{matrix.type == 'legacy'}}
+      - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
-      - name: Install Linux dependencies (Current)
-        if: ${{matrix.type == 'current'}}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev flatpak flatpak-builder
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install -y org.gnome.Platform//47 org.gnome.Sdk//47 org.freedesktop.Sdk.Extension.golang//24.08 org.freedesktop.Sdk.Extension.node24//24.08
 
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -113,40 +104,14 @@ jobs:
         run: |
           echo -e $TYPE > internal/constants/linux_type.txt
           echo -e $VERSION > internal/constants/version.txt
-          wails build -platform linux/amd64 -tags webkit2_41
-          
-      - name: Build Linux (amd64 legacy)
-        if: ${{matrix.type == 'legacy'}}
-        run: |
-          echo -e $TYPE > internal/constants/linux_type.txt
-          echo -e $VERSION > internal/constants/version.txt
-          wails build -platform linux/amd64
-
-      - name: Create AppImage
-        run: |
-          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          chmod +x linuxdeploy-x86_64.AppImage
-
-          mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/512x512/apps AppDir/usr/share/applications
-          cp build/bin/railyard AppDir/usr/bin/railyard
-          cp build/appicon.png AppDir/usr/share/icons/hicolor/512x512/apps/railyard.png
-
-          cat > AppDir/usr/share/applications/railyard.desktop << 'EOF'
-          [Desktop Entry]
-          Name=Railyard
-          Exec=railyard
-          Icon=railyard
-          Type=Application
-          Categories=Utility;Game;
-          EOF
-
-          ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
-          mv Railyard-*.AppImage build/bin/railyard-${VERSION}-${TYPE}-linux-amd64.AppImage
+          cp build/linux/org.SBM.Railyard.yml .
+          flatpak-builder --force-clean --repo="./out" build/build-linux org.SBM.Railyard.yml
+          flatpak build-bundle out railyard-${VERSION}-current-linux-amd64.flatpak org.SBM.Railyard
 
       - uses: actions/upload-artifact@v4
         with:
           name: linux-artifacts-${{matrix.type}}
-          path: build/bin/railyard-${{ env.VERSION }}-${{ matrix.type }}-linux-amd64.AppImage
+          path: build/bin/railyard-${{ env.VERSION }}-current-linux-amd64.flatpak
 
   build-windows:
     runs-on: windows-latest
