@@ -160,7 +160,7 @@ export function LibraryPage() {
                 <span className="font-medium text-foreground">
                   {totalProjects}
                 </span>{" "}
-                Projects
+                Assets
               </span>
             </div>
           </div>

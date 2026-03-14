@@ -134,7 +134,7 @@ export namespace types {
 	    message: string;
 	    assetType: string;
 	    assetId: string;
-	    errorCode?: string;
+	    errorType?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AssetUninstallResponse(source);
@@ -146,7 +146,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.assetType = source["assetType"];
 	        this.assetId = source["assetId"];
-	        this.errorCode = source["errorCode"];
+	        this.errorType = source["errorType"];
 	    }
 	}
 	

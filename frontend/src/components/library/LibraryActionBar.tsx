@@ -6,6 +6,12 @@ import { Trash2, CheckCircle } from "lucide-react";
 import { type InstalledTaggedItem } from "@/hooks/use-filtered-installed-items";
 import type { AssetType } from "@/lib/asset-types";
 
+interface UninstallTarget {
+  type: AssetType;
+  id: string;
+  name: string;
+}
+
 interface LibraryActionBarProps {
   allItems: InstalledTaggedItem[];
 }
@@ -14,11 +20,7 @@ export function LibraryActionBar({
   allItems,
 }: LibraryActionBarProps) {
   const { selectedIds, clearSelection } = useLibraryStore();
-  const [uninstallTarget, setUninstallTarget] = useState<{
-    type: AssetType;
-    id: string;
-    name: string;
-  } | null>(null);
+  const [uninstallTargets, setUninstallTargets] = useState<UninstallTarget[] | null>(null);
 
   if (selectedIds.size === 0) return null;
 
@@ -27,20 +29,13 @@ export function LibraryActionBar({
   );
 
   const handleRemove = () => {
-    if (selectedItems.length === 1) {
-      const item = selectedItems[0];
-      setUninstallTarget({
+    setUninstallTargets(
+      selectedItems.map((item) => ({
         type: item.type,
         id: item.item.id,
         name: item.item.name,
-      });
-    } else {
-      setUninstallTarget({
-        type: selectedItems[0].type,
-        id: selectedItems[0].item.id,
-        name: `${selectedItems.length} items`,
-      });
-    }
+      })),
+    );
   };
 
   return (
@@ -64,18 +59,16 @@ export function LibraryActionBar({
         </Button>
       </div>
 
-      {uninstallTarget && (
+      {uninstallTargets && uninstallTargets.length > 0 && (
         <UninstallDialog
-          open={!!uninstallTarget}
+          open={uninstallTargets.length > 0}
           onOpenChange={(open) => {
             if (!open) {
-              setUninstallTarget(null);
+              setUninstallTargets(null);
               clearSelection();
             }
           }}
-          type={uninstallTarget.type}
-          id={uninstallTarget.id}
-          name={uninstallTarget.name}
+          targets={uninstallTargets}
         />
       )}
     </>

@@ -5,12 +5,12 @@ go 1.25.0
 require (
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
 	github.com/go-git/go-git/v5 v5.17.0
+	github.com/gofrs/flock v0.13.0
 	github.com/google/uuid v1.6.0
 	github.com/paulmach/orb v0.12.0
 	github.com/protomaps/go-pmtiles v1.30.1
 	github.com/stretchr/testify v1.11.1
 	github.com/wailsapp/wails/v2 v2.11.0
-	github.com/gofrs/flock v0.13.0
 	golang.org/x/mod v0.33.0
 )
 
