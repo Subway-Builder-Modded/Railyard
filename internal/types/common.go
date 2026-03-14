@@ -3,6 +3,7 @@ package types
 import (
 	"io"
 	"strings"
+	"time"
 
 	"golang.org/x/mod/semver"
 )
@@ -14,6 +15,8 @@ const (
 	ResponseError   Status = "error"
 	ResponseWarn    Status = "warn"
 )
+
+const RequestTimeout = 15 * time.Second
 
 type GenericResponse struct {
 	Status  Status `json:"status"`

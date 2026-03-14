@@ -50,9 +50,12 @@ func WriteAppConfig(cfg types.AppConfig) error {
 
 func resolveConfigResultFromAppConfig(cfg types.AppConfig) types.ResolveConfigResult {
 	_, validation := cfg.ValidateConfigPaths()
+	redacted := cfg
+	redacted.GithubToken = ""
 	return types.ResolveConfigResult{
-		Config:     cfg,
-		Validation: validation,
+		Config:         redacted,
+		Validation:     validation,
+		HasGithubToken: strings.TrimSpace(cfg.GithubToken) != "",
 	}
 }
 
@@ -126,8 +129,11 @@ func (s *Config) UpdateMetroMakerDataFolder(metroMakerDataPath string) (types.Re
 func (s *Config) SetConfig(next types.AppConfig) (types.AppConfig, error) {
 	updated, err := s.UpdateConfig(func(cfg *types.AppConfig) {
 		*cfg = types.AppConfig{
-			MetroMakerDataPath: strings.TrimSpace(next.MetroMakerDataPath),
-			ExecutablePath:     strings.TrimSpace(next.ExecutablePath),
+			MetroMakerDataPath:      strings.TrimSpace(next.MetroMakerDataPath),
+			ExecutablePath:          strings.TrimSpace(next.ExecutablePath),
+			GithubToken:             strings.TrimSpace(next.GithubToken),
+			CheckForUpdatesOnLaunch: next.CheckForUpdatesOnLaunch,
+			SetupCompleted:          next.SetupCompleted,
 		}
 	}, false)
 	if err != nil {
@@ -145,6 +151,24 @@ func (s *Config) ClearConfig() (types.AppConfig, error) {
 // SaveConfig persists the current runtime config state to disk.
 func (s *Config) SaveConfig() (types.ResolveConfigResult, error) {
 	return s.UpdateConfig(func(*types.AppConfig) {}, true)
+}
+
+func (s *Config) UpdateGithubToken(githubToken string) (types.ResolveConfigResult, error) {
+	return s.UpdateConfig(func(cfg *types.AppConfig) {
+		cfg.GithubToken = strings.TrimSpace(githubToken)
+	}, false)
+}
+
+func (s *Config) ClearGithubToken() (types.ResolveConfigResult, error) {
+	return s.UpdateConfig(func(cfg *types.AppConfig) {
+		cfg.GithubToken = ""
+	}, false)
+}
+
+func (s *Config) GetGithubToken() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return strings.TrimSpace(s.Cfg.GithubToken)
 }
 
 /* ===== Dialog Functions ===== */

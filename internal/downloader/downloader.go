@@ -7,12 +7,15 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"railyard/internal/config"
 	"railyard/internal/logger"
@@ -25,6 +28,25 @@ import (
 )
 
 type ExtractProgressFunc func(itemId string, extracted int64, total int64)
+
+var isGitHubDownloadHost = func(host string) bool {
+	h := strings.ToLower(strings.TrimSpace(host))
+	return strings.Contains(h, "github.com") || strings.Contains(h, "githubusercontent.com")
+}
+
+var downloaderHTTPClient = &http.Client{
+	Transport: &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   types.RequestTimeout,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout:   types.RequestTimeout,
+		ResponseHeaderTimeout: types.RequestTimeout,
+		ExpectContinueTimeout: 1 * time.Second,
+		IdleConnTimeout:       90 * time.Second,
+	},
+}
 
 type Downloader struct {
 	tempPath          string
@@ -655,7 +677,8 @@ func (d *Downloader) downloadTempZip(url string, itemId string) types.DownloadTe
 		return d.throwDownloadError("Failed to create temp file", err, "url", url)
 	}
 	defer file.Close()
-	zip, err := http.Get(url)
+
+	zip, err := d.doDownloadRequest(url, d.Config.GetGithubToken())
 
 	if err != nil {
 		return d.throwDownloadError("Failed to download file", err, "url", url)
@@ -682,6 +705,46 @@ func (d *Downloader) downloadTempZip(url string, itemId string) types.DownloadTe
 	}
 
 	return d.toDownloadResponse(d.successResponse("File downloaded successfully", "url", url), file.Name())
+}
+
+func (d *Downloader) doDownloadRequest(downloadURL, githubToken string) (*http.Response, error) {
+	req, err := http.NewRequest("GET", downloadURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("User-Agent", "Railyard-Desktop-App")
+	trimmedToken := strings.TrimSpace(githubToken)
+	tokenApplied := false
+	if trimmedToken != "" && shouldAuthenticateDownloadURL(downloadURL) {
+		req.Header.Set("Authorization", "Bearer "+trimmedToken)
+		tokenApplied = true
+	}
+
+	resp, err := downloaderHTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if tokenApplied && (resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden) {
+		resp.Body.Close()
+		reqNoAuth, reqErr := http.NewRequest("GET", downloadURL, nil)
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		reqNoAuth.Header.Set("User-Agent", "Railyard-Desktop-App")
+		return downloaderHTTPClient.Do(reqNoAuth)
+	}
+
+	return resp, nil
+}
+
+func shouldAuthenticateDownloadURL(downloadURL string) bool {
+	parsed, err := url.Parse(downloadURL)
+	if err != nil {
+		return false
+	}
+	return isGitHubDownloadHost(parsed.Hostname())
 }
 
 // verifySHA256 checks the SHA-256 hash of a downloaded file against an expected hash.

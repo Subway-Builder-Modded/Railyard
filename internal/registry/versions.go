@@ -23,14 +23,31 @@ type modManifestDeps struct {
 // updateType must be "github" or "custom".
 // repoOrURL is "owner/repo" for github, or a URL for custom.
 func (r *Registry) GetVersions(updateType string, repoOrURL string) ([]types.VersionInfo, error) {
+	cacheKey := updateType + "|" + repoOrURL
+	if cached, ok := r.getCachedVersions(cacheKey); ok {
+		return cached, nil
+	}
+
+	var (
+		versions []types.VersionInfo
+		err      error
+	)
+
 	switch updateType {
 	case "github":
-		return r.getGitHubVersions(repoOrURL)
+		versions, err = r.getGitHubVersions(repoOrURL)
 	case "custom":
-		return r.getCustomVersions(repoOrURL)
+		versions, err = r.getCustomVersions(repoOrURL)
 	default:
 		return nil, fmt.Errorf("unsupported update type: %q", updateType)
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	r.setCachedVersions(cacheKey, versions)
+	return cloneVersionInfos(versions), nil
 }
 
 func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
@@ -39,23 +56,14 @@ func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
 		return nil, fmt.Errorf("invalid GitHub repo format %q: expected \"owner/repo\"", repo)
 	}
 
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/releases", repo)
-	req, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create GitHub API request: %w", err)
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "Railyard-Desktop-App")
+	baseURL := strings.TrimRight(r.githubAPIBaseURL, "/")
+	apiURL := fmt.Sprintf("%s/repos/%s/releases", baseURL, repo)
 
-	resp, err := r.httpClient.Do(req)
+	resp, err := r.doGitHubRequestWithOptionalToken(apiURL, repo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch GitHub releases for %q: %w", repo, err)
+		return nil, err
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API returned status %d for %q", resp.StatusCode, repo)
-	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
 	if err != nil {
@@ -93,6 +101,52 @@ func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
 	r.enrichGameVersions(versions)
 
 	return versions, nil
+}
+
+func (r *Registry) getGithubToken() string {
+	if r.githubTokenGetter == nil {
+		return ""
+	}
+	return strings.TrimSpace(r.githubTokenGetter())
+}
+
+func (r *Registry) doGitHubRequestWithOptionalToken(apiURL, repo string) (*http.Response, error) {
+	token := r.getGithubToken()
+	resp, err := r.doGitHubRequest(apiURL, token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch GitHub releases for %q: %w", repo, err)
+	}
+
+	if token != "" && (resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden) {
+		r.logger.Warn("GitHub token rejected; retrying unauthenticated request", "repo", repo, "status", resp.StatusCode)
+		resp.Body.Close()
+
+		resp, err = r.doGitHubRequest(apiURL, "")
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch GitHub releases for %q after unauthenticated retry: %w", repo, err)
+		}
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		status := resp.StatusCode
+		resp.Body.Close()
+		return nil, fmt.Errorf("GitHub API returned status %d for %q", status, repo)
+	}
+
+	return resp, nil
+}
+
+func (r *Registry) doGitHubRequest(apiURL, token string) (*http.Response, error) {
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GitHub API request: %w", err)
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "Railyard-Desktop-App")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	return r.httpClient.Do(req)
 }
 
 // enrichGameVersions fetches manifest.json URLs in parallel and populates GameVersion
@@ -198,4 +252,32 @@ func (r *Registry) filterSemverVersions(
 		filtered = append(filtered, version)
 	}
 	return filtered
+}
+
+func cloneVersionInfos(input []types.VersionInfo) []types.VersionInfo {
+	output := make([]types.VersionInfo, len(input))
+	copy(output, input)
+	return output
+}
+
+func (r *Registry) getCachedVersions(key string) ([]types.VersionInfo, bool) {
+	r.versionsCacheMu.RLock()
+	defer r.versionsCacheMu.RUnlock()
+	versions, ok := r.versionsCache[key]
+	if !ok {
+		return nil, false
+	}
+	return cloneVersionInfos(versions), true
+}
+
+func (r *Registry) setCachedVersions(key string, versions []types.VersionInfo) {
+	r.versionsCacheMu.Lock()
+	defer r.versionsCacheMu.Unlock()
+	r.versionsCache[key] = cloneVersionInfos(versions)
+}
+
+func (r *Registry) clearVersionsCache() {
+	r.versionsCacheMu.Lock()
+	defer r.versionsCacheMu.Unlock()
+	r.versionsCache = map[string][]types.VersionInfo{}
 }

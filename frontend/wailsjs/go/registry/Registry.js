@@ -74,6 +74,10 @@ export function RemoveInstalledMod(arg1) {
   return window['go']['registry']['Registry']['RemoveInstalledMod'](arg1);
 }
 
+export function SetGithubTokenGetter(arg1) {
+  return window['go']['registry']['Registry']['SetGithubTokenGetter'](arg1);
+}
+
 export function SetInstalledMapsFromPath(arg1) {
   return window['go']['registry']['Registry']['SetInstalledMapsFromPath'](arg1);
 }

@@ -2,6 +2,8 @@ package downloader
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -492,7 +494,7 @@ func TestInstallAssetSuccess(t *testing.T) {
 			fixtures: []registrytest.UpdateFixture{
 				{AssetID: "mod-a", AssetType: types.AssetTypeMod, Versions: []string{"1.0.0"}},
 			},
-			expectedCode:  "", // No cityCode for mods
+			expectedCode:  "",    // No cityCode for mods
 			expectMapConf: false, // No config for mod
 		},
 	}
@@ -536,4 +538,37 @@ func TestOperationKeyPanicsOnInvalidAction(t *testing.T) {
 	require.Panics(t, func() {
 		_ = d.operationKey(operationAction("invalid"), types.AssetTypeMap, "map-a", "1.0.0")
 	})
+}
+
+func TestDownloadTempZipGithubAuthFallback(t *testing.T) {
+	originalHostCheck := isGitHubDownloadHost
+	isGitHubDownloadHost = func(string) bool { return true }
+	defer func() { isGitHubDownloadHost = originalHostCheck }()
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		if requestCount == 1 {
+			require.Equal(t, "Bearer ghp_test_token", r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		require.Empty(t, r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("zip-content"))
+	}))
+	defer server.Close()
+
+	cfg := config.NewConfig()
+	cfg.Cfg.GithubToken = "ghp_test_token"
+	d := &Downloader{
+		Config:   cfg,
+		Logger:   logger.LoggerAtPath(""),
+		tempPath: t.TempDir(),
+	}
+
+	resp := d.downloadTempZip(server.URL+"/asset.zip", "asset-a")
+	require.Equal(t, types.ResponseSuccess, resp.Status)
+	require.NotEmpty(t, resp.Path)
+	require.Equal(t, 2, requestCount)
 }

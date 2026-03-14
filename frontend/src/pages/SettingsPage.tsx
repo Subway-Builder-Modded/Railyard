@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -36,10 +37,13 @@ export function SettingsPage() {
   const {
     config,
     validation,
+    hasGithubToken,
     openDataFolderDialog,
     openExecutableDialog,
     saveConfig,
     clearConfig,
+    updateGithubToken,
+    clearGithubToken,
     updateCheckForUpdatesOnLaunch,
   } = useConfigStore();
   const profile = useProfileStore((s) => s.profile);
@@ -49,6 +53,7 @@ export function SettingsPage() {
   const [confirmAction, setConfirmAction] = useState<
     "config" | "profile" | null
   >(null);
+  const [githubTokenDraft, setGithubTokenDraft] = useState("");
 
   const handleUpdatesCheck = async () => {
     try {
@@ -141,6 +146,28 @@ export function SettingsPage() {
       toast.error(`Failed to reset ${confirmAction}.`);
     } finally {
       setConfirmAction(null);
+    }
+  };
+
+  const handleSaveGithubToken = async () => {
+    try {
+      await updateGithubToken(githubTokenDraft);
+      await saveConfig();
+      setGithubTokenDraft("");
+      toast.success("GitHub token updated.");
+    } catch {
+      toast.error("Failed to update GitHub token.");
+    }
+  };
+
+  const handleClearGithubToken = async () => {
+    try {
+      await clearGithubToken();
+      await saveConfig();
+      setGithubTokenDraft("");
+      toast.success("GitHub token cleared.");
+    } catch {
+      toast.error("Failed to clear GitHub token.");
     }
   };
 
@@ -287,6 +314,40 @@ export function SettingsPage() {
               <Button variant="outline" size="sm" onClick={handleUpdatesCheck}>
                 <RefreshCw />
                 Check For Updates
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-sm font-medium">GitHub Token (Optional)</label>
+              <Badge variant={hasGithubToken ? "default" : "outline"}>
+                {hasGithubToken ? "Saved" : "Not Set"}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="password"
+                placeholder={hasGithubToken ? "••••••••••••••••" : "ghp_..."}
+                value={githubTokenDraft}
+                onChange={(event) => setGithubTokenDraft(event.target.value)}
+                className="flex-1 min-w-0 font-mono whitespace-nowrap overflow-x-auto"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveGithubToken}
+                disabled={githubTokenDraft.trim() === ""}
+              >
+                Save
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearGithubToken}
+                disabled={!hasGithubToken}
+              >
+                Clear
               </Button>
             </div>
           </div>

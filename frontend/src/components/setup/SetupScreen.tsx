@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useConfigStore } from "@/stores/config-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -13,6 +14,7 @@ import {
   TrainTrack,
   FolderSearch,
   Gamepad2,
+  Github,
   CheckCircle,
   XCircle,
   Loader2,
@@ -23,7 +25,8 @@ export function SetupScreen() {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [checkForUpdates, setCheckForUpdates] = useState<boolean | null>(null);
-  const { config, validation, openDataFolderDialog, openExecutableDialog, updateCheckForUpdatesOnLaunch, completeSetup } =
+  const [githubToken, setGithubToken] = useState("");
+  const { config, validation, openDataFolderDialog, openExecutableDialog, updateCheckForUpdatesOnLaunch, updateGithubToken, completeSetup } =
     useConfigStore();
 
   const handleDataFolder = async (autoDetect: boolean) => {
@@ -49,6 +52,9 @@ export function SetupScreen() {
     try {
       if (checkForUpdates !== null) {
         await updateCheckForUpdatesOnLaunch(checkForUpdates);
+      }
+      if (githubToken.trim() !== "") {
+        await updateGithubToken(githubToken);
       }
       await completeSetup();
     } finally {
@@ -80,6 +86,16 @@ export function SetupScreen() {
                 Set the path to your game executable.
               </CardDescription>
             </>
+          ) : step === 3 ? (
+            <>
+              <div className="mx-auto mb-2">
+                <Github className="h-10 w-10 text-primary" />
+              </div>
+              <CardTitle className="text-2xl">Optional GitHub Token</CardTitle>
+              <CardDescription>
+                Add a token for higher GitHub API limits, or skip and continue.
+              </CardDescription>
+            </>
           ) : (
             <>
             <div className="mx-auto mb-2">
@@ -87,7 +103,7 @@ export function SetupScreen() {
             </div>
             <CardTitle className="text-2xl">Automatically Check for Updates</CardTitle>
             <CardDescription>
-              Would you like Railyard to automatically check for updates when it launches? You can change this later in settings.
+              Would you like Railyard to check for updates when it launches?
             </CardDescription>            
             </>
 
@@ -108,6 +124,11 @@ export function SetupScreen() {
             <span
               className={`h-2 w-6 rounded-full ${
                 step === 3 ? "bg-primary" : "bg-muted"
+              }`}
+            />
+            <span
+              className={`h-2 w-6 rounded-full ${
+                step === 4 ? "bg-primary" : "bg-muted"
               }`}
             />
           </div>
@@ -213,29 +234,58 @@ export function SetupScreen() {
                 </Button>
               </div>
             </>
-          ) : (
+          ) : step === 3 ? (
             <>
-              <div className="flex items-center gap-4 w-full justify-center">
-                <Button 
-                  variant={checkForUpdates === true ? "default" : "outline"}
-                  onClick={() => setCheckForUpdates(true)}
-                >
-                  Yes
-                </Button>
-                <Button 
-                  variant={checkForUpdates === false ? "default" : "outline"}
-                  onClick={() => setCheckForUpdates(false)}
-                >
-                  No
-                </Button>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Optional GitHub token</p>
+                <Input
+                  type="password"
+                  value={githubToken}
+                  onChange={(event) => setGithubToken(event.target.value)}
+                  placeholder="ghp_..."
+                  className="font-mono whitespace-nowrap overflow-x-auto"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave blank to skip. You can add or change this later in Settings.
+                </p>
               </div>
 
               <div className="flex justify-between">
                 <Button variant="outline" onClick={() => setStep(2)}>
                   Back
                 </Button>
+                <Button onClick={() => setStep(4)}>
+                  Next
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Check for updates on launch</p>
+                <div className="flex items-center gap-4 w-full justify-center">
+                  <Button
+                    variant={checkForUpdates === true ? "default" : "outline"}
+                    onClick={() => setCheckForUpdates(true)}
+                  >
+                    Yes
+                  </Button>
+                  <Button
+                    variant={checkForUpdates === false ? "default" : "outline"}
+                    onClick={() => setCheckForUpdates(false)}
+                  >
+                    No
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setStep(3)}>
+                  Back
+                </Button>
                 <Button onClick={handleFinish} disabled={checkForUpdates === null || saving}>
-                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Finish Setup
                 </Button>
               </div>

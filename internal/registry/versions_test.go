@@ -1,6 +1,10 @@
 package registry
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"railyard/internal/types"
@@ -23,4 +27,54 @@ func TestFilterSemverVersions(t *testing.T) {
 	require.Len(t, filtered, 2)
 	require.Equal(t, "1.2.3", filtered[0].Version)
 	require.Equal(t, "v2.3.4", filtered[1].Version)
+}
+
+func TestGetGitHubVersionsAuthFallbackAndCache(t *testing.T) {
+	reg := NewRegistry(testLogSink{})
+
+	var requestCount int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		current := atomic.AddInt32(&requestCount, 1)
+		require.Equal(t, "/repos/owner/repo/releases", r.URL.Path)
+
+		// First authenticated request fails with 401 to trigger fallback.
+		if current == 1 {
+			require.Equal(t, "Bearer ghp_test_token", r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		require.Empty(t, r.Header.Get("Authorization"))
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `[{"tag_name":"v1.2.3","name":"v1.2.3","body":"notes","prerelease":false,"published_at":"2026-01-01T00:00:00Z","assets":[]}]`)
+	}))
+	defer server.Close()
+
+	reg.githubAPIBaseURL = server.URL
+	reg.SetGithubTokenGetter(func() string { return "ghp_test_token" })
+
+	versions, err := reg.GetVersions("github", "owner/repo")
+	require.NoError(t, err)
+	require.Len(t, versions, 1)
+	require.Equal(t, "v1.2.3", versions[0].Version)
+	require.EqualValues(t, 2, atomic.LoadInt32(&requestCount))
+
+	// Second call should be served from in-memory cache.
+	versions, err = reg.GetVersions("github", "owner/repo")
+	require.NoError(t, err)
+	require.Len(t, versions, 1)
+	require.EqualValues(t, 2, atomic.LoadInt32(&requestCount))
+}
+
+func TestClearVersionsCache(t *testing.T) {
+	reg := NewRegistry(testLogSink{})
+	reg.setCachedVersions("github|owner/repo", []types.VersionInfo{{Version: "v1.0.0"}})
+
+	_, ok := reg.getCachedVersions("github|owner/repo")
+	require.True(t, ok)
+
+	reg.clearVersionsCache()
+
+	_, ok = reg.getCachedVersions("github|owner/repo")
+	require.False(t, ok)
 }

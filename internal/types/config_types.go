@@ -12,6 +12,7 @@ import (
 type AppConfig struct {
 	MetroMakerDataPath      string `json:"metroMakerDataPath,omitempty"`
 	ExecutablePath          string `json:"executablePath,omitempty"`
+	GithubToken             string `json:"githubToken,omitempty"`
 	CheckForUpdatesOnLaunch bool   `json:"checkForUpdatesOnLaunch"`
 	SetupCompleted          bool   `json:"setupCompleted"`
 	// Other fields to be appended here
@@ -26,8 +27,9 @@ type ConfigPathValidation struct {
 
 // ResolveConfigResult describes the result of resolving app config from disk.
 type ResolveConfigResult struct {
-	Config     AppConfig            `json:"config"`
-	Validation ConfigPathValidation `json:"validation"`
+	Config         AppConfig            `json:"config"`
+	Validation     ConfigPathValidation `json:"validation"`
+	HasGithubToken bool                 `json:"hasGithubToken"`
 }
 
 type SetConfigSource string
