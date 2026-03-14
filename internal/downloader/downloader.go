@@ -691,7 +691,7 @@ func (d *Downloader) downloadTempZip(url string, itemId string) types.DownloadTe
 
 // downloadRequest performs an HTTP GET request to the specified URL, including an optional authentication for GitHub URL
 func (d *Downloader) downloadRequest(downloadURL, githubToken string) (*http.Response, error) {
-	return requests.DoGetWithOptionalGitHubToken(downloaderHTTPClient, requests.GetWithGitHubTokenOptions{
+	return requests.GetWithGithubToken(downloaderHTTPClient, requests.GithubTokenRequestArgs{
 		URL:                    downloadURL,
 		GitHubToken:            githubToken,
 		ShouldAuthenticateHost: isGitHubDownloadHost,

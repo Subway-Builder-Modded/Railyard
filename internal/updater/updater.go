@@ -104,7 +104,7 @@ func CheckForUpdates(ctx context.Context, progressFunc types.ProgressFunc, log l
 }
 
 func downloadAndRunInstaller(downloadURL string, ctx context.Context, downloadProgress types.ProgressFunc) error {
-	resp, err := requests.DoGetWithOptionalGitHubToken(updaterDownloadHTTPClient, requests.GetWithGitHubTokenOptions{
+	resp, err := requests.GetWithGithubToken(updaterDownloadHTTPClient, requests.GithubTokenRequestArgs{
 		URL: downloadURL,
 	})
 	if err != nil {
@@ -211,10 +211,10 @@ func VersionIsNewerThanInstalled(version string) bool {
 func pullReleases(log logger.Logger, githubToken string) ([]types.RailyardVersionInfo, error) {
 	baseURL := strings.TrimRight(updaterGitHubAPIBaseURL, "/")
 	apiURL := fmt.Sprintf("%s/repos/%s/releases", baseURL, constants.RAILYARD_REPO)
-	resp, err := requests.DoGetWithOptionalGitHubToken(updaterHTTPClient, requests.GetWithGitHubTokenOptions{
+	resp, err := requests.GetWithGithubToken(updaterHTTPClient, requests.GithubTokenRequestArgs{
 		URL:            apiURL,
 		GitHubToken:    githubToken,
-		ForceTokenAuth: true,
+		ForceAuthByToken: true,
 		Headers: map[string]string{
 			"Accept": "application/vnd.github+json",
 		},

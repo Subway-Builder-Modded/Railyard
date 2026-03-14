@@ -10,15 +10,16 @@ import (
 	"railyard/internal/types"
 )
 
-type GetWithGitHubTokenOptions struct {
+type GithubTokenRequestArgs struct {
 	URL                    string
 	GitHubToken            string
 	Headers                map[string]string
-	ForceTokenAuth         bool
+	ForceAuthByToken         bool
 	ShouldAuthenticateHost func(host string) bool
 	OnTokenRejected        func(statusCode int)
 }
 
+// Generic client for API requests 
 func NewAPIClient() *http.Client {
 	return &http.Client{Timeout: types.RequestTimeout}
 }
@@ -45,11 +46,7 @@ func IsGitHubHost(host string) bool {
 	return strings.Contains(h, "github.com") || strings.Contains(h, "githubusercontent.com")
 }
 
-func DoGetWithOptionalGitHubToken(client *http.Client, opts GetWithGitHubTokenOptions) (*http.Response, error) {
-	if client == nil {
-		client = http.DefaultClient
-	}
-
+func GetWithGithubToken(client *http.Client, opts GithubTokenRequestArgs) (*http.Response, error) {
 	shouldAuthenticate := opts.ShouldAuthenticateHost
 	if shouldAuthenticate == nil {
 		shouldAuthenticate = IsGitHubHost
@@ -66,6 +63,7 @@ func DoGetWithOptionalGitHubToken(client *http.Client, opts GetWithGitHubTokenOp
 		}
 		req.Header.Set("User-Agent", types.RequestUserAgent)
 		if withToken {
+			// Optionally set the Authorization header if the token is present and intended for use
 			req.Header.Set("Authorization", "Bearer "+opts.GitHubToken)
 		}
 
@@ -74,7 +72,7 @@ func DoGetWithOptionalGitHubToken(client *http.Client, opts GetWithGitHubTokenOp
 
 	tokenApplied := false
 	if opts.GitHubToken != "" {
-		if opts.ForceTokenAuth {
+		if opts.ForceAuthByToken {
 			tokenApplied = true
 		} else if parsed, err := url.Parse(opts.URL); err == nil {
 			tokenApplied = shouldAuthenticate(parsed.Hostname())
@@ -91,11 +89,14 @@ func DoGetWithOptionalGitHubToken(client *http.Client, opts GetWithGitHubTokenOp
 	}
 
 	if tokenApplied && (resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden) {
+		// If the first authenticated requests with 401/403, assume the token is invalid/has permission issues
 		if opts.OnTokenRejected != nil {
+			// Callback to notify about token rejection
 			opts.OnTokenRejected(resp.StatusCode)
 		}
 		resp.Body.Close()
-
+    
+		// Attempt again with unauthorized request
 		reqNoAuth, reqErr := buildRequest(false)
 		if reqErr != nil {
 			return nil, reqErr

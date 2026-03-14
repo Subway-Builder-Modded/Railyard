@@ -62,10 +62,10 @@ func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
 	baseURL := strings.TrimRight(registryGitHubAPIBaseURL, "/")
 	apiURL := fmt.Sprintf("%s/repos/%s/releases", baseURL, repo)
 
-	resp, err := requests.DoGetWithOptionalGitHubToken(r.httpClient, requests.GetWithGitHubTokenOptions{
-		URL:            apiURL,
-		GitHubToken:    r.getGithubToken(),
-		ForceTokenAuth: true,
+	resp, err := requests.GetWithGithubToken(r.httpClient, requests.GithubTokenRequestArgs{
+		URL:              apiURL,
+		GitHubToken:      r.config.GetGithubToken(),
+		ForceAuthByToken: true,
 		Headers: map[string]string{
 			"Accept": "application/vnd.github+json",
 		},
@@ -122,13 +122,6 @@ func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
 	return versions, nil
 }
 
-func (r *Registry) getGithubToken() string {
-	if r.config == nil {
-		return ""
-	}
-	return r.config.GetGithubToken()
-}
-
 // enrichGameVersions fetches manifest.json URLs in parallel and populates GameVersion
 // from the game dependency key in the manifest. Errors are silently ignored per-version.
 func (r *Registry) enrichGameVersions(versions []types.VersionInfo) {
@@ -140,7 +133,7 @@ func (r *Registry) enrichGameVersions(versions []types.VersionInfo) {
 		wg.Add(1)
 		go func(v *types.VersionInfo) {
 			defer wg.Done()
-			resp, err := requests.DoGetWithOptionalGitHubToken(r.httpClient, requests.GetWithGitHubTokenOptions{
+			resp, err := requests.GetWithGithubToken(r.httpClient, requests.GithubTokenRequestArgs{
 				URL: v.Manifest,
 				Headers: map[string]string{
 					"Accept": "application/octet-stream",
@@ -175,7 +168,7 @@ func (r *Registry) getCustomVersions(updateURL string) ([]types.VersionInfo, err
 		return nil, fmt.Errorf("invalid custom update URL %q: must be http or https", updateURL)
 	}
 
-	resp, err := requests.DoGetWithOptionalGitHubToken(r.httpClient, requests.GetWithGitHubTokenOptions{
+	resp, err := requests.GetWithGithubToken(r.httpClient, requests.GithubTokenRequestArgs{
 		URL: updateURL,
 	})
 	if err != nil {
