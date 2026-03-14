@@ -33,7 +33,7 @@ func TestFilterSemverVersions(t *testing.T) {
 
 func TestGetGitHubVersionsAuthFallbackAndCache(t *testing.T) {
 	cfg := config.NewConfig()
-	_, err := cfg.UpdateGithubToken("ghp_test_token")
+	_, err := cfg.UpdateGithubToken("github_pat_test_token")
 	require.NoError(t, err)
 	reg := NewRegistry(testutil.TestLogSink{}, cfg)
 	originalBaseURL := registryGitHubAPIBaseURL
@@ -48,7 +48,7 @@ func TestGetGitHubVersionsAuthFallbackAndCache(t *testing.T) {
 
 		// First authenticated request fails with 401 to trigger fallback.
 		if current == 1 {
-			require.Equal(t, "Bearer ghp_test_token", r.Header.Get("Authorization"))
+			require.Equal(t, "Bearer github_pat_test_token", r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}

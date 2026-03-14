@@ -141,7 +141,7 @@ func TestResolveConfigOverridesRuntimeState(t *testing.T) {
 
 func TestHasGithubTokenFlag(t *testing.T) {
 	h := setup(t, types.AppConfig{
-		GithubToken: "ghp_example",
+		GithubToken: "github_pat_example",
 	})
 
 	resolved := h.runtime()

@@ -727,7 +727,7 @@ func TestDownloadTempZipGithubAuthFallback(t *testing.T) {
 		requestCount++
 		if requestCount == 1 {
 			// On first request, return a 403 on the Github token based request
-			require.Equal(t, "Bearer ghp_test_token", r.Header.Get("Authorization"))
+			require.Equal(t, "Bearer github_pat_test_token", r.Header.Get("Authorization"))
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -739,7 +739,7 @@ func TestDownloadTempZipGithubAuthFallback(t *testing.T) {
 	defer server.Close()
 
 	cfg := config.NewConfig()
-	cfg.Cfg.GithubToken = "ghp_test_token"
+	cfg.Cfg.GithubToken = "github_pat_test_token"
 	d := &Downloader{
 		Config:   cfg,
 		Logger:   logger.LoggerAtPath(""),

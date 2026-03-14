@@ -252,7 +252,7 @@ export function SetupScreen() {
                   type="password"
                   value={githubToken}
                   onChange={(event) => setGithubToken(event.target.value)}
-                  placeholder="ghp_..."
+                  placeholder="github_pat_..."
                   className="font-mono whitespace-nowrap overflow-x-auto"
                 />
                 <p className="text-xs text-muted-foreground">

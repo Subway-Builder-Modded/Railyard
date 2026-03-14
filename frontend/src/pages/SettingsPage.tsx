@@ -372,7 +372,7 @@ export function SettingsPage() {
           </DialogHeader>
           <Input
             type="password"
-            placeholder={hasGithubToken ? "********" : "ghp_..."}
+            placeholder={hasGithubToken ? "********" : "github_pat_..."}
             value={githubTokenDraft}
             onChange={(event) => setGithubTokenDraft(event.target.value)}
             className="font-mono"
