@@ -325,6 +325,16 @@ func (a *App) LaunchGame() error {
 			innerExe = path.Join(exePath, "Contents", "MacOS", bundleName)
 		}
 		cmd = exec.Command("/bin/sh", "-c", `ELECTRON_ENABLE_LOGGING=1 exec "$0"`, innerExe)
+	} else if runtime.GOOS == "linux" {
+		// Prefer host launch via Flatpak
+		if _, lookPathErr := exec.LookPath("flatpak-spawn"); lookPathErr == nil {
+			cmd = exec.Command("flatpak-spawn", "--host", exePath)
+		} else {
+			// Fall back to direct launch if flatpak-spawn is not available
+			a.Logger.Warn("flatpak-spawn not available; falling back to direct executable launch", "error", lookPathErr)
+			cmd = exec.Command(exePath)
+			cmd.Dir = path.Dir(exePath)
+		}
 	} else {
 		cmd = exec.Command(exePath)
 		cmd.Dir = path.Dir(exePath)
