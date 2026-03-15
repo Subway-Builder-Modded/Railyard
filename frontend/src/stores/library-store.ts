@@ -1,16 +1,13 @@
 import { create } from 'zustand';
 
 import {
-  DEFAULT_SORT_STATE,
-} from '@/lib/constants';
-import {
-  createTypeScopedByAssetType,
-  switchTypeScopedState,
-  syncCurrentTypeScopedState,
+  cloneFilterState,
+  createFilterByAssetType,
+  defaultLibraryFilters,
+  switchFilter,
+  syncFilter,
 } from '@/stores/asset-type-filter-state';
 import {
-  createRandomSeed,
-  type SearchFilterState,
   type SearchFilterStoreState,
 } from '@/stores/search-store';
 
@@ -22,36 +19,10 @@ interface LibraryState extends SearchFilterStoreState {
   isSelected: (id: string) => boolean;
 }
 
-const defaultLibraryFilters: SearchFilterState = {
-  query: '',
-  type: 'mod',
-  perPage: 12,
-  sort: {
-    ...DEFAULT_SORT_STATE,
-    field: 'name',
-    direction: 'asc',
-  },
-  randomSeed: createRandomSeed(),
-  mod: {
-    tags: [],
-  },
-  map: {
-    locations: [],
-    sourceQuality: [],
-    levelOfDetail: [],
-    specialDemand: [],
-  },
-};
-
-const defaultLibraryScopedByType = createTypeScopedByAssetType(
-  defaultLibraryFilters,
-  1,
-);
-
 export const useLibraryStore = create<LibraryState>((set, get) => ({
-  filters: defaultLibraryFilters,
+  filters: cloneFilterState(defaultLibraryFilters),
   page: 1,
-  scopedByType: defaultLibraryScopedByType,
+  scopedByType: createFilterByAssetType(defaultLibraryFilters, 1),
   selectedIds: new Set<string>(),
   setFilters: (updater) =>
     set((state) => {
@@ -59,7 +30,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         typeof updater === 'function' ? updater(state.filters) : updater;
       return {
         filters: nextFilters,
-        scopedByType: syncCurrentTypeScopedState(
+        scopedByType: syncFilter(
           state.scopedByType,
           nextFilters,
           state.page,
@@ -68,12 +39,12 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     }),
   setType: (type) =>
     set((state) =>
-      switchTypeScopedState(state.filters, state.page, state.scopedByType, type),
+      switchFilter(state.filters, state.page, state.scopedByType, type),
     ),
   setPage: (page) =>
     set((state) => ({
       page,
-      scopedByType: syncCurrentTypeScopedState(
+      scopedByType: syncFilter(
         state.scopedByType,
         state.filters,
         page,

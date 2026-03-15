@@ -2,33 +2,19 @@ import { create } from 'zustand';
 
 import type { AssetType } from '@/lib/asset-types';
 import {
-  DEFAULT_SORT_STATE,
-  type PerPage,
-  type SortState,
-} from '@/lib/constants';
-import {
-  createTypeScopedByAssetType,
-  switchTypeScopedState,
-  syncCurrentTypeScopedState,
-  type TypeScopedByAssetType,
+  type AssetQueryFilterState,
+  cloneFilterState,
+  createFilterByAssetType,
+  createRandomSeed,
+  defaultSearchFilters,
+  type FilterByAssetType,
+  switchFilter,
+  syncFilter,
 } from '@/stores/asset-type-filter-state';
 
-export interface SearchFilterState {
-  query: string;
-  type: AssetType;
-  sort: SortState;
-  randomSeed: number;
-  perPage: PerPage;
-  mod: {
-    tags: string[];
-  };
-  map: {
-    locations: string[];
-    sourceQuality: string[];
-    levelOfDetail: string[];
-    specialDemand: string[];
-  };
-}
+export { createRandomSeed };
+
+export type SearchFilterState = AssetQueryFilterState;
 
 export type SearchFilterUpdater =
   | SearchFilterState
@@ -37,49 +23,23 @@ export type SearchFilterUpdater =
 export interface SearchFilterStoreState {
   filters: SearchFilterState;
   page: number;
-  scopedByType: TypeScopedByAssetType;
+  scopedByType: FilterByAssetType;
   setFilters: (updater: SearchFilterUpdater) => void;
   setType: (type: AssetType) => void;
   setPage: (page: number) => void;
 }
 
-export function createRandomSeed(): number {
-  return Math.floor(Math.random() * 2_147_483_647);
-}
-
-const defaultSearchFilters: SearchFilterState = {
-  query: '',
-  type: 'map',
-  sort: DEFAULT_SORT_STATE,
-  randomSeed: createRandomSeed(),
-  perPage: 12,
-  mod: {
-    tags: [],
-  },
-  map: {
-    locations: [],
-    sourceQuality: [],
-    levelOfDetail: [],
-    specialDemand: [],
-  },
-};
-
-const defaultSearchScopedByType = createTypeScopedByAssetType(
-  defaultSearchFilters,
-  1,
-);
-
 export const useSearchStore = create<SearchFilterStoreState>((set) => ({
-  filters: defaultSearchFilters,
+  filters: cloneFilterState(defaultSearchFilters),
   page: 1,
-  scopedByType: defaultSearchScopedByType,
+  scopedByType: createFilterByAssetType(defaultSearchFilters, 1),
   setFilters: (updater) =>
     set((state) => {
       const nextFilters =
         typeof updater === 'function' ? updater(state.filters) : updater;
       return {
         filters: nextFilters,
-        scopedByType: syncCurrentTypeScopedState(
+        scopedByType: syncFilter(
           state.scopedByType,
           nextFilters,
           state.page,
@@ -87,11 +47,11 @@ export const useSearchStore = create<SearchFilterStoreState>((set) => ({
       };
     }),
   setType: (type) =>
-    set((state) => switchTypeScopedState(state.filters, state.page, state.scopedByType, type)),
+    set((state) => switchFilter(state.filters, state.page, state.scopedByType, type)),
   setPage: (page) =>
     set((state) => ({
       page,
-      scopedByType: syncCurrentTypeScopedState(
+      scopedByType: syncFilter(
         state.scopedByType,
         state.filters,
         page,

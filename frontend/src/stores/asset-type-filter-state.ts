@@ -1,7 +1,11 @@
 import { ASSET_TYPES, type AssetType } from '@/lib/asset-types';
-import type { SortState } from '@/lib/constants';
+import {
+  DEFAULT_SORT_STATE,
+  type PerPage,
+  type SortState,
+} from '@/lib/constants';
 
-export interface TypeScopedFilterFields {
+export interface AssetFilterFields {
   sort: SortState;
   randomSeed: number;
   mod: {
@@ -15,13 +19,49 @@ export interface TypeScopedFilterFields {
   };
 }
 
-export interface TypeScopedFilterState extends TypeScopedFilterFields {
+export interface AssetQueryFilterState extends AssetFilterFields {
+  query: string;
+  type: AssetType;
+  perPage: PerPage;
+}
+
+export interface AssetFilterState extends AssetFilterFields {
   page: number;
 }
 
-export type TypeScopedByAssetType = Record<AssetType, TypeScopedFilterState>;
+export type FilterByAssetType = Record<AssetType, AssetFilterState>;
 
-function cloneFilterFields(fields: TypeScopedFilterFields): TypeScopedFilterFields {
+export function createRandomSeed(): number {
+  return Math.floor(Math.random() * 2_147_483_647);
+}
+
+export const defaultSearchFilters: AssetQueryFilterState = {
+  query: '',
+  type: 'map',
+  sort: DEFAULT_SORT_STATE,
+  randomSeed: createRandomSeed(),
+  perPage: 12,
+  mod: {
+    tags: [],
+  },
+  map: {
+    locations: [],
+    sourceQuality: [],
+    levelOfDetail: [],
+    specialDemand: [],
+  },
+};
+
+export const defaultLibraryFilters: AssetQueryFilterState = {
+  ...defaultSearchFilters,
+  sort: {
+    ...DEFAULT_SORT_STATE,
+    field: 'name',
+    direction: 'asc',
+  },
+};
+
+function cloneFilterFields(fields: AssetFilterFields): AssetFilterFields {
   return {
     sort: { ...fields.sort },
     randomSeed: fields.randomSeed,
@@ -37,40 +77,48 @@ function cloneFilterFields(fields: TypeScopedFilterFields): TypeScopedFilterFiel
   };
 }
 
-export function toTypeScopedState(
-  fields: TypeScopedFilterFields,
+export function cloneFilterState<T extends AssetQueryFilterState>(state: T): T {
+  return {
+    ...state,
+    ...cloneFilterFields(state),
+  };
+}
+
+export function toAssetFilterState(
+  fields: AssetFilterFields,
   page: number,
-): TypeScopedFilterState {
+): AssetFilterState {
   return {
     ...cloneFilterFields(fields),
     page,
   };
 }
 
-export function createTypeScopedByAssetType(
-  fields: TypeScopedFilterFields,
+// Initialize a filter state for each asset type based on the provided filter values and page number
+export function createFilterByAssetType(
+  fields: AssetFilterFields,
   page: number,
-): TypeScopedByAssetType {
+): FilterByAssetType {
   return Object.fromEntries(
-    ASSET_TYPES.map((assetType) => [assetType, toTypeScopedState(fields, page)]),
-  ) as TypeScopedByAssetType;
+    ASSET_TYPES.map((assetType) => [assetType, toAssetFilterState(fields, page)]),
+  ) as FilterByAssetType;
 }
 
-export function syncCurrentTypeScopedState<T extends TypeScopedFilterFields & { type: AssetType }>(
-  scopedByType: TypeScopedByAssetType,
+export function syncFilter<T extends AssetFilterFields & { type: AssetType }>(
+  scopedByType: FilterByAssetType,
   filters: T,
   page: number,
-): TypeScopedByAssetType {
+): FilterByAssetType {
   return {
     ...scopedByType,
-    [filters.type]: toTypeScopedState(filters, page),
+    [filters.type]: toAssetFilterState(filters, page),
   };
 }
 
-export function applyTypeScopedState<T extends TypeScopedFilterFields & { type: AssetType }>(
+export function applyFilter<T extends AssetFilterFields & { type: AssetType }>(
   filters: T,
   nextType: AssetType,
-  scopedState: TypeScopedFilterState,
+  scopedState: AssetFilterState,
 ): T {
   return {
     ...filters,
@@ -79,21 +127,22 @@ export function applyTypeScopedState<T extends TypeScopedFilterFields & { type: 
   };
 }
 
-export function switchTypeScopedState<T extends TypeScopedFilterFields & { type: AssetType }>(
+// Switch the filter to a different asset type, syncing the current filter values to the new type's state
+export function switchFilter<T extends AssetFilterFields & { type: AssetType }>(
   filters: T,
   page: number,
-  scopedByType: TypeScopedByAssetType,
+  scopedByType: FilterByAssetType,
   nextType: AssetType,
 ): {
   filters: T;
   page: number;
-  scopedByType: TypeScopedByAssetType;
+  scopedByType: FilterByAssetType;
 } {
-  const nextScopedByType = syncCurrentTypeScopedState(scopedByType, filters, page);
+  const nextScopedByType = syncFilter(scopedByType, filters, page);
   const targetState = nextScopedByType[nextType];
 
   return {
-    filters: applyTypeScopedState(filters, nextType, targetState),
+    filters: applyFilter(filters, nextType, targetState),
     page: targetState.page,
     scopedByType: nextScopedByType,
   };
