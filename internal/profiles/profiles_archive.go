@@ -153,7 +153,7 @@ func (s *UserProfiles) RestoreProfileArchive(profileID string) types.GenericResp
 
 	archivePath := path.Join(paths.ProfileArchivesPath(), fmt.Sprintf("%s.tar", profile.UUID))
 	if _, err := os.Stat(archivePath); os.IsNotExist(err) {
-		profileErr := userProfilesError(profileID, "", "", types.ErrorProfileNotFound, fmt.Sprintf("Archive file not found for profile restoration: %q", profileID))
+		profileErr := userProfilesError(profileID, "", "", types.ErrorProfileNotFound, "", fmt.Sprintf("Archive file not found for profile restoration: %q", profileID))
 		s.Logger.Warn("Profile archive not found for restoration", profileErr, "profile_id", profileID)
 		return types.WarnResponse(profileErr.Error())
 	}

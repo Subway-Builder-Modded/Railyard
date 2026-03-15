@@ -38,7 +38,7 @@ func (s *UserProfiles) LoadProfiles() types.UserProfileResult {
 		return types.UserProfileResult{
 			GenericResponse: types.ErrorResponse("failed to load profiles state"),
 			Errors: []types.UserProfilesError{
-				userProfilesError("", "", "", types.ErrorUnknown, "Failed to load profiles state: "+err.Error()),
+				userProfilesError("", "", "", types.ErrorUnknown, "", "Failed to load profiles state: "+err.Error()),
 			},
 		}
 	}
@@ -52,7 +52,7 @@ func (s *UserProfiles) LoadProfiles() types.UserProfileResult {
 				GenericResponse: types.ErrorResponse("Failed to bootstrap default profiles"),
 				Profile:         types.DefaultProfile(),
 				Errors: []types.UserProfilesError{
-					userProfilesError(types.DefaultProfileID, "", "", types.ErrorPersistFailed, "Failed to bootstrap default profiles: "+err.Error()),
+					userProfilesError(types.DefaultProfileID, "", "", types.ErrorPersistFailed, "", "Failed to bootstrap default profiles: "+err.Error()),
 				},
 			}
 		}
@@ -65,7 +65,7 @@ func (s *UserProfiles) LoadProfiles() types.UserProfileResult {
 		return types.UserProfileResult{
 			GenericResponse: types.ErrorResponse("Profiles state validation failed"),
 			Errors: []types.UserProfilesError{
-				userProfilesError("", "", "", types.ErrorUnknown, "Profiles state validation failed: "+err.Error()),
+				userProfilesError("", "", "", types.ErrorUnknown, "", "Profiles state validation failed: "+err.Error()),
 			},
 		}
 	}
@@ -104,7 +104,7 @@ func (s *UserProfiles) resolveActiveProfile() types.UserProfileResult {
 		return types.UserProfileResult{
 			GenericResponse: types.ErrorResponse("Profiles state not loaded"),
 			Errors: []types.UserProfilesError{
-				userProfilesError("", "", "", types.ErrorProfilesNotLoaded, "Profiles state not loaded"),
+				userProfilesError("", "", "", types.ErrorProfilesNotLoaded, "", "Profiles state not loaded"),
 			},
 		}
 	}
@@ -113,7 +113,7 @@ func (s *UserProfiles) resolveActiveProfile() types.UserProfileResult {
 		return types.UserProfileResult{
 			GenericResponse: types.ErrorResponse("Active profile missing from loaded state"),
 			Errors: []types.UserProfilesError{
-				userProfilesError(s.state.ActiveProfileID, "", "", types.ErrorProfileNotFound, `Active profile missing from loaded state: "`+s.state.ActiveProfileID+`"`),
+				userProfilesError(s.state.ActiveProfileID, "", "", types.ErrorProfileNotFound, "", `Active profile missing from loaded state: "`+s.state.ActiveProfileID+`"`),
 			},
 		}
 	}
@@ -141,7 +141,7 @@ func (s *UserProfiles) ResetUserProfiles() types.UserProfileResult {
 			GenericResponse: types.ErrorResponse("Failed to persist reset profiles state"),
 			Profile:         active,
 			Errors: []types.UserProfilesError{
-				userProfilesError(active.ID, "", "", types.ErrorPersistFailed, "Failed to persist reset profiles state: "+err.Error()),
+				userProfilesError(active.ID, "", "", types.ErrorPersistFailed, "", "Failed to persist reset profiles state: "+err.Error()),
 			},
 		}
 	}
@@ -178,7 +178,7 @@ func (s *UserProfiles) UpdateUIPreferences(uiPrefs types.UIPreferences) types.Us
 			GenericResponse: types.ErrorResponse("Invalid UI preferences"),
 			Profile:         s.state.Profiles[s.state.ActiveProfileID],
 			Errors: []types.UserProfilesError{
-				userProfilesError(s.state.ActiveProfileID, "", "", types.ErrorUnknown, "Invalid UI preferences: "+err.Error()),
+				userProfilesError(s.state.ActiveProfileID, "", "", types.ErrorUnknown, "", "Invalid UI preferences: "+err.Error()),
 			},
 		}
 	}
@@ -190,7 +190,7 @@ func (s *UserProfiles) UpdateUIPreferences(uiPrefs types.UIPreferences) types.Us
 			GenericResponse: types.ErrorResponse("Failed to persist UI preferences"),
 			Profile:         validatedState.Profiles[s.state.ActiveProfileID],
 			Errors: []types.UserProfilesError{
-				userProfilesError(s.state.ActiveProfileID, "", "", types.ErrorPersistFailed, "Failed to persist UI preferences: "+err.Error()),
+				userProfilesError(s.state.ActiveProfileID, "", "", types.ErrorPersistFailed, "", "Failed to persist UI preferences: "+err.Error()),
 			},
 		}
 	}

@@ -51,6 +51,7 @@ func (s *UserProfiles) SyncSubscriptions(profileID string) types.SyncSubscriptio
 			"",
 			"",
 			types.ErrorSyncSuperseded,
+			"",
 			"Sync superseded by newer subscription update",
 		)
 		return newSyncSubscriptionsResult(
@@ -231,7 +232,7 @@ func syncAssetSubscriptions[T any, U any](log logger.Logger, profileID string, a
 				"desired_version", versionText,
 				"available_versions", availableKeys,
 			)
-			errs = append(errs, userProfilesError(profileID, assetID, args.assetType, types.ErrorLookupFailed, fmt.Sprintf("Subscribe %s %q failed: version %q is not available", args.assetType, assetID, versionText)))
+			errs = append(errs, userProfilesError(profileID, assetID, args.assetType, types.ErrorLookupFailed, "", fmt.Sprintf("Subscribe %s %q failed: version %q is not available", args.assetType, assetID, versionText)))
 			continue
 		}
 
@@ -240,7 +241,7 @@ func syncAssetSubscriptions[T any, U any](log logger.Logger, profileID string, a
 			log.Info("Uninstalling previous version before update", "asset_type", args.assetType, "asset_id", assetID, "current_version", current, "target_version", versionText)
 			uninstallResp := args.uninstall(assetID)
 			if err := syncUninstallActionError(types.SubscriptionActionUnsubscribe, args.assetType, assetID, uninstallResp); err != nil {
-				errs = append(errs, syncFailedError(profileID, assetID, args.assetType, err))
+				errs = append(errs, syncUninstallFailedError(profileID, assetID, args.assetType, uninstallResp, err))
 				continue
 			}
 			operations = append(operations, types.SubscriptionOperation{
@@ -299,7 +300,7 @@ func syncAssetSubscriptions[T any, U any](log logger.Logger, profileID string, a
 		response := args.uninstall(assetID)
 		// If uninstallation fails, record the error but continue.
 		if err := syncUninstallActionError(types.SubscriptionActionUnsubscribe, args.assetType, assetID, response); err != nil {
-			errs = append(errs, syncFailedError(profileID, assetID, args.assetType, err))
+			errs = append(errs, syncUninstallFailedError(profileID, assetID, args.assetType, response, err))
 			continue
 		}
 		operations = append(operations, types.SubscriptionOperation{

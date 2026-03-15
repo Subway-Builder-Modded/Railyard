@@ -94,18 +94,25 @@ func newSyncSubscriptionsResult(
 
 // ===== Request Errors ===== //
 
-func userProfilesError(profileID, assetID string, assetType types.AssetType, errorType types.UserProfilesErrorType, message string) types.UserProfilesError {
+func userProfilesError(
+	profileID, assetID string,
+	assetType types.AssetType,
+	errorType types.UserProfilesErrorType,
+	downloadErrorType types.DownloaderErrorType,
+	message string,
+) types.UserProfilesError {
 	return types.UserProfilesError{
-		ProfileID: profileID,
-		AssetID:   assetID,
-		AssetType: assetType,
-		ErrorType: errorType,
-		Message:   strings.TrimSpace(message),
+		ProfileID:           profileID,
+		AssetID:             assetID,
+		AssetType:           assetType,
+		ErrorType:           errorType,
+		DownloaderErrorType: downloadErrorType,
+		Message:             strings.TrimSpace(message),
 	}
 }
 
 func profileNotFoundError(profileID string) types.UserProfilesError {
-	return userProfilesError(profileID, "", "", types.ErrorProfileNotFound, fmt.Sprintf("Profile %q not found", profileID))
+	return userProfilesError(profileID, "", "", types.ErrorProfileNotFound, "", fmt.Sprintf("Profile %q not found", profileID))
 }
 
 func profileFromState(state types.UserProfilesState, profileID string) (types.UserProfile, *types.UserProfilesError) {
@@ -139,11 +146,11 @@ func (s *UserProfiles) isSnapshotStale(snapshotVersion uint64) bool {
 }
 
 func updateSubscriptionError(profileID, assetID string, assetType types.AssetType, errorType types.UserProfilesErrorType, err error) types.UserProfilesError {
-	return userProfilesError(profileID, assetID, assetType, errorType, fmt.Sprintf("Failed update action: %v", err))
+	return userProfilesError(profileID, assetID, assetType, errorType, "", fmt.Sprintf("Failed update action: %v", err))
 }
 
 func syncFailedError(profileID, assetID string, assetType types.AssetType, err error) types.UserProfilesError {
-	return userProfilesError(profileID, assetID, assetType, types.ErrorSyncFailed, fmt.Sprintf("Failed sync action: %v", err))
+	return userProfilesError(profileID, assetID, assetType, types.ErrorSyncFailed, "", fmt.Sprintf("Failed sync action: %v", err))
 }
 
 func syncInstallFailedError(profileID, assetID string, assetType types.AssetType, response types.AssetInstallResponse, err error) types.UserProfilesError {
@@ -155,6 +162,18 @@ func syncInstallFailedError(profileID, assetID string, assetType types.AssetType
 		assetID,
 		assetType,
 		types.UserProfilesErrorType(response.ErrorType),
+		response.ErrorType,
+		fmt.Sprintf("Failed sync action: %v", err),
+	)
+}
+
+func syncUninstallFailedError(profileID, assetID string, assetType types.AssetType, response types.AssetUninstallResponse, err error) types.UserProfilesError {
+	return userProfilesError(
+		profileID,
+		assetID,
+		assetType,
+		types.ErrorSyncFailed,
+		response.ErrorType,
 		fmt.Sprintf("Failed sync action: %v", err),
 	)
 }

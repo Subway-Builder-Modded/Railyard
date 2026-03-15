@@ -667,6 +667,7 @@ export namespace types {
 	    assetId: string;
 	    assetType: string;
 	    errorType: string;
+	    downloaderErrorType?: string;
 	    message: string;
 	
 	    static createFrom(source: any = {}) {
@@ -679,6 +680,7 @@ export namespace types {
 	        this.assetId = source["assetId"];
 	        this.assetType = source["assetType"];
 	        this.errorType = source["errorType"];
+	        this.downloaderErrorType = source["downloaderErrorType"];
 	        this.message = source["message"];
 	    }
 	}

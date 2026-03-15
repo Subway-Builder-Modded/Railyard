@@ -25,6 +25,8 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 	}
 
 	if req.ForceSync {
+		cancelErrors := make([]types.UserProfilesError, 0)
+		cancelFailed := false
 		for _, operation := range result.Operations {
 			if operation.Action != types.SubscriptionActionUnsubscribe {
 				continue
@@ -32,6 +34,42 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 			cancelResp := s.Downloader.UninstallAsset(operation.Type, operation.AssetID)
 			if cancelResp.Status == types.ResponseError {
 				s.Logger.Warn("Failed to enqueue uninstall cancellation", "asset_type", operation.Type, "asset_id", operation.AssetID, "message", cancelResp.Message)
+				cancelErrors = append(
+					cancelErrors,
+					userProfilesError(
+						req.ProfileID,
+						operation.AssetID,
+						operation.Type,
+						types.ErrorSyncFailed,
+						cancelResp.ErrorType,
+						cancelResp.Message,
+					),
+				)
+				cancelFailed = true
+				continue
+			}
+			if cancelResp.Status == types.ResponseWarn {
+				cancelErrors = append(
+					cancelErrors,
+					userProfilesError(
+						req.ProfileID,
+						operation.AssetID,
+						operation.Type,
+						types.ErrorSyncFailed,
+						cancelResp.ErrorType,
+						cancelResp.Message,
+					),
+				)
+			}
+		}
+		if len(cancelErrors) > 0 {
+			result.Errors = append(result.Errors, cancelErrors...)
+			if cancelFailed {
+				result.Status = types.ResponseError
+				result.Message = "Failed to cancel pending installs"
+			} else if result.Status == types.ResponseSuccess {
+				result.Status = types.ResponseWarn
+				result.Message = "Subscriptions updated with cancellation warnings"
 			}
 		}
 
@@ -392,7 +430,7 @@ func applySubscriptionMutation(
 	case types.AssetTypeMod:
 		return mutateSubscriptionMap(profile.Subscriptions.Mods, action, assetID, item)
 	default:
-		err := userProfilesError("", assetID, item.Type, types.ErrorInvalidAssetType, fmt.Sprintf("Invalid asset type: %q", item.Type))
+		err := userProfilesError("", assetID, item.Type, types.ErrorInvalidAssetType, "", fmt.Sprintf("Invalid asset type: %q", item.Type))
 		return nil, &err
 	}
 }
@@ -407,7 +445,7 @@ func mutateSubscriptionMap(
 	case types.SubscriptionActionSubscribe:
 		versionText := strings.TrimSpace(string(item.Version))
 		if !types.IsValidSemverVersion(types.Version(versionText)) {
-			err := userProfilesError("", assetID, item.Type, types.ErrorInvalidVersion, fmt.Sprintf("Invalid version: %q", versionText))
+			err := userProfilesError("", assetID, item.Type, types.ErrorInvalidVersion, "", fmt.Sprintf("Invalid version: %q", versionText))
 			return nil, &err
 		}
 		target[assetID] = versionText
@@ -430,7 +468,7 @@ func mutateSubscriptionMap(
 			Version: types.Version(strings.TrimSpace(removedVersion)),
 		}, nil
 	default:
-		err := userProfilesError("", assetID, item.Type, types.ErrorInvalidAction, fmt.Sprintf("Invalid subscription action: %q", action))
+		err := userProfilesError("", assetID, item.Type, types.ErrorInvalidAction, "", fmt.Sprintf("Invalid subscription action: %q", action))
 		return nil, &err
 	}
 }
