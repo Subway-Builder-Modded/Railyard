@@ -13,6 +13,9 @@ import { Separator } from '@/components/ui/separator';
 import type { AssetType } from '@/lib/asset-types';
 import { filterVisibleListingValues } from '@/lib/listing-counts';
 import {
+  LEVEL_OF_DETAIL_VALUES,
+  LOCATION_TAGS,
+  SOURCE_QUALITY_VALUES,
   formatSourceQuality,
 } from '@/lib/map-filter-values';
 import { SEARCH_FILTER_EMPTY_LABELS } from '@/lib/search';
@@ -33,9 +36,6 @@ interface LibrarySidebarProps {
   modCount: number;
   mapCount: number;
   availableTags: string[];
-  availableLocations: string[];
-  availableSourceQuality: string[];
-  availableLevelOfDetail: string[];
   availableSpecialDemand: string[];
   modTagCounts: Record<string, number>;
   mapLocationCounts: Record<string, number>;
@@ -60,9 +60,6 @@ export function LibrarySidebar({
   modCount,
   mapCount,
   availableTags,
-  availableLocations,
-  availableSourceQuality,
-  availableLevelOfDetail,
   availableSpecialDemand,
   modTagCounts,
   mapLocationCounts,
@@ -137,7 +134,7 @@ export function LibrarySidebar({
           <ChecklistFilterSection
             title="Location"
             icon={MapPin}
-            values={availableLocations}
+            values={LOCATION_TAGS}
             counts={mapLocationCounts}
             selected={filters.map.locations}
             onChange={(values) =>
@@ -150,7 +147,7 @@ export function LibrarySidebar({
           <ChecklistFilterSection
             title="Source Quality"
             icon={BadgeCheck}
-            values={availableSourceQuality}
+            values={SOURCE_QUALITY_VALUES}
             counts={mapSourceQualityCounts}
             selected={filters.map.sourceQuality}
             formatValue={formatSourceQuality}
@@ -164,7 +161,7 @@ export function LibrarySidebar({
           <ChecklistFilterSection
             title="Level of Detail"
             icon={Layers3}
-            values={availableLevelOfDetail}
+            values={LEVEL_OF_DETAIL_VALUES}
             counts={mapLevelOfDetailCounts}
             selected={filters.map.levelOfDetail}
             onChange={(values) =>

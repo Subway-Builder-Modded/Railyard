@@ -13,7 +13,7 @@ import { Pagination } from '@/components/shared/Pagination';
 import { useFilteredItems } from '@/hooks/use-filtered-items';
 import type { AssetType } from '@/lib/asset-types';
 import { buildAssetListingCounts } from '@/lib/listing-counts';
-import { buildMapFilterValues } from '@/lib/map-filter-values';
+import { buildSpecialDemandValues } from '@/lib/map-filter-values';
 import type { SearchViewMode } from '@/lib/search-view-mode';
 import { cn } from '@/lib/utils';
 import { useInstalledStore } from '@/stores/installed-store';
@@ -74,7 +74,7 @@ export function SearchPage() {
     return [...new Set(modTags)].sort();
   }, [mods]);
 
-  const mapFilterValues = useMemo(() => buildMapFilterValues(maps), [maps]);
+  const availableSpecialDemand = useMemo(() => buildSpecialDemandValues(maps), [maps]);
 
   const {
     modTagCounts,
@@ -145,10 +145,7 @@ export function SearchPage() {
             onFiltersChange={setFilters}
             onTypeChange={setType}
             availableTags={allTags}
-            availableLocations={mapFilterValues.locations}
-            availableSourceQuality={mapFilterValues.sourceQuality}
-            availableLevelOfDetail={mapFilterValues.levelOfDetail}
-            availableSpecialDemand={mapFilterValues.specialDemand}
+            availableSpecialDemand={availableSpecialDemand}
             modTagCounts={modTagCounts}
             mapLocationCounts={mapLocationCounts}
             mapSourceQualityCounts={mapSourceQualityCounts}

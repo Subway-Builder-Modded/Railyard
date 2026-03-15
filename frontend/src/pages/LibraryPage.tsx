@@ -12,7 +12,7 @@ import { Pagination } from '@/components/shared/Pagination';
 import { Button } from '@/components/ui/button';
 import { useFilteredInstalledItems } from '@/hooks/use-filtered-installed-items';
 import { buildAssetListingCounts } from '@/lib/listing-counts';
-import { buildMapFilterValues } from '@/lib/map-filter-values';
+import { buildSpecialDemandValues } from '@/lib/map-filter-values';
 import { useInstalledStore } from '@/stores/installed-store';
 import { useRegistryStore } from '@/stores/registry-store';
 
@@ -118,8 +118,8 @@ export function LibraryPage() {
     return Array.from(tags).sort();
   }, [installedModItems]);
 
-  const mapFilterValues = useMemo(
-    () => buildMapFilterValues(installedMapItems),
+  const availableSpecialDemand = useMemo(
+    () => buildSpecialDemandValues(installedMapItems),
     [installedMapItems],
   );
 
@@ -214,10 +214,7 @@ export function LibraryPage() {
                 modCount={modCount}
                 mapCount={mapCount}
                 availableTags={availableTags}
-                availableLocations={mapFilterValues.locations}
-                availableSourceQuality={mapFilterValues.sourceQuality}
-                availableLevelOfDetail={mapFilterValues.levelOfDetail}
-                availableSpecialDemand={mapFilterValues.specialDemand}
+                availableSpecialDemand={availableSpecialDemand}
                 modTagCounts={modTagCounts}
                 mapLocationCounts={mapLocationCounts}
                 mapSourceQualityCounts={mapSourceQualityCounts}
