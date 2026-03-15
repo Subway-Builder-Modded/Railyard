@@ -126,11 +126,12 @@ const (
 )
 
 type UserProfilesError struct {
-	ProfileID string                `json:"profileId"`
-	AssetID   string                `json:"assetId"`
-	AssetType AssetType             `json:"assetType"`
-	ErrorType UserProfilesErrorType `json:"errorType"`
-	Message   string                `json:"message"`
+	ProfileID           string                `json:"profileId"`
+	AssetID             string                `json:"assetId"`
+	AssetType           AssetType             `json:"assetType"`
+	ErrorType           UserProfilesErrorType `json:"errorType"`
+	DownloaderErrorType DownloaderErrorType   `json:"downloaderErrorType,omitempty"`
+	Message             string                `json:"message"`
 }
 
 func (e UserProfilesError) Error() string {

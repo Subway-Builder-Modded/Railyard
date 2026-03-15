@@ -25,6 +25,8 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 	}
 
 	if req.ForceSync {
+		cancelErrors := make([]types.UserProfilesError, 0)
+		cancelFailed := false
 		for _, operation := range result.Operations {
 			if operation.Action != types.SubscriptionActionUnsubscribe {
 				continue
@@ -32,6 +34,42 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 			cancelResp := s.Downloader.UninstallAsset(operation.Type, operation.AssetID)
 			if cancelResp.Status == types.ResponseError {
 				s.Logger.Warn("Failed to enqueue uninstall cancellation", "asset_type", operation.Type, "asset_id", operation.AssetID, "message", cancelResp.Message)
+				cancelErrors = append(
+					cancelErrors,
+					userProfilesErrorWithDownloadError(
+						req.ProfileID,
+						operation.AssetID,
+						operation.Type,
+						types.ErrorSyncFailed,
+						cancelResp.ErrorType,
+						cancelResp.Message,
+					),
+				)
+				cancelFailed = true
+				continue
+			}
+			if cancelResp.Status == types.ResponseWarn {
+				cancelErrors = append(
+					cancelErrors,
+					userProfilesErrorWithDownloadError(
+						req.ProfileID,
+						operation.AssetID,
+						operation.Type,
+						types.ErrorSyncFailed,
+						cancelResp.ErrorType,
+						cancelResp.Message,
+					),
+				)
+			}
+		}
+		if len(cancelErrors) > 0 {
+			result.Errors = append(result.Errors, cancelErrors...)
+			if cancelFailed {
+				result.Status = types.ResponseError
+				result.Message = "Failed to cancel pending installs"
+			} else if result.Status == types.ResponseSuccess {
+				result.Status = types.ResponseWarn
+				result.Message = "Subscriptions updated with cancellation warnings"
 			}
 		}
 

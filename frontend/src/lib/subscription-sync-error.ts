@@ -8,7 +8,9 @@ export interface SubscriptionSyncErrorState {
   errors: types.UserProfilesError[];
 }
 
-const CANCELLATION_ERROR_TYPES = new Set<string>([]);
+const CANCELLATION_DOWNLOADER_ERROR_TYPES = new Set<string>([
+  'uninstall_not_installed',
+]);
 const SILENT_WARNING_ERROR_TYPES = new Set<string>(['sync_superseded']);
 
 export function toSubscriptionSyncErrorState(
@@ -30,7 +32,9 @@ export function hasCancellationSyncErrors(
   errors: types.UserProfilesError[] | undefined | null,
 ): boolean {
   return (errors ?? []).some((profileError) =>
-    CANCELLATION_ERROR_TYPES.has(profileError.errorType),
+    CANCELLATION_DOWNLOADER_ERROR_TYPES.has(
+      profileError.downloaderErrorType ?? '',
+    ),
   );
 }
 

@@ -95,12 +95,23 @@ func newSyncSubscriptionsResult(
 // ===== Request Errors ===== //
 
 func userProfilesError(profileID, assetID string, assetType types.AssetType, errorType types.UserProfilesErrorType, message string) types.UserProfilesError {
+	return userProfilesErrorWithDownloadError(profileID, assetID, assetType, errorType, "", message)
+}
+
+func userProfilesErrorWithDownloadError(
+	profileID, assetID string,
+	assetType types.AssetType,
+	errorType types.UserProfilesErrorType,
+	downloadErrorType types.DownloaderErrorType,
+	message string,
+) types.UserProfilesError {
 	return types.UserProfilesError{
-		ProfileID: profileID,
-		AssetID:   assetID,
-		AssetType: assetType,
-		ErrorType: errorType,
-		Message:   strings.TrimSpace(message),
+		ProfileID:           profileID,
+		AssetID:             assetID,
+		AssetType:           assetType,
+		ErrorType:           errorType,
+		DownloaderErrorType: downloadErrorType,
+		Message:             strings.TrimSpace(message),
 	}
 }
 
@@ -150,11 +161,23 @@ func syncInstallFailedError(profileID, assetID string, assetType types.AssetType
 	if response.ErrorType == "" { // Programmer error; we should always have some sort of ErrorCode
 		panic(fmt.Sprintf("syncInstallFailedError received empty install error code for %s %q", assetType, assetID))
 	}
-	return userProfilesError(
+	return userProfilesErrorWithDownloadError(
 		profileID,
 		assetID,
 		assetType,
 		types.UserProfilesErrorType(response.ErrorType),
+		response.ErrorType,
+		fmt.Sprintf("Failed sync action: %v", err),
+	)
+}
+
+func syncUninstallFailedError(profileID, assetID string, assetType types.AssetType, response types.AssetUninstallResponse, err error) types.UserProfilesError {
+	return userProfilesErrorWithDownloadError(
+		profileID,
+		assetID,
+		assetType,
+		types.ErrorSyncFailed,
+		response.ErrorType,
 		fmt.Sprintf("Failed sync action: %v", err),
 	)
 }

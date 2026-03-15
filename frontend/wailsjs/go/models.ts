@@ -665,6 +665,7 @@ export namespace types {
 	    assetId: string;
 	    assetType: string;
 	    errorType: string;
+	    downloaderErrorType?: string;
 	    message: string;
 	
 	    static createFrom(source: any = {}) {
@@ -677,6 +678,7 @@ export namespace types {
 	        this.assetId = source["assetId"];
 	        this.assetType = source["assetType"];
 	        this.errorType = source["errorType"];
+	        this.downloaderErrorType = source["downloaderErrorType"];
 	        this.message = source["message"];
 	    }
 	}
@@ -733,6 +735,7 @@ export namespace types {
 	export class UIPreferences {
 	    theme: string;
 	    defaultPerPage: number;
+	    searchViewMode: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UIPreferences(source);
@@ -742,6 +745,7 @@ export namespace types {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.theme = source["theme"];
 	        this.defaultPerPage = source["defaultPerPage"];
+	        this.searchViewMode = source["searchViewMode"];
 	    }
 	}
 	export class UpdateAllSubscriptionsToLatestRequest {
