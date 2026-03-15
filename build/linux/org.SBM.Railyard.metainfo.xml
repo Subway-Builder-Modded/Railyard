@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.SBM.Railyard</id>
+  <name>Railyard</name>
+  <summary>Mod manager for Subway Builder</summary>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>
+      Railyard helps you browse, install, update, and manage Subway Builder maps and mods.
+    </p>
+  </description>
+  <launchable type="desktop-id">org.SBM.Railyard.desktop</launchable>
+  <url type="homepage">https://github.com/Subway-Builder-Modded/railyard</url>
+  <url type="bugtracker">https://github.com/Subway-Builder-Modded/railyard/issues</url>
+</component>
