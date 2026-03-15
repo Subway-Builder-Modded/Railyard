@@ -40,17 +40,20 @@ const DESC_ASC_DIRECTIONS = ['desc', 'asc'] as const;
 
 function directionsForField(field: SortField): readonly SortDirection[] {
   if (field === 'random') return ['asc'] as const;
+  if (field === 'name' || field === 'country' || field === 'author') {
+    return ['asc', 'desc'] as const;
+  }
   return DESC_ASC_DIRECTIONS;
 }
 
 function sortOptionLabel(field: SortField, direction: SortDirection): string {
   switch (field) {
     case 'name':
-      return direction === 'desc' ? 'Name (A-Z)' : 'Name (Z-A)';
+      return direction === 'asc' ? 'Name (A-Z)' : 'Name (Z-A)';
     case 'country':
-      return direction === 'desc' ? 'Country (A-Z)' : 'Country (Z-A)';
+      return direction === 'asc' ? 'Country (A-Z)' : 'Country (Z-A)';
     case 'author':
-      return direction === 'desc' ? 'Author (A-Z)' : 'Author (Z-A)';
+      return direction === 'asc' ? 'Author (A-Z)' : 'Author (Z-A)';
     case 'population':
       return direction === 'asc' ? 'Population \u2191' : 'Population \u2193';
     case 'downloads':
