@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -11,13 +12,33 @@ import (
 
 // WriteInstalledToDisk persists installed mods and maps state to disk.
 func (r *Registry) WriteInstalledToDisk() error {
-	// TODO: Make this transactional across installed_mods.json + installed_maps.json (and future other asset classes) to avoid partial state writes
-	if err := files.WriteJSON[types.InstalledModFile](paths.InstalledModsPath(), "installed mod file", r.installedMods); err != nil {
-		return fmt.Errorf("failed to write installed mods to disk: %w", err)
+	// Indent JSON for readability
+	modsJSON, err := json.MarshalIndent(types.InstalledModFile(r.installedMods), "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to serialize installed mod file: %w", err)
 	}
-	if err := files.WriteJSON[types.InstalledMapFile](paths.InstalledMapsPath(), "installed map file", r.installedMaps); err != nil {
-		return fmt.Errorf("failed to write installed maps to disk: %w", err)
+	mapsJSON, err := json.MarshalIndent(types.InstalledMapFile(r.installedMaps), "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to serialize installed map file: %w", err)
 	}
+
+	if err := files.WriteFilesAtomically([]files.AtomicFileWrite{
+		{
+			Path:  paths.InstalledModsPath(),
+			Label: "installed mod file",
+			Data:  modsJSON,
+			Perm:  0o644,
+		},
+		{
+			Path:  paths.InstalledMapsPath(),
+			Label: "installed map file",
+			Data:  mapsJSON,
+			Perm:  0o644,
+		},
+	}); err != nil {
+		return fmt.Errorf("failed to write installed state transactionally: %w", err)
+	}
+
 	return nil
 }
 

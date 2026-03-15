@@ -1,4 +1,4 @@
-import { CheckCircle,Download } from 'lucide-react';
+import { CheckCircle, Download } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
@@ -34,8 +34,7 @@ export function DownloadNotification() {
 
       if (cancelledItems.current.has(itemId)) {
         if (!isInstalling) {
-          // Ignore stale progress events from a canceled request so the toast
-          // does not reappear after cancellation.
+          // Ignore stale progress events from a canceled request so the toast does not reappear after cancellation.
           return;
         }
         // A new install for this item started; allow progress notifications again.

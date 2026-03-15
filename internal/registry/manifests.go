@@ -45,6 +45,21 @@ func (r *Registry) fetchFromDisk() error {
 		return fmt.Errorf("failed to load registry integrity reports from disk: %w", err)
 	}
 
+	mods = filterManifestsByIntegrity(
+		mods,
+		modIntegrity.Listings,
+		func(item types.ModManifest) string { return item.ID },
+		types.AssetTypeMod,
+		r.logger,
+	)
+	maps = filterManifestsByIntegrity(
+		maps,
+		mapIntegrity.Listings,
+		func(item types.MapManifest) string { return item.ID },
+		types.AssetTypeMap,
+		r.logger,
+	)
+
 	modLastUpdated, mapLastUpdated := r.loadLastUpdated(mods, maps)
 	updateManifestLastUpdated(mods, maps, modLastUpdated, mapLastUpdated)
 
@@ -58,6 +73,30 @@ func (r *Registry) fetchFromDisk() error {
 	r.integrityMods = modIntegrity
 
 	return nil
+}
+
+func filterManifestsByIntegrity[T any](
+	manifests []T,
+	listings map[string]types.IntegrityListing,
+	idFn func(T) string,
+	assetType types.AssetType,
+	logger logSink,
+) []T {
+	if len(manifests) == 0 {
+		return manifests
+	}
+
+	filtered := make([]T, 0, len(manifests))
+	for _, manifest := range manifests {
+		assetID := idFn(manifest)
+		if _, ok := listings[assetID]; !ok {
+			logger.Warn("Skipping manifest missing integrity listing", "asset_type", assetType, "asset_id", assetID)
+			continue
+		}
+		filtered = append(filtered, manifest)
+	}
+
+	return filtered
 }
 
 // getModsFromDisk reads the mods index and returns all mod manifests.

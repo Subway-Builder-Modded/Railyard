@@ -1650,16 +1650,19 @@ func TestUpdateUIPreferences(t *testing.T) {
 	result := svc.UpdateUIPreferences(types.UIPreferences{
 		Theme:          types.ThemeLight,
 		DefaultPerPage: types.PageSize24,
+		SearchViewMode: types.SearchViewModeFull,
 	})
 
 	require.Equal(t, types.ResponseSuccess, result.Status)
 	require.Equal(t, types.ThemeLight, result.Profile.UIPreferences.Theme)
 	require.Equal(t, types.PageSize24, result.Profile.UIPreferences.DefaultPerPage)
+	require.Equal(t, types.SearchViewModeFull, result.Profile.UIPreferences.SearchViewMode)
 
 	persisted, err := ReadUserProfilesState()
 	require.NoError(t, err)
 	require.Equal(t, types.ThemeLight, persisted.Profiles[persisted.ActiveProfileID].UIPreferences.Theme)
 	require.Equal(t, types.PageSize24, persisted.Profiles[persisted.ActiveProfileID].UIPreferences.DefaultPerPage)
+	require.Equal(t, types.SearchViewModeFull, persisted.Profiles[persisted.ActiveProfileID].UIPreferences.SearchViewMode)
 }
 
 func TestUpdateUIPreferencesRejectsInvalid(t *testing.T) {
@@ -1669,6 +1672,7 @@ func TestUpdateUIPreferencesRejectsInvalid(t *testing.T) {
 	result := svc.UpdateUIPreferences(types.UIPreferences{
 		Theme:          types.ThemeMode("retro"),
 		DefaultPerPage: types.PageSize(30),
+		SearchViewMode: types.SearchViewMode("abcdefg"),
 	})
 
 	require.Equal(t, types.ResponseError, result.Status)
@@ -1677,4 +1681,5 @@ func TestUpdateUIPreferencesRejectsInvalid(t *testing.T) {
 	active := svc.GetActiveProfile()
 	require.Equal(t, types.ThemeDark, active.Profile.UIPreferences.Theme)
 	require.Equal(t, types.PageSize12, active.Profile.UIPreferences.DefaultPerPage)
+	require.Equal(t, types.SearchViewModeFull, active.Profile.UIPreferences.SearchViewMode)
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 )
 
 type JSONReadOptions struct {
@@ -19,6 +18,13 @@ type JSONReadOptions struct {
 func ReadJSON[T any](path string, label string, opts JSONReadOptions) (T, error) {
 	var zero T
 	data, err := os.ReadFile(path)
+	// If the file is missing, attempt to recover from backup if allowed, then try reading again. If still missing and AllowMissing is true, return zero value without error.
+	if os.IsNotExist(err) {
+		if recoverErr := recoverAtomicBackup(path, label); recoverErr != nil {
+			return zero, recoverErr
+		}
+		data, err = os.ReadFile(path)
+	}
 	if err != nil {
 		if os.IsNotExist(err) && opts.AllowMissing {
 			return zero, nil
@@ -59,20 +65,20 @@ func ParseJSON[T any](data []byte, label string) (T, error) {
 // WriteJSON formats the value to JSON and writes it to path.
 // The label is used for annotating error messages.
 func WriteJSON[T any](path string, label string, value T) error {
-	// TODO: Make writes crash-safe/atomic (write temp file + fsync + rename).
-	// Current direct os.WriteFile can leave truncated/corrupt JSON on abrupt shutdown.
-	// We must ensure the directory exists before writing the file
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("failed to create directory for %s %q: %w", label, path, err)
-	}
-
 	// Format the JSON with indentation for readability
 	formatted, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to serialize %s: %w", label, err)
 	}
 
-	if err := os.WriteFile(path, formatted, 0o644); err != nil {
+	if err := WriteFilesAtomically([]AtomicFileWrite{
+		{
+			Path:  path,
+			Label: label,
+			Data:  formatted,
+			Perm:  0o644,
+		},
+	}); err != nil {
 		return fmt.Errorf("failed to write %s %q: %w", label, path, err)
 	}
 

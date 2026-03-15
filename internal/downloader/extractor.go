@@ -308,7 +308,14 @@ func extractMap(d *Downloader, filePath string, mapId string, version string) ty
 		}
 
 		thumbnailPath := path.Join(d.getMapThumbnailPath(), configData.Code+".svg")
-		if err := os.WriteFile(thumbnailPath, []byte(thumbnailData), os.ModePerm); err != nil {
+		if err := files.WriteFilesAtomically([]files.AtomicFileWrite{
+			{
+				Path:  thumbnailPath,
+				Label: "map thumbnail",
+				Data:  []byte(thumbnailData),
+				Perm:  0o644,
+			},
+		}); err != nil {
 			return d.installWarn(types.AssetTypeMap, mapId, version, configData, "Failed to save generated thumbnail, but map was extracted successfully. You can try generating the thumbnail later from the map details page.", "file_path", filePath, "map_code", configData.Code, "thumbnail_path", thumbnailPath)
 		}
 		extractCount++

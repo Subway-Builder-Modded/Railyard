@@ -24,14 +24,27 @@ func TestAreValidUIPreferences(t *testing.T) {
 	require.True(t, areValidUIPreferences(UIPreferences{
 		Theme:          ThemeDark,
 		DefaultPerPage: PageSize12,
+		SearchViewMode: SearchViewModeFull,
+	}))
+	require.True(t, areValidUIPreferences(UIPreferences{
+		Theme:          ThemeLight,
+		DefaultPerPage: PageSize24,
+		SearchViewMode: "",
 	}))
 	require.False(t, areValidUIPreferences(UIPreferences{
 		Theme:          ThemeMode("custom"),
 		DefaultPerPage: PageSize12,
+		SearchViewMode: SearchViewModeCompact,
 	}))
 	require.False(t, areValidUIPreferences(UIPreferences{
 		Theme:          ThemeDark,
 		DefaultPerPage: PageSize(999),
+		SearchViewMode: SearchViewModeList,
+	}))
+	require.False(t, areValidUIPreferences(UIPreferences{
+		Theme:          ThemeLight,
+		DefaultPerPage: PageSize24,
+		SearchViewMode: SearchViewMode("unknown"),
 	}))
 }
 
@@ -49,6 +62,17 @@ func TestValidateStateAcceptsInitialProfilesState(t *testing.T) {
 	validated, err := ValidateState(state)
 	require.NoError(t, err)
 	require.Equal(t, state, validated)
+}
+
+func TestValidateStateBackfillsEmptySearchViewMode(t *testing.T) {
+	state := InitialProfilesState()
+	profile := state.Profiles[DefaultProfileID]
+	profile.UIPreferences.SearchViewMode = ""
+	state.Profiles[DefaultProfileID] = profile
+
+	validated, err := ValidateState(state)
+	require.NoError(t, err)
+	require.Equal(t, SearchViewModeFull, validated.Profiles[DefaultProfileID].UIPreferences.SearchViewMode)
 }
 
 func assertInvalidState(t *testing.T, mutate func(*UserProfilesState), exErr error) {

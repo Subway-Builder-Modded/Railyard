@@ -1,9 +1,13 @@
 package registry
 
 import (
+	"path/filepath"
 	"testing"
 
 	"railyard/internal/config"
+	"railyard/internal/constants"
+	"railyard/internal/files"
+	"railyard/internal/paths"
 	"railyard/internal/testutil"
 	"railyard/internal/testutil/registrytest"
 	"railyard/internal/types"
@@ -98,4 +102,49 @@ func TestGetDownloadCountsByAssetTypeReturnsDeepCopy(t *testing.T) {
 
 	second := reg.GetDownloadCountsByAssetType(types.AssetTypeMod)
 	require.Equal(t, 5, second.Counts["mod-a"]["1.0.0"])
+}
+
+func TestFetchFromDiskFiltersOutAssetsMissingIntegrityListings(t *testing.T) {
+	testutil.NewHarness(t)
+	registrytest.WriteFixture(t, registrytest.RepositoryFixture{
+		Mods: []types.ModManifest{
+			{ID: "mod-a"},
+			{ID: "mod-b"},
+		},
+		Maps: []types.MapManifest{
+			{ID: "map-a"},
+			{ID: "map-b"},
+		},
+	})
+
+	require.NoError(t, files.WriteJSON(
+		filepath.Join(paths.RegistryRepoPath(), "mods", constants.INTEGRITY_JSON),
+		"mods integrity report",
+		types.RegistryIntegrityReport{
+			SchemaVersion: 1,
+			GeneratedAt:   "1970-01-01T00:00:00Z",
+			Listings: map[string]types.IntegrityListing{
+				"mod-a": {Versions: map[string]types.IntegrityVersionStatus{}},
+			},
+		},
+	))
+	require.NoError(t, files.WriteJSON(
+		filepath.Join(paths.RegistryRepoPath(), "maps", constants.INTEGRITY_JSON),
+		"maps integrity report",
+		types.RegistryIntegrityReport{
+			SchemaVersion: 1,
+			GeneratedAt:   "1970-01-01T00:00:00Z",
+			Listings: map[string]types.IntegrityListing{
+				"map-a": {Versions: map[string]types.IntegrityVersionStatus{}},
+			},
+		},
+	))
+
+	reg := NewRegistry(testutil.TestLogSink{}, config.NewConfig())
+	require.NoError(t, reg.fetchFromDisk())
+
+	require.Len(t, reg.GetMods(), 1)
+	require.Equal(t, "mod-a", reg.GetMods()[0].ID)
+	require.Len(t, reg.GetMaps(), 1)
+	require.Equal(t, "map-a", reg.GetMaps()[0].ID)
 }
