@@ -8,6 +8,7 @@ import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ItemCard } from '@/components/shared/ItemCard';
 import { Button } from '@/components/ui/button';
 import type { AssetType } from '@/lib/asset-types';
+import { buildTaggedItems, sortTaggedItemsByLastUpdated } from '@/lib/tagged-items';
 import { useInstalledStore } from '@/stores/installed-store';
 import { useRegistryStore } from '@/stores/registry-store';
 
@@ -25,19 +26,13 @@ export function HomePage() {
   const installedCount = installedMods.length + installedMaps.length;
 
   const discoverItems = useMemo(() => {
-    const items: Array<{
-      type: AssetType;
-      item: (typeof mods)[number] | (typeof maps)[number];
-    }> = [];
-    // Interleave mods and maps for variety, excluding already-installed items
-    const maxLen = Math.max(mods.length, maps.length);
-    for (let i = 0; i < maxLen && items.length < 8; i++) {
-      if (i < mods.length && items.length < 8 && !installedIds.has(mods[i].id))
-        items.push({ type: 'mod', item: mods[i] });
-      if (i < maps.length && items.length < 8 && !installedIds.has(maps[i].id))
-        items.push({ type: 'map', item: maps[i] });
-    }
-    return items;
+    const allItems = buildTaggedItems(mods, maps);
+    const notInstalled = allItems.filter(({ item }) => !installedIds.has(item.id));
+    const sorted = sortTaggedItemsByLastUpdated(notInstalled, 'desc');
+    return sorted.slice(0, 8).map(({ type, item }) => ({
+      type: type as AssetType,
+      item,
+    }));
   }, [mods, maps, installedIds]);
 
   return (
