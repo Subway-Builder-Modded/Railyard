@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
 import { useDownloadQueueStore } from '@/stores/download-queue-store';
+import { useInstalledStore } from '@/stores/installed-store';
 
 import { EventsOn } from '../../../wailsjs/runtime/runtime';
 
@@ -24,10 +25,23 @@ function formatBytes(bytes: number): string {
 
 export function DownloadNotification() {
   const toastIds = useRef<Map<string, string | number>>(new Map());
+  const cancelledItems = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const cancel = EventsOn('download:progress', (data: DownloadProgress) => {
       const { itemId, received, total } = data;
+      const isInstalling = useInstalledStore.getState().isInstalling(itemId);
+
+      if (cancelledItems.current.has(itemId)) {
+        if (!isInstalling) {
+          // Ignore stale progress events from a canceled request so the toast
+          // does not reappear after cancellation.
+          return;
+        }
+        // A new install for this item started; allow progress notifications again.
+        cancelledItems.current.delete(itemId);
+      }
+
       const percent = total > 0 ? Math.round((received / total) * 100) : -1;
       const isComplete = total > 0 && received >= total;
 
@@ -114,6 +128,7 @@ export function DownloadNotification() {
         if (!data?.itemId) {
           return;
         }
+        cancelledItems.current.add(data.itemId);
         const existingId = toastIds.current.get(data.itemId);
         if (!existingId) {
           return;

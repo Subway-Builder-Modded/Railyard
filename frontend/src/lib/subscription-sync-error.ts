@@ -8,6 +8,9 @@ export interface SubscriptionSyncErrorState {
   errors: types.UserProfilesError[];
 }
 
+const CANCELLATION_ERROR_TYPES = new Set<string>([]);
+const SILENT_WARNING_ERROR_TYPES = new Set<string>(['sync_superseded']);
+
 export function toSubscriptionSyncErrorState(
   err: unknown,
   version: string,
@@ -23,17 +26,23 @@ export function toSubscriptionSyncErrorState(
   };
 }
 
-export function isCancellationMessage(
-  message: string | undefined | null,
+export function hasCancellationSyncErrors(
+  errors: types.UserProfilesError[] | undefined | null,
 ): boolean {
-  if (!message) {
+  return (errors ?? []).some((profileError) =>
+    CANCELLATION_ERROR_TYPES.has(profileError.errorType),
+  );
+}
+
+export function hasOnlySilentSyncWarnings(
+  errors: types.UserProfilesError[] | undefined | null,
+): boolean {
+  const values = errors ?? [];
+  if (values.length === 0) {
     return false;
   }
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes('cancel') ||
-    normalized.includes('superseded by newer queued request') ||
-    normalized.includes('not currently installed')
+  return values.every((profileError) =>
+    SILENT_WARNING_ERROR_TYPES.has(profileError.errorType),
   );
 }
 
@@ -43,10 +52,5 @@ export function isCancellationSyncError(
   if (!err) {
     return false;
   }
-  if (isCancellationMessage(err.message)) {
-    return true;
-  }
-  return (err.errors ?? []).some((profileError) =>
-    isCancellationMessage(profileError.message),
-  );
+  return hasCancellationSyncErrors(err.errors);
 }

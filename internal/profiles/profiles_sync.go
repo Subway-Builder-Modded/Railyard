@@ -46,12 +46,19 @@ func (s *UserProfiles) SyncSubscriptions(profileID string) types.SyncSubscriptio
 
 	if mapStale || modStale {
 		s.Logger.Warn("Subscription sync cancelled due to newer profile update", "profile_id", profileID)
+		staleWarning := userProfilesError(
+			profileID,
+			"",
+			"",
+			types.ErrorSyncSuperseded,
+			"Sync superseded by newer subscription update",
+		)
 		return newSyncSubscriptionsResult(
 			types.ResponseWarn,
 			"Sync cancelled by newer subscription update",
 			profileID,
 			operations,
-			[]types.UserProfilesError{},
+			[]types.UserProfilesError{staleWarning},
 		)
 	}
 

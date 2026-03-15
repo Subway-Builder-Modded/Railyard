@@ -110,6 +110,7 @@ const (
 	ErrorInvalidAction     UserProfilesErrorType = "invalid_action"
 	ErrorPersistFailed     UserProfilesErrorType = "persist_failed"
 	ErrorSyncFailed        UserProfilesErrorType = "sync_failed"
+	ErrorSyncSuperseded    UserProfilesErrorType = "sync_superseded"
 	ErrorLookupFailed      UserProfilesErrorType = "lookup_failed"
 	ErrorUnknown           UserProfilesErrorType = "unknown"
 )

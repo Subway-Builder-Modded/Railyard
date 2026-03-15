@@ -30,7 +30,8 @@ import {
 import type { AssetType } from '@/lib/asset-types';
 import { formatSourceQuality } from '@/lib/map-filter-values';
 import {
-  isCancellationMessage,
+  hasCancellationSyncErrors,
+  hasOnlySilentSyncWarnings,
   isCancellationSyncError,
   toSubscriptionSyncErrorState,
 } from '@/lib/subscription-sync-error';
@@ -114,15 +115,17 @@ export function ProjectInfo({
         result = await installMap(item.id, version);
       }
       if (result.status === 'warn') {
-        if (isCancellationMessage(result.message)) {
+        if (hasCancellationSyncErrors(result.errors)) {
           toast.success(`Cancelled pending install for ${item.name}.`, {
             id: cancellationToastId,
           });
-        } else {
+        } else if (!hasOnlySilentSyncWarnings(result.errors)) {
           toast.warning(
             result.message ||
               `Install for ${item.name} completed with warnings.`,
           );
+        } else {
+          // Suppress expected stale-sync warnings from burst queue updates.
         }
         return;
       }

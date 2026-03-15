@@ -34,7 +34,8 @@ import {
 import type { AssetType } from '@/lib/asset-types';
 import { isCompatible } from '@/lib/semver';
 import {
-  isCancellationMessage,
+  hasCancellationSyncErrors,
+  hasOnlySilentSyncWarnings,
   isCancellationSyncError,
   toSubscriptionSyncErrorState,
 } from '@/lib/subscription-sync-error';
@@ -95,15 +96,17 @@ export function VersionsTable({
         result = await installMap(itemId, version);
       }
       if (result.status === 'warn') {
-        if (isCancellationMessage(result.message)) {
+        if (hasCancellationSyncErrors(result.errors)) {
           toast.success(`Cancelled pending install for ${itemName}.`, {
             id: cancellationToastId,
           });
-        } else {
+        } else if (!hasOnlySilentSyncWarnings(result.errors)) {
           toast.warning(
             result.message ||
               `Install for ${itemName} completed with warnings.`,
           );
+        } else {
+          // Suppress expected stale-sync warnings from burst queue updates.
         }
         return;
       }
