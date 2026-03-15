@@ -328,7 +328,7 @@ func (a *App) LaunchGame() error {
 	} else if runtime.GOOS == "linux" {
 		// Prefer host launch via Flatpak
 		if _, lookPathErr := exec.LookPath("flatpak-spawn"); lookPathErr == nil {
-			cmd = exec.Command("flatpak-spawn", "--host", exePath)
+			cmd = exec.Command("flatpak-spawn", "--host", exePath, "--no-sandbox")
 		} else {
 			// Fall back to direct launch if flatpak-spawn is not available
 			a.Logger.Warn("flatpak-spawn not available; falling back to direct executable launch", "error", lookPathErr)
