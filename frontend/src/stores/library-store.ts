@@ -1,60 +1,28 @@
 import { create } from 'zustand';
 
-import type { AssetType } from '@/lib/asset-types';
 import {
   DEFAULT_SORT_STATE,
-  type PerPage,
-  type SortState,
 } from '@/lib/constants';
 import {
   createTypeScopedByAssetType,
   switchTypeScopedState,
   syncCurrentTypeScopedState,
-  type TypeScopedByAssetType,
-} from '@/stores/type-scoped-filter-state';
+} from '@/stores/asset-type-filter-state';
+import {
+  createRandomSeed,
+  type SearchFilterState,
+  type SearchFilterStoreState,
+} from '@/stores/search-store';
 
-export type LibraryTypeFilter = AssetType;
-
-function createRandomSeed(): number {
-  return Math.floor(Math.random() * 2_147_483_647);
-}
-
-export interface LibraryFilterState {
-  query: string;
-  type: LibraryTypeFilter;
-  perPage: PerPage;
-  sort: SortState;
-  randomSeed: number;
-  mod: {
-    tags: string[];
-  };
-  map: {
-    locations: string[];
-    sourceQuality: string[];
-    levelOfDetail: string[];
-    specialDemand: string[];
-  };
-}
-
-type LibraryFilterUpdater =
-  | LibraryFilterState
-  | ((prev: LibraryFilterState) => LibraryFilterState);
-
-interface LibraryState {
-  filters: LibraryFilterState;
-  page: number;
-  scopedByType: TypeScopedByAssetType;
+interface LibraryState extends SearchFilterStoreState {
   selectedIds: Set<string>;
-  setFilters: (updater: LibraryFilterUpdater) => void;
-  setType: (type: LibraryTypeFilter) => void;
-  setPage: (page: number) => void;
   toggleSelected: (id: string) => void;
   selectAll: (ids: string[]) => void;
   clearSelection: () => void;
   isSelected: (id: string) => boolean;
 }
 
-const defaultLibraryFilters: LibraryFilterState = {
+const defaultLibraryFilters: SearchFilterState = {
   query: '',
   type: 'mod',
   perPage: 12,
@@ -99,7 +67,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       };
     }),
   setType: (type) =>
-    set((state) => switchTypeScopedState(state.filters, state.page, state.scopedByType, type)),
+    set((state) =>
+      switchTypeScopedState(state.filters, state.page, state.scopedByType, type),
+    ),
   setPage: (page) =>
     set((state) => ({
       page,

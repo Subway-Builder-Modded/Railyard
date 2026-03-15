@@ -17,7 +17,7 @@ export type TaggedItem =
   | { type: 'mod'; item: types.ModManifest }
   | { type: 'map'; item: types.MapManifest };
 
-export type { SearchFilterState,TypeFilter } from '@/stores/search-store';
+export type { SearchFilterState } from '@/stores/search-store';
 
 interface UseFilteredItemsParams {
   mods: types.ModManifest[];

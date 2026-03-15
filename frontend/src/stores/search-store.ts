@@ -11,13 +11,11 @@ import {
   switchTypeScopedState,
   syncCurrentTypeScopedState,
   type TypeScopedByAssetType,
-} from '@/stores/type-scoped-filter-state';
-
-export type TypeFilter = AssetType;
+} from '@/stores/asset-type-filter-state';
 
 export interface SearchFilterState {
   query: string;
-  type: TypeFilter;
+  type: AssetType;
   sort: SortState;
   randomSeed: number;
   perPage: PerPage;
@@ -32,16 +30,16 @@ export interface SearchFilterState {
   };
 }
 
-type SearchFilterUpdater =
+export type SearchFilterUpdater =
   | SearchFilterState
   | ((prev: SearchFilterState) => SearchFilterState);
 
-interface SearchState {
+export interface SearchFilterStoreState {
   filters: SearchFilterState;
   page: number;
   scopedByType: TypeScopedByAssetType;
   setFilters: (updater: SearchFilterUpdater) => void;
-  setType: (type: TypeFilter) => void;
+  setType: (type: AssetType) => void;
   setPage: (page: number) => void;
 }
 
@@ -71,7 +69,7 @@ const defaultSearchScopedByType = createTypeScopedByAssetType(
   1,
 );
 
-export const useSearchStore = create<SearchState>((set) => ({
+export const useSearchStore = create<SearchFilterStoreState>((set) => ({
   filters: defaultSearchFilters,
   page: 1,
   scopedByType: defaultSearchScopedByType,
