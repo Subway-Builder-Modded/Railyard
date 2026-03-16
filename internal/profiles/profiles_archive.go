@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"fmt"
 	"os"
-	"path"
 
 	"railyard/internal/files"
 	"railyard/internal/paths"
@@ -24,7 +23,7 @@ func (s *UserProfiles) CreateProfileArchive(profileID string) types.GenericRespo
 		return resp
 	}
 
-	archivePath := path.Join(paths.ProfileArchivesPath(), fmt.Sprintf("%s.tar", profile.UUID))
+	archivePath := paths.JoinLocalPath(paths.ProfileArchivesPath(), fmt.Sprintf("%s.tar", profile.UUID))
 
 	file, err := os.Create(archivePath)
 	if err != nil {
@@ -69,10 +68,10 @@ func (s *UserProfiles) CreateProfileArchive(profileID string) types.GenericRespo
 
 // setupArchiveDirectories creates the directory structure in the temporary archive directory
 func (s *UserProfiles) setupArchiveDirectories(tempDir, profileID string) (types.GenericResponse, bool) {
-	if err := os.Mkdir(path.Join(tempDir, "maps"), os.ModePerm); err != nil {
+	if err := os.Mkdir(paths.JoinLocalPath(tempDir, "maps"), os.ModePerm); err != nil {
 		return s.archiveError("Failed to create maps directory", "failed to create maps directory", err, "profile_id", profileID)
 	}
-	if err := os.Mkdir(path.Join(tempDir, "mods"), os.ModePerm); err != nil {
+	if err := os.Mkdir(paths.JoinLocalPath(tempDir, "mods"), os.ModePerm); err != nil {
 		return s.archiveError("Failed to create mods directory", "failed to create mods directory", err, "profile_id", profileID)
 	}
 	return types.GenericResponse{}, true
@@ -82,30 +81,30 @@ func (s *UserProfiles) setupArchiveDirectories(tempDir, profileID string) (types
 func (s *UserProfiles) copyMapsToArchive(tempDir, profileID string) (types.GenericResponse, bool) {
 	for _, mapInfo := range s.Registry.GetInstalledMaps() {
 		code := mapInfo.MapConfig.Code
-		mapDir := path.Join(tempDir, "maps", code)
+		mapDir := paths.JoinLocalPath(tempDir, "maps", code)
 
 		if err := os.MkdirAll(mapDir, os.ModePerm); err != nil {
 			return s.archiveError("Failed to create map directory", "failed to create map directory", err, "profile_id", profileID, "map_id", code)
 		}
 
 		// Copy map data
-		dataPath := path.Join(s.Config.Cfg.MetroMakerDataPath, "cities", "data", code)
-		if err := os.CopyFS(path.Join(mapDir, "data"), os.DirFS(dataPath)); err != nil {
+		dataPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "cities", "data", code)
+		if err := os.CopyFS(paths.JoinLocalPath(mapDir, "data"), os.DirFS(dataPath)); err != nil {
 			return s.archiveError("Failed to copy map data", "failed to copy map data", err, "profile_id", profileID, "map_id", code)
 		}
 
 		// Copy thumbnail if exists
-		thumbnailPath := path.Join(s.Config.Cfg.MetroMakerDataPath, "public", "data", "city-maps", fmt.Sprintf("%s.svg", code))
+		thumbnailPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "public", "data", "city-maps", fmt.Sprintf("%s.svg", code))
 		if _, err := os.Stat(thumbnailPath); !os.IsNotExist(err) {
-			if errResp, ok := files.CopyFile(thumbnailPath, path.Join(mapDir, "thumbnail.svg"), profileID, code, s.Logger); !ok {
+			if errResp, ok := files.CopyFile(thumbnailPath, paths.JoinLocalPath(mapDir, "thumbnail.svg"), profileID, code, s.Logger); !ok {
 				return errResp, false
 			}
 		}
 
 		// Copy tiles if exists
-		tilePath := path.Join(paths.TilesPath(), fmt.Sprintf("%s.pmtiles", code))
+		tilePath := paths.JoinLocalPath(paths.TilesPath(), fmt.Sprintf("%s.pmtiles", code))
 		if _, err := os.Stat(tilePath); !os.IsNotExist(err) {
-			if errResp, ok := files.CopyFile(tilePath, path.Join(mapDir, "tiles.pmtiles"), profileID, code, s.Logger); !ok {
+			if errResp, ok := files.CopyFile(tilePath, paths.JoinLocalPath(mapDir, "tiles.pmtiles"), profileID, code, s.Logger); !ok {
 				return errResp, false
 			}
 		}
@@ -116,14 +115,14 @@ func (s *UserProfiles) copyMapsToArchive(tempDir, profileID string) (types.Gener
 // copyModsToArchive copies installed mods data to the archive directory
 func (s *UserProfiles) copyModsToArchive(tempDir, profileID string) (types.GenericResponse, bool) {
 	for _, modInfo := range s.Registry.GetInstalledMods() {
-		modDest := path.Join(tempDir, "mods", modInfo.ID)
+		modDest := paths.JoinLocalPath(tempDir, "mods", modInfo.ID)
 
 		if err := os.MkdirAll(modDest, os.ModePerm); err != nil {
 			return s.archiveError("Failed to create mod directory", "failed to create mod directory", err, "profile_id", profileID, "mod_id", modInfo.ID)
 		}
 
-		modSrc := path.Join(s.Config.Cfg.GetModFolderPath(), modInfo.ID)
-		if err := os.CopyFS(path.Join(modDest, "data"), os.DirFS(modSrc)); err != nil {
+		modSrc := paths.JoinLocalPath(s.Config.Cfg.GetModFolderPath(), modInfo.ID)
+		if err := os.CopyFS(paths.JoinLocalPath(modDest, "data"), os.DirFS(modSrc)); err != nil {
 			return s.archiveError("Failed to copy mod data", "failed to copy mod data", err, "profile_id", profileID, "mod_id", modInfo.ID)
 		}
 	}
@@ -132,12 +131,12 @@ func (s *UserProfiles) copyModsToArchive(tempDir, profileID string) (types.Gener
 
 // writeInstalledMetadata writes the installed maps and mods JSON to the archive directory
 func (s *UserProfiles) writeInstalledMetadata(tempDir, profileID string) (types.GenericResponse, bool) {
-	installedMapsPath := path.Join(tempDir, "installed_maps.json")
+	installedMapsPath := paths.JoinLocalPath(tempDir, "installed_maps.json")
 	if err := files.WriteJSON(installedMapsPath, "installed maps", s.Registry.GetInstalledMaps()); err != nil {
 		return s.archiveError("Failed to write installed maps file", "failed to write installed maps file", err, "profile_id", profileID)
 	}
 
-	installedModsPath := path.Join(tempDir, "installed_mods.json")
+	installedModsPath := paths.JoinLocalPath(tempDir, "installed_mods.json")
 	if err := files.WriteJSON(installedModsPath, "installed mods", s.Registry.GetInstalledMods()); err != nil {
 		return s.archiveError("Failed to write installed mods file", "failed to write installed mods file", err, "profile_id", profileID)
 	}
@@ -151,7 +150,7 @@ func (s *UserProfiles) RestoreProfileArchive(profileID string) types.GenericResp
 		return types.ErrorResponse(profileErr.Error())
 	}
 
-	archivePath := path.Join(paths.ProfileArchivesPath(), fmt.Sprintf("%s.tar", profile.UUID))
+	archivePath := paths.JoinLocalPath(paths.ProfileArchivesPath(), fmt.Sprintf("%s.tar", profile.UUID))
 	if _, err := os.Stat(archivePath); os.IsNotExist(err) {
 		profileErr := userProfilesError(profileID, "", "", types.ErrorProfileNotFound, "", fmt.Sprintf("Archive file not found for profile restoration: %q", profileID))
 		s.Logger.Warn("Profile archive not found for restoration", profileErr, "profile_id", profileID)
@@ -194,12 +193,12 @@ func (s *UserProfiles) RestoreProfileArchive(profileID string) types.GenericResp
 
 // loadInstalledFromArchive loads and sets installed maps/mods from the archive metadata
 func (s *UserProfiles) loadInstalledFromArchive(tempDir, profileID string) (types.GenericResponse, bool) {
-	profileInstalledMapsPath := path.Join(tempDir, "installed_maps.json")
+	profileInstalledMapsPath := paths.JoinLocalPath(tempDir, "installed_maps.json")
 	if err := s.Registry.SetInstalledMapsFromPath(profileInstalledMapsPath); err != nil {
 		return s.archiveError("Failed to set installed maps from archive", "failed to set installed maps from archive", err, "profile_id", profileID)
 	}
 
-	profileInstalledModsPath := path.Join(tempDir, "installed_mods.json")
+	profileInstalledModsPath := paths.JoinLocalPath(tempDir, "installed_mods.json")
 	if err := s.Registry.SetInstalledModsFromPath(profileInstalledModsPath); err != nil {
 		return s.archiveError("Failed to set installed mods from archive", "failed to set installed mods from archive", err, "profile_id", profileID)
 	}
@@ -217,30 +216,30 @@ func (s *UserProfiles) restoreMapsFromArchive(tempDir, profileID string) (types.
 		code := mapInfo.MapConfig.Code
 
 		// Create city data directory
-		cityDataPath := path.Join(s.Config.Cfg.MetroMakerDataPath, "cities", "data", code)
+		cityDataPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "cities", "data", code)
 		if err := os.MkdirAll(cityDataPath, os.ModePerm); err != nil {
 			return s.archiveError("Failed to create city data directory", "failed to create city data directory", err, "profile_id", profileID, "map_id", code)
 		}
 
 		// Copy city data
-		archiveMapDataPath := path.Join(tempDir, "maps", code, "data")
+		archiveMapDataPath := paths.JoinLocalPath(tempDir, "maps", code, "data")
 		if err := os.CopyFS(cityDataPath, os.DirFS(archiveMapDataPath)); err != nil {
 			return s.archiveError("Failed to copy city data from archive", "failed to copy city data from archive", err, "profile_id", profileID, "map_id", code)
 		}
 
 		// Restore thumbnail if exists
-		archiveThumbnailPath := path.Join(tempDir, "maps", code, "thumbnail.svg")
+		archiveThumbnailPath := paths.JoinLocalPath(tempDir, "maps", code, "thumbnail.svg")
 		if _, err := os.Stat(archiveThumbnailPath); !os.IsNotExist(err) {
-			destThumbnailPath := path.Join(s.Config.Cfg.MetroMakerDataPath, "public", "data", "city-maps", fmt.Sprintf("%s.svg", code))
+			destThumbnailPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "public", "data", "city-maps", fmt.Sprintf("%s.svg", code))
 			if errResp, ok := files.CopyFileWithDest(archiveThumbnailPath, destThumbnailPath, profileID, code, "thumbnail", s.Logger); !ok {
 				return errResp, false
 			}
 		}
 
 		// Restore tiles if exists
-		archiveTilePath := path.Join(tempDir, "maps", code, "tiles.pmtiles")
+		archiveTilePath := paths.JoinLocalPath(tempDir, "maps", code, "tiles.pmtiles")
 		if _, err := os.Stat(archiveTilePath); !os.IsNotExist(err) {
-			destTilePath := path.Join(paths.TilesPath(), fmt.Sprintf("%s.pmtiles", code))
+			destTilePath := paths.JoinLocalPath(paths.TilesPath(), fmt.Sprintf("%s.pmtiles", code))
 			if errResp, ok := files.CopyFileWithDest(archiveTilePath, destTilePath, profileID, code, "tiles", s.Logger); !ok {
 				return errResp, false
 			}
@@ -252,13 +251,13 @@ func (s *UserProfiles) restoreMapsFromArchive(tempDir, profileID string) (types.
 // restoreModsFromArchive restores mods data from the archive
 func (s *UserProfiles) restoreModsFromArchive(tempDir, profileID string) (types.GenericResponse, bool) {
 	for _, modInfo := range s.Registry.GetInstalledMods() {
-		modDest := path.Join(s.Config.Cfg.GetModFolderPath(), modInfo.ID)
+		modDest := paths.JoinLocalPath(s.Config.Cfg.GetModFolderPath(), modInfo.ID)
 
 		if err := os.MkdirAll(modDest, os.ModePerm); err != nil {
 			return s.archiveError("Failed to create mod directory", "failed to create mod directory", err, "profile_id", profileID, "mod_id", modInfo.ID)
 		}
 
-		archiveModDataPath := path.Join(tempDir, "mods", modInfo.ID, "data")
+		archiveModDataPath := paths.JoinLocalPath(tempDir, "mods", modInfo.ID, "data")
 		if err := os.CopyFS(modDest, os.DirFS(archiveModDataPath)); err != nil {
 			return s.archiveError("Failed to copy mod data from archive", "failed to copy mod data from archive", err, "profile_id", profileID, "mod_id", modInfo.ID)
 		}

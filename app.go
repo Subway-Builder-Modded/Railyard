@@ -62,7 +62,10 @@ func (a *App) OpenInFileExplorer(targetPath string) types.GenericResponse {
 	if trimmedPath == "" {
 		return types.ErrorResponse("invalid path")
 	}
-	cleanedPath := filepath.Clean(trimmedPath)
+	cleanedPath := paths.NormalizeLocalPath(trimmedPath)
+	if cleanedPath == "" {
+		return types.ErrorResponse("invalid path")
+	}
 
 	info, err := os.Stat(cleanedPath)
 	if err != nil {

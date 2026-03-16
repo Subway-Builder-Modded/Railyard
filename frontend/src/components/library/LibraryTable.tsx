@@ -41,6 +41,16 @@ function composeItemKey(item: InstalledTaggedItem): string {
   return `${item.type}-${item.item.id}`;
 }
 
+function joinOsPath(...parts: string[]): string {
+  return parts
+    .filter(Boolean)
+    .map((part, index) => {
+      if (index === 0) return part.replace(/[\\/]+$/, '');
+      return part.replace(/^[\\/]+|[\\/]+$/g, '');
+    })
+    .join('/');
+}
+
 export function LibraryTable({
   items,
   activeType,
@@ -187,15 +197,15 @@ function LibraryTableRow({
     if (!metroMakerDataPath) return null;
 
     if (entry.type === 'mod') {
-      return `${metroMakerDataPath}\\mods\\${entry.item.id}`;
+      return joinOsPath(metroMakerDataPath, 'mods', entry.item.id);
     }
 
     const cityCode = (map?.city_code ?? '').trim();
     if (!cityCode) {
-      return `${metroMakerDataPath}\\cities\\data`;
+      return joinOsPath(metroMakerDataPath, 'cities', 'data');
     }
 
-    return `${metroMakerDataPath}\\cities\\data\\${cityCode}`;
+    return joinOsPath(metroMakerDataPath, 'cities', 'data', cityCode);
   };
 
   const handleOpenInstallFolder = () => {

@@ -53,6 +53,7 @@ func extractMod(d *Downloader, filePath string, modId string, version string) ty
 	if err != nil {
 		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorInvalidManifest, "Failed to read manifest file", err, "file_path", filePath, "mod_id", modId)
 	}
+	defer rawManifestReader.Close()
 
 	rawManifestBytes, err := io.ReadAll(rawManifestReader)
 	if err != nil {
@@ -145,7 +146,7 @@ func extractMod(d *Downloader, filePath string, modId string, version string) ty
 		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorExtractFailed, "Failed to extract file", err, "file_path", filePath, "mod_id", modId)
 	}
 
-	if _, err := os.Create(paths.JoinLocalPath(destFolder, ".railyard_asset")); err != nil {
+	if err := createAssetMarker(paths.JoinLocalPath(destFolder, ".railyard_asset")); err != nil {
 		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorFilesystem, "Failed to create asset marker file", err, "mod_id", modId)
 	}
 
@@ -330,8 +331,8 @@ func extractMap(d *Downloader, filePath string, mapId string, version string) ty
 		}
 	}
 
-	if _, err := os.Create(paths.JoinLocalPath(destFolder, ".railyard_asset")); err != nil {
-		return d.installError(types.AssetTypeMod, mapId, version, types.ConfigData{}, types.InstallErrorFilesystem, "Failed to create asset marker file", err, "assetId", mapId)
+	if err := createAssetMarker(paths.JoinLocalPath(destFolder, ".railyard_asset")); err != nil {
+		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorFilesystem, "Failed to create asset marker file", err, "assetId", mapId)
 	}
 
 	return d.installSuccess(types.AssetTypeMap, mapId, version, configData, "Map extracted successfully", "file_path", filePath, "map_code", configData.Code)
@@ -361,4 +362,12 @@ func extractFileMap(path string, srcFile io.ReadCloser, errChan chan<- error, us
 			return
 		}
 	}
+}
+
+func createAssetMarker(path string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	return file.Close()
 }
