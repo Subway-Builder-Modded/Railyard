@@ -2,6 +2,35 @@ import { useEffect } from 'react';
 
 import { useProfileStore } from '@/stores/profile-store';
 
+const DARK_THEMES = new Set(['dark', 'dark-low', 'dark-high']);
+
+const VARIANT_CLASS_MAP: Record<string, string | null> = {
+  'dark': null,
+  'dark-low': 'theme-dark-low',
+  'dark-high': 'theme-dark-high',
+  'light': null,
+  'light-low': 'theme-light-low',
+  'light-high': 'theme-light-high',
+  'system': null,
+};
+
+const ALL_VARIANT_CLASSES = [
+  'theme-dark-low',
+  'theme-dark-high',
+  'theme-light-low',
+  'theme-light-high',
+];
+
+function applyThemeClasses(root: HTMLElement, effectiveTheme: string) {
+  // Strip all variant classes first
+  root.classList.remove(...ALL_VARIANT_CLASSES);
+  // Set dark base
+  root.classList.toggle('dark', DARK_THEMES.has(effectiveTheme));
+  // Apply variant class if needed
+  const variantClass = VARIANT_CLASS_MAP[effectiveTheme] ?? null;
+  if (variantClass) root.classList.add(variantClass);
+}
+
 export function useTheme() {
   const theme = useProfileStore(
     (s) => s.profile?.uiPreferences?.theme ?? 'system',
@@ -16,15 +45,15 @@ export function useTheme() {
 
     if (theme === 'system') {
       const mql = window.matchMedia('(prefers-color-scheme: dark)');
-      root.classList.toggle('dark', mql.matches);
+      applyThemeClasses(root, mql.matches ? 'dark' : 'light');
 
       const handler = (e: MediaQueryListEvent) => {
-        root.classList.toggle('dark', e.matches);
+        applyThemeClasses(root, e.matches ? 'dark' : 'light');
       };
       mql.addEventListener('change', handler);
       return () => mql.removeEventListener('change', handler);
     }
 
-    root.classList.toggle('dark', theme === 'dark');
+    applyThemeClasses(root, theme);
   }, [theme]);
 }

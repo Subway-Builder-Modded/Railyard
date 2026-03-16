@@ -156,39 +156,43 @@ function App() {
 
   if (baseLoading || registryLoading) {
     return (
-      <MultiStepLoader
-        loadingStates={loadingStates}
-        currentStep={currentStep}
-      />
+      <div className="railyard-accent">
+        <MultiStepLoader
+          loadingStates={loadingStates}
+          currentStep={currentStep}
+        />
+      </div>
     );
   }
 
   // Gate: show setup if not configured OR setup not completed
   if (!isConfigured || !setupCompleted) {
     return (
-      <>
+      <div className="railyard-accent">
         <SetupScreen />
         <Toaster />
-      </>
+      </div>
     );
   }
 
   return (
-    <TooltipProvider>
-      <Layout>
-        <Switch>
-          <Route path="/" component={HomePage} />
-          <Route path="/library" component={LibraryPage} />
-          <Route path="/search" component={SearchPage} />
-          <Route path="/project/:type/:id" component={ProjectPage} />
-          <Route path="/logs" component={LogsPage} />
-          <Route path="/settings" component={SettingsPage} />
-        </Switch>
-      </Layout>
-      <DownloadNotification />
-      <ExtractNotification />
-      <Toaster />
-    </TooltipProvider>
+    <div className="railyard-accent">
+      <TooltipProvider>
+        <Layout>
+          <Switch>
+            <Route path="/" component={HomePage} />
+            <Route path="/library" component={LibraryPage} />
+            <Route path="/search" component={SearchPage} />
+            <Route path="/project/:type/:id" component={ProjectPage} />
+            <Route path="/logs" component={LogsPage} />
+            <Route path="/settings" component={SettingsPage} />
+          </Switch>
+        </Layout>
+        <DownloadNotification />
+        <ExtractNotification />
+        <Toaster />
+      </TooltipProvider>
+    </div>
   );
 }
 
