@@ -474,6 +474,16 @@ func (d *Downloader) uninstallModNow(modId string) types.AssetUninstallResponse 
 		)
 	}
 	modPath := paths.JoinLocalPath(d.getModPath(), modId)
+	if _, err := os.Stat(paths.JoinLocalPath(modPath, ".railyard_asset")); errors.Is(err, os.ErrNotExist) {
+		return d.uninstallWarn(
+			types.AssetTypeMod,
+			modId,
+			types.UninstallErrorNotInstalled,
+			fmt.Sprintf("%s with ID %s does not appear to be installed (missing marker file). No action taken.", assetTypeLabels[types.AssetTypeMod], modId),
+			"asset_type", types.AssetTypeMod,
+			"asset_id", modId,
+		)
+	}
 	if err := os.RemoveAll(modPath); err != nil {
 		return d.uninstallError(types.AssetTypeMod, modId, types.UninstallErrorFilesystem, "Failed to remove mod files", err, "mod_id", modId)
 	}
@@ -497,6 +507,17 @@ func (d *Downloader) uninstallMapNow(mapId string) types.AssetUninstallResponse 
 		)
 	}
 	mapConfig := installedMap.mapConfig
+
+	if _, err := os.Stat(paths.JoinLocalPath(d.getMapDataPath(), mapConfig.Code, ".railyard_asset")); errors.Is(err, os.ErrNotExist) {
+		return d.uninstallWarn(
+			types.AssetTypeMap,
+			mapId,
+			types.UninstallErrorNotInstalled,
+			fmt.Sprintf("%s with ID %s does not appear to be installed (missing marker file). No action taken.", assetTypeLabels[types.AssetTypeMap], mapId),
+			"asset_type", types.AssetTypeMap,
+			"asset_id", mapId,
+		)
+	}
 
 	mapDataPath := paths.JoinLocalPath(d.getMapDataPath(), mapConfig.Code)
 	if err := os.RemoveAll(mapDataPath); err != nil {
