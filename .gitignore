@@ -6,5 +6,6 @@ frontend/dist
 railyard.claude/tmp/
 tmp/
 .tmp/
-$coverFile
 coverage
+coverage_func.txt
+$coverFile
