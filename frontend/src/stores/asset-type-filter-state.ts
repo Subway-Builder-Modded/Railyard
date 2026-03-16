@@ -100,7 +100,10 @@ export function createFilterByAssetType(
   page: number,
 ): FilterByAssetType {
   return Object.fromEntries(
-    ASSET_TYPES.map((assetType) => [assetType, toAssetFilterState(fields, page)]),
+    ASSET_TYPES.map((assetType) => [
+      assetType,
+      toAssetFilterState(fields, page),
+    ]),
   ) as FilterByAssetType;
 }
 

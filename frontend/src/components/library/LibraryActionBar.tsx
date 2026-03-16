@@ -1,4 +1,4 @@
-import { CheckCircle,Trash2 } from 'lucide-react';
+import { CheckCircle, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { UninstallDialog } from '@/components/dialogs/UninstallDialog';

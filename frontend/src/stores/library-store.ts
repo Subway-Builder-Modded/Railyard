@@ -7,9 +7,7 @@ import {
   switchFilter,
   syncFilter,
 } from '@/stores/asset-type-filter-state';
-import {
-  type SearchFilterStoreState,
-} from '@/stores/search-store';
+import { type SearchFilterStoreState } from '@/stores/search-store';
 
 interface LibraryState extends SearchFilterStoreState {
   selectedIds: Set<string>;
@@ -30,11 +28,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         typeof updater === 'function' ? updater(state.filters) : updater;
       return {
         filters: nextFilters,
-        scopedByType: syncFilter(
-          state.scopedByType,
-          nextFilters,
-          state.page,
-        ),
+        scopedByType: syncFilter(state.scopedByType, nextFilters, state.page),
       };
     }),
   setType: (type) =>
@@ -44,11 +38,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   setPage: (page) =>
     set((state) => ({
       page,
-      scopedByType: syncFilter(
-        state.scopedByType,
-        state.filters,
-        page,
-      ),
+      scopedByType: syncFilter(state.scopedByType, state.filters, page),
     })),
   toggleSelected: (id) =>
     set((state) => {

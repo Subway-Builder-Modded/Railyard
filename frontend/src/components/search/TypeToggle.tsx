@@ -1,4 +1,4 @@
-import { MapPin,Package } from 'lucide-react';
+import { MapPin, Package } from 'lucide-react';
 
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { AssetType } from '@/lib/asset-types';

@@ -200,7 +200,10 @@ export function useFilteredItems({
     setPage(1);
   }, [filters, setPage]);
 
-  const allItems = useMemo<TaggedItem[]>(() => buildTaggedItems(mods, maps), [mods, maps]);
+  const allItems = useMemo<TaggedItem[]>(
+    () => buildTaggedItems(mods, maps),
+    [mods, maps],
+  );
 
   const filtered = useMemo(() => {
     return filterAndSortTaggedItems(

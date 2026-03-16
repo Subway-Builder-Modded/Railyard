@@ -1,4 +1,4 @@
-import { MapPin,Package } from 'lucide-react';
+import { MapPin, Package } from 'lucide-react';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGalleryImage } from '@/hooks/use-gallery-image';

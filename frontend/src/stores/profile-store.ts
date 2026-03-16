@@ -2,8 +2,8 @@ import { create } from 'zustand';
 
 import type { AssetType } from '@/lib/asset-types';
 import {
-  type SearchViewMode,
   normalizeSearchViewMode,
+  type SearchViewMode,
 } from '@/lib/search-view-mode';
 
 import { types } from '../../wailsjs/go/models';

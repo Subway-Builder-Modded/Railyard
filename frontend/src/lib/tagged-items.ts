@@ -105,12 +105,6 @@ export function sortTaggedItemsByLastUpdated<T extends TaggedItem>(
   direction: SortDirection = 'desc',
 ): T[] {
   return [...items].sort((a, b) =>
-    compareItems(
-      a,
-      b,
-      { field: 'last_updated', direction },
-      {},
-      {},
-    ),
+    compareItems(a, b, { field: 'last_updated', direction }, {}, {}),
   );
 }

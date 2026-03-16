@@ -1,10 +1,10 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect,useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { type AssetType,assetTypeToListingPath } from '@/lib/asset-types';
+import { type AssetType, assetTypeToListingPath } from '@/lib/asset-types';
 
 import { GetGalleryImage } from '../../../wailsjs/go/registry/Registry';
 

@@ -1,12 +1,12 @@
-import { ArrowDownToLine, ExternalLink,Terminal, Trash2 } from 'lucide-react';
+import { ArrowDownToLine, ExternalLink, Terminal, Trash2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { LogEntry} from '@/stores/game-store';
-import {useGameStore } from '@/stores/game-store';
+import type { LogEntry } from '@/stores/game-store';
+import { useGameStore } from '@/stores/game-store';
 
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
 

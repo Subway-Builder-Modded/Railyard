@@ -78,7 +78,10 @@ export function SearchPage() {
     return [...new Set(modTags)].sort();
   }, [mods]);
 
-  const availableSpecialDemand = useMemo(() => buildSpecialDemandValues(maps), [maps]);
+  const availableSpecialDemand = useMemo(
+    () => buildSpecialDemandValues(maps),
+    [maps],
+  );
 
   const {
     modTagCounts,

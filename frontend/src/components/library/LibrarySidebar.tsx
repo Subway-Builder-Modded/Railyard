@@ -6,17 +6,17 @@ import {
   Package,
   Tag,
 } from 'lucide-react';
-import { type ComponentType,type Dispatch, type SetStateAction } from 'react';
+import { type ComponentType, type Dispatch, type SetStateAction } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import type { AssetType } from '@/lib/asset-types';
 import { filterVisibleListingValues } from '@/lib/listing-counts';
 import {
+  formatSourceQuality,
   LEVEL_OF_DETAIL_VALUES,
   LOCATION_TAGS,
   SOURCE_QUALITY_VALUES,
-  formatSourceQuality,
 } from '@/lib/map-filter-values';
 import { SEARCH_FILTER_EMPTY_LABELS } from '@/lib/search';
 import { cn } from '@/lib/utils';

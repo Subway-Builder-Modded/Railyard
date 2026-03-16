@@ -1,6 +1,6 @@
 import { CircleAlert } from 'lucide-react';
-import { useEffect, useMemo,useState } from 'react';
-import { Link,useRoute } from 'wouter';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useRoute } from 'wouter';
 
 import { ProjectHero } from '@/components/project/ProjectHero';
 import { ProjectInfo } from '@/components/project/ProjectInfo';

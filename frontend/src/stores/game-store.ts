@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { IsGameRunning, LaunchGame,StopGame } from '../../wailsjs/go/main/App';
+import { IsGameRunning, LaunchGame, StopGame } from '../../wailsjs/go/main/App';
 import { EventsOn } from '../../wailsjs/runtime/runtime';
 
 export interface LogEntry {

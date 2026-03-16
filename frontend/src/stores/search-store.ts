@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import type { AssetType } from '@/lib/asset-types';
+import type { SearchViewMode } from '@/lib/search-view-mode';
 import {
   type AssetQueryFilterState,
   cloneFilterState,
@@ -11,7 +12,6 @@ import {
   switchFilter,
   syncFilter,
 } from '@/stores/asset-type-filter-state';
-import type { SearchViewMode } from '@/lib/search-view-mode';
 
 export { createRandomSeed };
 
@@ -51,26 +51,19 @@ export const useSearchStore = create<
         typeof updater === 'function' ? updater(state.filters) : updater;
       return {
         filters: nextFilters,
-        scopedByType: syncFilter(
-          state.scopedByType,
-          nextFilters,
-          state.page,
-        ),
+        scopedByType: syncFilter(state.scopedByType, nextFilters, state.page),
       };
     }),
   setType: (type) =>
-    set((state) => switchFilter(state.filters, state.page, state.scopedByType, type)),
+    set((state) =>
+      switchFilter(state.filters, state.page, state.scopedByType, type),
+    ),
   setPage: (page) =>
     set((state) => ({
       page,
-      scopedByType: syncFilter(
-        state.scopedByType,
-        state.filters,
-        page,
-      ),
+      scopedByType: syncFilter(state.scopedByType, state.filters, page),
     })),
-  setViewMode: (viewMode) =>
-    set({ viewMode, viewModeInitialized: true }),
+  setViewMode: (viewMode) => set({ viewMode, viewModeInitialized: true }),
   initializeViewMode: (viewMode) => {
     if (get().viewModeInitialized) return;
     set({ viewMode, viewModeInitialized: true });

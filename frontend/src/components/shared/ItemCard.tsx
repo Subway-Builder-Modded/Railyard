@@ -1,8 +1,8 @@
-import { CheckCircle, Download,MapPin, Package, Users } from 'lucide-react';
+import { CheckCircle, Download, MapPin, Package, Users } from 'lucide-react';
 import { Link } from 'wouter';
 
 import { Badge } from '@/components/ui/badge';
-import { type AssetType,assetTypeToListingPath } from '@/lib/asset-types';
+import { type AssetType, assetTypeToListingPath } from '@/lib/asset-types';
 import { getCountryFlagIcon } from '@/lib/flags';
 import { formatSourceQuality } from '@/lib/map-filter-values';
 import { MAX_CARD_BADGES } from '@/lib/search';
@@ -108,13 +108,16 @@ function ItemStats({
   if (!(isMap && (population ?? 0) > 0) && !showDownloads) return null;
 
   return (
-    <div className={cn('flex flex-col gap-1 text-xs text-muted-foreground shrink-0', className)}>
+    <div
+      className={cn(
+        'flex flex-col gap-1 text-xs text-muted-foreground shrink-0',
+        className,
+      )}
+    >
       {isMap && (population ?? 0) > 0 && (
         <StatMetric icon={Users} value={population!} />
       )}
-      {showDownloads && (
-        <StatMetric icon={Download} value={totalDownloads!} />
-      )}
+      {showDownloads && <StatMetric icon={Download} value={totalDownloads!} />}
     </div>
   );
 }
@@ -129,7 +132,12 @@ function StatMetric({
   className?: string;
 }) {
   return (
-    <div className={cn('flex items-center gap-1 text-xs text-muted-foreground', className)}>
+    <div
+      className={cn(
+        'flex items-center gap-1 text-xs text-muted-foreground',
+        className,
+      )}
+    >
       <Icon className="h-3 w-3" aria-hidden="true" />
       <span>{value.toLocaleString()}</span>
     </div>
@@ -150,7 +158,9 @@ function ItemBadges({
   if (badges.length === 0) return null;
 
   const justifyClass = align === 'left' ? 'justify-start' : 'justify-end';
-  const badgeClassName = compact ? 'text-[11px] px-1.5 py-0 h-5' : 'text-xs px-1.5 py-0';
+  const badgeClassName = compact
+    ? 'text-[11px] px-1.5 py-0 h-5'
+    : 'text-xs px-1.5 py-0';
 
   return (
     <div
@@ -253,7 +263,11 @@ export function ItemCard({
                   showDownloads={presentation.showDownloads}
                   totalDownloads={totalDownloads}
                 />
-                <ItemBadges badges={presentation.badges} align="left" wrap={false} />
+                <ItemBadges
+                  badges={presentation.badges}
+                  align="left"
+                  wrap={false}
+                />
               </div>
             </div>
           </div>

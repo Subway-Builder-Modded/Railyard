@@ -83,7 +83,10 @@ describe('useSearchStore per-asset-type state', () => {
     useSearchStore.getState().setType('map');
     let state = useSearchStore.getState();
     expect(state.filters.type).toBe('map');
-    expect(state.filters.sort).toEqual({ field: 'population', direction: 'desc' });
+    expect(state.filters.sort).toEqual({
+      field: 'population',
+      direction: 'desc',
+    });
     expect(state.filters.randomSeed).toBe(11);
     expect(state.filters.map.locations).toEqual(['europe']);
     expect(state.page).toBe(3);

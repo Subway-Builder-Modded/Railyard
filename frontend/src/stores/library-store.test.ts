@@ -92,7 +92,10 @@ describe('useLibraryStore per-asset-type state', () => {
     useLibraryStore.getState().setType('map');
     state = useLibraryStore.getState();
     expect(state.filters.type).toBe('map');
-    expect(state.filters.sort).toEqual({ field: 'population', direction: 'asc' });
+    expect(state.filters.sort).toEqual({
+      field: 'population',
+      direction: 'asc',
+    });
     expect(state.filters.randomSeed).toBe(41);
     expect(state.filters.map.locations).toEqual(['north-america']);
     expect(state.page).toBe(2);

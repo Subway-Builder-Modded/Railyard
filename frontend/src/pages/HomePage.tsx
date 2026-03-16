@@ -8,7 +8,10 @@ import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ItemCard } from '@/components/shared/ItemCard';
 import { Button } from '@/components/ui/button';
 import type { AssetType } from '@/lib/asset-types';
-import { buildTaggedItems, sortTaggedItemsByLastUpdated } from '@/lib/tagged-items';
+import {
+  buildTaggedItems,
+  sortTaggedItemsByLastUpdated,
+} from '@/lib/tagged-items';
 import { useInstalledStore } from '@/stores/installed-store';
 import { useRegistryStore } from '@/stores/registry-store';
 
@@ -27,7 +30,9 @@ export function HomePage() {
 
   const discoverItems = useMemo(() => {
     const allItems = buildTaggedItems(mods, maps);
-    const notInstalled = allItems.filter(({ item }) => !installedIds.has(item.id));
+    const notInstalled = allItems.filter(
+      ({ item }) => !installedIds.has(item.id),
+    );
     const sorted = sortTaggedItemsByLastUpdated(notInstalled, 'desc');
     return sorted.slice(0, 8).map(({ type, item }) => ({
       type: type as AssetType,
