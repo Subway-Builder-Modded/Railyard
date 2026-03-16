@@ -4,6 +4,8 @@ set -eu
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoProfile -ExecutionPolicy Bypass -File "$ROOT_DIR/scripts/pre-push-check.ps1"
-else
+elif command -v powershell >/dev/null 2>&1; then
   powershell -NoProfile -ExecutionPolicy Bypass -File "$ROOT_DIR/scripts/pre-push-check.ps1"
+else
+  "$ROOT_DIR/scripts/pre-push-check.sh"
 fi
