@@ -96,6 +96,30 @@ func configureConfig(t *testing.T, cfg *config.Config) {
 	cfg.Cfg.ExecutablePath = exePath
 }
 
+func materializeInstalledAssets(
+	t *testing.T,
+	cfg *config.Config,
+	mods []types.InstalledModInfo,
+	maps []types.InstalledMapInfo,
+) {
+	t.Helper()
+	for _, mod := range mods {
+		modPath := paths.JoinLocalPath(cfg.Cfg.MetroMakerDataPath, "mods", mod.ID)
+		require.NoError(t, os.MkdirAll(modPath, 0o755))
+		require.NoError(t, os.WriteFile(paths.JoinLocalPath(modPath, ".railyard_asset"), []byte(""), 0o644))
+	}
+
+	for _, m := range maps {
+		mapPath := paths.JoinLocalPath(cfg.Cfg.MetroMakerDataPath, "cities", "data", m.MapConfig.Code)
+		require.NoError(t, os.MkdirAll(mapPath, 0o755))
+		require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, ".railyard_asset"), []byte(""), 0o644))
+
+		tilePath := paths.JoinLocalPath(paths.AppDataRoot(), "tiles", m.MapConfig.Code+".pmtiles")
+		require.NoError(t, os.MkdirAll(filepath.Dir(tilePath), 0o755))
+		require.NoError(t, os.WriteFile(tilePath, []byte("tile"), 0o644))
+	}
+}
+
 func mockRegistry(t *testing.T, reg *registry.Registry, fixtures []registryFixture) func() {
 	sharedFixtures := make([]registrytest.UpdateFixture, 0, len(fixtures))
 	for _, f := range fixtures {
@@ -391,6 +415,7 @@ func TestUpdateSubscriptionsForceSyncPersistsStateAndSyncs(t *testing.T) {
 	svc, cfg, reg := loadedUserProfilesServiceWithDependencies(t, state)
 	cfg.Cfg.MetroMakerDataPath = t.TempDir()
 	reg.AddInstalledMod("mod-a", "2.0.0")
+	materializeInstalledAssets(t, cfg, []types.InstalledModInfo{{ID: "mod-a", Version: "2.0.0"}}, nil)
 
 	req := types.UpdateSubscriptionsRequest{
 		ProfileID: types.DefaultProfileID,
@@ -1242,6 +1267,7 @@ func TestSyncSubscriptions(t *testing.T) {
 			testutil.NewHarness(t)
 
 			svc, cfg, reg := loadedUserProfilesServiceWithDependencies(t, tc.state)
+			configureConfig(t, cfg)
 			for _, mod := range tc.initialMods {
 				reg.AddInstalledMod(mod.ID, mod.Version)
 			}
@@ -1252,6 +1278,7 @@ func TestSyncSubscriptions(t *testing.T) {
 			if tc.prepare != nil {
 				cleanup = tc.prepare(t, cfg, reg)
 			}
+			materializeInstalledAssets(t, cfg, tc.initialMods, tc.initialMaps)
 			if cleanup != nil {
 				defer cleanup()
 			}
