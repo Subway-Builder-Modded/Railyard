@@ -33,7 +33,7 @@ func main() {
 			Assets: assets,
 		},
 		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId: paths.LockFilePath(),
+			UniqueId:               paths.LockFilePath(),
 			OnSecondInstanceLaunch: app.onSecondInstanceLaunch,
 		},
 		Mac: &mac.Options{
