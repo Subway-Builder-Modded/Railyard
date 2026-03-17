@@ -22,8 +22,6 @@ func (r *Registry) BootstrapInstalledStateFromProfile(profile types.UserProfile)
 	hasSubscriptions := len(profile.Subscriptions.Mods) > 0 || len(profile.Subscriptions.Maps) > 0
 
 	metroMakerDataPath := r.config.Cfg.MetroMakerDataPath
-	modInstallRoot := paths.JoinLocalPath(metroMakerDataPath, "mods")
-	mapInstallRoot := paths.JoinLocalPath(metroMakerDataPath, "cities", "data")
 
 	if !hasSubscriptions || metroMakerDataPath == "" {
 		r.logger.Info(
@@ -35,8 +33,8 @@ func (r *Registry) BootstrapInstalledStateFromProfile(profile types.UserProfile)
 		return nil
 	}
 
-	nextInstalledMods := r.bootstrapInstalledMods(profile.Subscriptions, modInstallRoot)
-	nextInstalledMaps := r.bootstrapInstalledMaps(profile.Subscriptions, mapInstallRoot)
+	nextInstalledMods := r.bootstrapInstalledMods(profile.Subscriptions, r.config.Cfg.GetModsFolderPath())
+	nextInstalledMaps := r.bootstrapInstalledMaps(profile.Subscriptions, r.config.Cfg.GetMapsFolderPath())
 
 	previousMods := r.installedMods
 	previousMaps := r.installedMaps
@@ -135,7 +133,8 @@ func modManifestVersionMatches(modPath string, expectedVersion string) (bool, er
 // hasAssetMarker checks for the presence of the .railyard_asset marker file in the expected location for the given asset, logging a warning if it is missing to avoid bootstrapping assets that may not be managed by Railyard or are corrupted/missing
 func (r *Registry) hasAssetMarker(assetType types.AssetType, assetID string, installRoot string, markerPathPart string) bool {
 	markerPath := paths.JoinLocalPath(installRoot, markerPathPart, constants.RailyardAssetMarker)
-	if fileExists(markerPath) {
+	_, err := os.Stat(markerPath)
+	if !os.IsNotExist(err) {
 		return true
 	}
 	attrs := []any{
@@ -147,7 +146,3 @@ func (r *Registry) hasAssetMarker(assetType types.AssetType, assetID string, ins
 	return false
 }
 
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
