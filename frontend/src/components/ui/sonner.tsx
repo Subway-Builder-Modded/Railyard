@@ -5,16 +5,25 @@ import { useProfileStore } from '@/stores/profile-store';
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 function Toaster({ ...props }: ToasterProps) {
-  const theme = useProfileStore((s) => s.theme)() as ToasterProps['theme'];
+  const selectedTheme = useProfileStore((s) => s.theme)();
+
+  const theme: ToasterProps['theme'] =
+    selectedTheme === 'system'
+      ? 'system'
+      : selectedTheme.startsWith('dark')
+        ? 'dark'
+        : 'light';
 
   return (
     <Sonner
       theme={theme}
-      className="toaster group"
+      className="toaster group !z-[2147483647]"
       expand
       gap={8}
       visibleToasts={5}
+      style={{ zIndex: 2147483647 }}
       toastOptions={{
+        style: { zIndex: 2147483647 },
         classNames: {
           toast:
             'group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg',
