@@ -154,6 +154,11 @@ func (a *App) startup(ctx context.Context) {
 	if err := a.Registry.Initialize(); err != nil {
 		a.Logger.Warn("Failed to ensure local registry repository", "error", err)
 	}
+
+	if err := a.addSaltsOnFirstRun(); err != nil {
+		a.Logger.Warn("Failed to add salts to existing assets on first run", "error", err)
+	}
+
 	// TODO: Bootstrap installed asset state on startup by scanning managed install directories.
 	// Use per-asset integrity SHA checks and a dedicated marker file (.railyard) so startup can safely reconstruct installed_maps/installed_mods when persisted state is missing/corrupt or after an unclean shutdown.
 	// Use profile state as a backup source of truth as it is more likely to be persisted successfully due to frequent writes after subscription changes (while installs/uninstalls generally lag behind user actions due to the downloader queue)
@@ -637,6 +642,35 @@ func (a *App) generateMod(port int) error {
 
 	if err := os.WriteFile(path.Join(modsFolder, "manifest.json"), manifestContent, 0644); err != nil {
 		return fmt.Errorf("failed to write mod manifest.json: %w", err)
+	}
+	return nil
+}
+
+func (a *App) addSaltsOnFirstRun() error {
+	if _, err := os.Stat(paths.JoinLocalPath(paths.AppDataRoot(), ".railyard_assets_salted")); os.IsNotExist(err) {
+		a.Logger.Info("Adding salts to existing assets on first run")
+		for _, mod := range a.Registry.GetInstalledMods() {
+			id := mod.ID
+
+			if _, err := os.Create(paths.JoinLocalPath(a.Config.Cfg.GetModFolderPath(), id, ".railyard_asset")); err != nil {
+				a.Logger.Warn("Failed to add salt file for mod", "mod_id", id, "error", err)
+				return err
+			}
+		}
+
+		for _, m := range a.Registry.GetInstalledMaps() {
+			code := m.MapConfig.Code
+			if _, err := os.Create(paths.JoinLocalPath(a.Config.Cfg.GetMapsFolderPath(), code, ".railyard_asset")); err != nil {
+				a.Logger.Warn("Failed to add salt file for map", "map_code", code, "error", err)
+				return err
+			}
+		}
+
+		// Create a marker file to indicate that salts have been added, so we don't repeat this process on subsequent runs
+		if _, err := os.Create(paths.JoinLocalPath(paths.AppDataRoot(), ".railyard_assets_salted")); err != nil {
+			a.Logger.Warn("Failed to create asset salted marker file", "error", err)
+			return err
+		}
 	}
 	return nil
 }
