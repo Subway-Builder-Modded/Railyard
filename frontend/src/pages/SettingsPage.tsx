@@ -1,5 +1,6 @@
 ﻿import {
   AlertTriangle,
+  ChevronDown,
   FolderOpen,
   Gamepad2,
   Github,
@@ -11,6 +12,7 @@ import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ThemePicker, type ThemeValue } from '@/components/shared/ThemePicker';
 import {
   Card,
   CardContent,
@@ -49,7 +51,20 @@ import {
 } from '../../wailsjs/go/main/App';
 
 const PAGE_SIZE_OPTIONS = [12, 24, 48] as const;
-const THEME_OPTIONS = ['dark', 'light', 'system'] as const;
+
+const VALID_THEMES = new Set<ThemeValue>([
+  'dark', 'dark_low', 'dark_high', 'light', 'light_low', 'light_high', 'system',
+]);
+
+const THEME_LABELS: Record<ThemeValue, string> = {
+  dark: 'Dark',
+  'dark_low': 'Dark (Soft)',
+  'dark_high': 'Dark (Contrast)',
+  light: 'Light',
+  'light_low': 'Light (Soft)',
+  'light_high': 'Light (Contrast)',
+  system: 'System',
+};
 
 export function SettingsPage() {
   const {
@@ -68,6 +83,7 @@ export function SettingsPage() {
   const profile = useProfileStore((s) => s.profile);
   const resetProfile = useProfileStore((s) => s.resetProfile);
   const updateUIPreferences = useProfileStore((s) => s.updateUIPreferences);
+  const [showThemePreviews, setShowThemePreviews] = useState(false);
 
   const handleCheckToken = async () => {
     let req = await fetch('https://api.github.com/rate_limit', {
@@ -132,12 +148,8 @@ export function SettingsPage() {
     }
   };
 
-  const handleThemeChange = async (theme: string) => {
-    if (
-      !profile ||
-      !THEME_OPTIONS.includes(theme as (typeof THEME_OPTIONS)[number])
-    )
-      return;
+  const handleThemeChange = async (theme: ThemeValue) => {
+    if (!profile || !VALID_THEMES.has(theme)) return;
 
     try {
       await updateUIPreferences({ theme });
@@ -401,21 +413,38 @@ export function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Theme</label>
-            <Select
-              value={profile?.uiPreferences?.theme ?? 'system'}
-              onValueChange={handleThemeChange}
-            >
-              <SelectTrigger className="w-35">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="dark">Dark</SelectItem>
-                <SelectItem value="light">Light</SelectItem>
-                <SelectItem value="system">System</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Theme</label>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setShowThemePreviews((current) => !current)}
+                className="w-35 justify-between font-normal"
+                aria-expanded={showThemePreviews}
+              >
+                {
+                  THEME_LABELS[
+                    ((profile?.uiPreferences?.theme as ThemeValue | undefined) ??
+                      'dark') as ThemeValue
+                  ]
+                }
+                <ChevronDown
+                  className={`size-4 shrink-0 text-muted-foreground opacity-50 transition-transform ${showThemePreviews ? 'rotate-180' : ''}`}
+                />
+              </Button>
+            </div>
+
+            {showThemePreviews && (
+              <ThemePicker
+                value={
+                  ((profile?.uiPreferences?.theme as ThemeValue | undefined) ?? 'dark') === 'system'
+                    ? 'dark'
+                    : ((profile?.uiPreferences?.theme as ThemeValue | undefined) ?? 'dark')
+                }
+                onChange={handleThemeChange}
+              />
+            )}
           </div>
 
           <div className="flex items-center justify-between">

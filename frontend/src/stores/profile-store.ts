@@ -78,10 +78,14 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const result = await GetActiveProfile();
+      if (result.status !== 'success') {
+        throw new Error(result.message || 'Failed to load active profile');
+      }
       set({ profile: result.profile, initialized: true, loading: false });
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : String(err),
+        initialized: true,
         loading: false,
       });
     }
