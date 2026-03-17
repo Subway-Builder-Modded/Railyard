@@ -652,7 +652,7 @@ func (a *App) generateMod(port int) error {
 }
 
 func (a *App) addSaltsOnFirstRun() error {
-	if _, err := os.Stat(paths.JoinLocalPath(paths.AppDataRoot(), constants.AssetSaltedMarkerFileName)); os.IsNotExist(err) {
+	if _, err := os.Stat(paths.JoinLocalPath(paths.AppDataRoot(), constants.RailyardAssetsSaltedMarker)); os.IsNotExist(err) {
 		a.Logger.Info("Adding salts to existing assets on first run")
 		for _, mod := range a.Registry.GetInstalledMods() {
 			id := mod.ID
@@ -672,7 +672,7 @@ func (a *App) addSaltsOnFirstRun() error {
 		}
 
 		// Create a marker file to indicate that salts have been added, so we don't repeat this process on subsequent runs
-		if _, err := os.Create(paths.JoinLocalPath(paths.AppDataRoot(), constants.AssetSaltedMarkerFileName)); err != nil {
+		if _, err := os.Create(paths.JoinLocalPath(paths.AppDataRoot(), constants.RailyardAssetsSaltedMarker)); err != nil {
 			a.Logger.Warn("Failed to create asset salted marker file", "error", err)
 			return err
 		}
