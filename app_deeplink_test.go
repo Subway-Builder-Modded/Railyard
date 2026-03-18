@@ -14,12 +14,10 @@ func TestHandleDeepLinkTargetQueuesPendingLink(t *testing.T) {
 
 	app.HandleDeepLinkTarget(deeplink.Target{Type: "maps", ID: "amsterdam"})
 
-	target := app.ConsumePendingDeepLink()
-	require.Equal(t, map[string]string{
-		"type": "maps",
-		"id":   "amsterdam",
-	}, target)
-	require.Nil(t, app.ConsumePendingDeepLink())
+	response := app.ConsumePendingDeepLink()
+	require.Equal(t, "maps", response.Target.Type)
+	require.Equal(t, "amsterdam", response.Target.ID)
+	require.Nil(t, app.ConsumePendingDeepLink().Target)
 }
 
 func TestHandleDeepLinkTargetIgnoresInvalidTargets(t *testing.T) {
@@ -27,7 +25,7 @@ func TestHandleDeepLinkTargetIgnoresInvalidTargets(t *testing.T) {
 
 	app.HandleDeepLinkTarget(deeplink.Target{Type: "invalid", ID: "nope"})
 
-	require.Nil(t, app.ConsumePendingDeepLink())
+	require.Nil(t, app.ConsumePendingDeepLink().Target)
 }
 
 func TestOnSecondInstanceLaunchQueuesDeepLinkFromArgs(t *testing.T) {
@@ -37,8 +35,7 @@ func TestOnSecondInstanceLaunchQueuesDeepLinkFromArgs(t *testing.T) {
 		Args: []string{"railyard://open?type=mods&id=signal-pack"},
 	})
 
-	require.Equal(t, map[string]string{
-		"type": "mods",
-		"id":   "signal-pack",
-	}, app.ConsumePendingDeepLink())
+	response := app.ConsumePendingDeepLink()
+	require.Equal(t, "mods", response.Target.Type)
+	require.Equal(t, "signal-pack", response.Target.ID)
 }

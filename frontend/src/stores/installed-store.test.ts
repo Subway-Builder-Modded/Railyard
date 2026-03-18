@@ -11,8 +11,8 @@ import {
 import { useInstalledStore } from './installed-store';
 
 const {
-  mockGetInstalledMods,
-  mockGetInstalledMaps,
+  mockGetInstalledModsResponse,
+  mockGetInstalledMapsResponse,
   mockGetActiveProfile,
   mockUpdateSubscriptions,
   mockInstallMapFiles,
@@ -20,8 +20,8 @@ const {
   mockUninstallMapFiles,
   mockUninstallModFiles,
 } = vi.hoisted(() => ({
-  mockGetInstalledMods: vi.fn(),
-  mockGetInstalledMaps: vi.fn(),
+  mockGetInstalledModsResponse: vi.fn(),
+  mockGetInstalledMapsResponse: vi.fn(),
   mockGetActiveProfile: vi.fn(),
   mockUpdateSubscriptions: vi.fn(),
   mockInstallMapFiles: vi.fn(),
@@ -31,8 +31,8 @@ const {
 }));
 
 vi.mock('../../wailsjs/go/registry/Registry', () => ({
-  GetInstalledMods: mockGetInstalledMods,
-  GetInstalledMaps: mockGetInstalledMaps,
+  GetInstalledModsResponse: mockGetInstalledModsResponse,
+  GetInstalledMapsResponse: mockGetInstalledMapsResponse,
 }));
 
 vi.mock('../../wailsjs/go/profiles/UserProfiles', () => ({
@@ -66,8 +66,8 @@ function validateProfilesRequest(expected: ProfilesRequest) {
 }
 
 function validateInstallationRefreshes(expectedCalls: number) {
-  expect(mockGetInstalledMods).toHaveBeenCalledTimes(expectedCalls);
-  expect(mockGetInstalledMaps).toHaveBeenCalledTimes(expectedCalls);
+  expect(mockGetInstalledModsResponse).toHaveBeenCalledTimes(expectedCalls);
+  expect(mockGetInstalledMapsResponse).toHaveBeenCalledTimes(expectedCalls);
 }
 
 function validateFinalState(
@@ -109,10 +109,16 @@ describe('useInstalledStore', () => {
     mockUpdateSubscriptions.mockResolvedValue(
       updateSubscriptionsSuccess('subscriptions updated'),
     );
-    mockGetInstalledMods.mockResolvedValue([{ id: 'mod-1', version: '1.0.0' }]);
-    mockGetInstalledMaps.mockResolvedValue([
-      { id: 'map-1', version: '2.0.0', config: { code: 'AAA' } },
-    ]);
+    mockGetInstalledModsResponse.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      mods: [{ id: 'mod-1', version: '1.0.0' }],
+    });
+    mockGetInstalledMapsResponse.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      maps: [{ id: 'map-1', version: '2.0.0', config: { code: 'AAA' } }],
+    });
 
     await useInstalledStore.getState().installMap('map-1', '2.0.0');
 
@@ -134,8 +140,16 @@ describe('useInstalledStore', () => {
     mockUpdateSubscriptions.mockResolvedValue(
       updateSubscriptionsSuccess('subscriptions updated'),
     );
-    mockGetInstalledMods.mockResolvedValue([{ id: 'mod-1', version: '1.0.0' }]);
-    mockGetInstalledMaps.mockResolvedValue([]);
+    mockGetInstalledModsResponse.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      mods: [{ id: 'mod-1', version: '1.0.0' }],
+    });
+    mockGetInstalledMapsResponse.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      maps: [],
+    });
 
     await useInstalledStore.getState().uninstallMap('map-7');
 
@@ -180,10 +194,16 @@ describe('useInstalledStore', () => {
     mockUpdateSubscriptions.mockResolvedValue(
       updateSubscriptionsWarn('sync completed with warnings'),
     );
-    mockGetInstalledMods.mockResolvedValue([{ id: 'mod-1', version: '1.0.0' }]);
-    mockGetInstalledMaps.mockResolvedValue([
-      { id: 'map-1', version: '2.0.0', config: { code: 'AAA' } },
-    ]);
+    mockGetInstalledModsResponse.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      mods: [{ id: 'mod-1', version: '1.0.0' }],
+    });
+    mockGetInstalledMapsResponse.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      maps: [{ id: 'map-1', version: '2.0.0', config: { code: 'AAA' } }],
+    });
 
     const result = await useInstalledStore
       .getState()
@@ -232,8 +252,16 @@ describe('useInstalledStore', () => {
     mockUpdateSubscriptions.mockResolvedValue(
       updateSubscriptionsWarn('not installed; nothing to do'),
     );
-    mockGetInstalledMods.mockResolvedValue([]);
-    mockGetInstalledMaps.mockResolvedValue([]);
+    mockGetInstalledModsResponse.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      mods: [],
+    });
+    mockGetInstalledMapsResponse.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      maps: [],
+    });
 
     const result = await useInstalledStore
       .getState()

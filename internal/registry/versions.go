@@ -56,6 +56,22 @@ func (r *Registry) GetVersions(updateType string, repoOrURL string) ([]types.Ver
 	return cloneVersionInfos(versions), nil
 }
 
+// GetVersionsResponse fetches available versions and reports status metadata.
+func (r *Registry) GetVersionsResponse(updateType string, repoOrURL string) types.VersionsResponse {
+	versions, err := r.GetVersions(updateType, repoOrURL)
+	if err != nil {
+		return types.VersionsResponse{
+			GenericResponse: types.ErrorResponse(err.Error()),
+			Versions:        []types.VersionInfo{},
+		}
+	}
+
+	return types.VersionsResponse{
+		GenericResponse: types.SuccessResponse("Versions loaded"),
+		Versions:        versions,
+	}
+}
+
 func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
 	parts := strings.SplitN(repo, "/", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {

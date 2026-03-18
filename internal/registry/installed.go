@@ -100,9 +100,25 @@ func (r *Registry) GetInstalledMods() []types.InstalledModInfo {
 	return r.installedMods
 }
 
+// GetInstalledModsResponse returns installed mods with status metadata.
+func (r *Registry) GetInstalledModsResponse() types.InstalledModsResponse {
+	return types.InstalledModsResponse{
+		GenericResponse: types.SuccessResponse("Installed mods loaded"),
+		Mods:            r.installedMods,
+	}
+}
+
 // GetInstalledMaps returns the locally installed maps.
 func (r *Registry) GetInstalledMaps() []types.InstalledMapInfo {
 	return r.installedMaps
+}
+
+// GetInstalledMapsResponse returns installed maps with status metadata.
+func (r *Registry) GetInstalledMapsResponse() types.InstalledMapsResponse {
+	return types.InstalledMapsResponse{
+		GenericResponse: types.SuccessResponse("Installed maps loaded"),
+		Maps:            r.installedMaps,
+	}
 }
 
 // GetInstalledMapCodes returns the city codes of locally installed maps.

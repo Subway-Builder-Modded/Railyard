@@ -33,8 +33,8 @@ func TestFilterSemverVersions(t *testing.T) {
 
 func TestGetGitHubVersionsAuthFallbackAndCache(t *testing.T) {
 	cfg := config.NewConfig()
-	_, err := cfg.UpdateGithubToken("github_pat_test_token")
-	require.NoError(t, err)
+	updated := cfg.UpdateGithubToken("github_pat_test_token")
+	require.Equal(t, types.ResponseSuccess, updated.Status)
 	reg := NewRegistry(testutil.TestLogSink{}, cfg)
 	originalBaseURL := registryGitHubAPIBaseURL
 	t.Cleanup(func() {

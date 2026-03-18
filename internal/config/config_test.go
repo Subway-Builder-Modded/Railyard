@@ -42,7 +42,7 @@ func (h *TestSetup) persisted() types.AppConfig {
 	return persisted
 }
 
-func (h *TestSetup) runtime() types.ResolveConfigResult {
+func (h *TestSetup) runtime() types.ResolveConfigResponse {
 	h.t.Helper()
 	return h.cfg.GetConfig()
 }
@@ -109,8 +109,8 @@ func TestSaveConfigPersistsRuntimeState(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "runtime/metro-maker4", updated.Config.MetroMakerDataPath)
 
-	saved, err := h.cfg.SaveConfig()
-	require.NoError(t, err)
+	saved := h.cfg.SaveConfig()
+	require.Equal(t, types.ResponseSuccess, saved.Status)
 	require.Equal(t, updated.Config, saved.Config)
 	require.Equal(t, saved.Config, h.persisted())
 }
@@ -155,8 +155,8 @@ func TestHasGithubTokenFlag(t *testing.T) {
 func TestUpdateAndClearGithubToken(t *testing.T) {
 	h := setup(t, types.AppConfig{})
 
-	updated, err := h.cfg.UpdateGithubToken("  mrao_token  ")
-	require.NoError(t, err)
+	updated := h.cfg.UpdateGithubToken("  mrao_token  ")
+	require.Equal(t, types.ResponseSuccess, updated.Status)
 	require.True(t, updated.HasGithubToken)
 	require.Empty(t, updated.Config.GithubToken)
 	require.Equal(t, "  mrao_token  ", h.cfg.GetGithubToken())
@@ -164,13 +164,13 @@ func TestUpdateAndClearGithubToken(t *testing.T) {
 	// Runtime-only update should not mutate persisted config until SaveConfig.
 	require.Equal(t, types.AppConfig{}, h.persisted())
 
-	_, err = h.cfg.SaveConfig()
-	require.NoError(t, err)
+	saved := h.cfg.SaveConfig()
+	require.Equal(t, types.ResponseSuccess, saved.Status)
 	// After persisting, the config should reflect the updated GitHub token
 	require.Equal(t, "  mrao_token  ", h.persisted().GithubToken)
 
-	cleared, err := h.cfg.ClearGithubToken()
-	require.NoError(t, err)
+	cleared := h.cfg.ClearGithubToken()
+	require.Equal(t, types.ResponseSuccess, cleared.Status)
 	require.False(t, cleared.HasGithubToken)
 	require.Empty(t, cleared.Config.GithubToken)
 	require.Empty(t, h.cfg.GetGithubToken())
@@ -218,17 +218,17 @@ func TestGithubTokenIsValid(t *testing.T) {
 	h := setup(t, types.AppConfig{})
 
 	// Invalid token (empty)
-	require.False(t, h.cfg.IsGithubTokenValid())
+	require.False(t, h.cfg.IsGithubTokenValid().Valid)
 
 	// Invalid token (whitespace)
-	_, err := h.cfg.UpdateGithubToken("   ")
-	require.NoError(t, err)
-	require.False(t, h.cfg.IsGithubTokenValid())
+	updatedWhitespace := h.cfg.UpdateGithubToken("   ")
+	require.Equal(t, types.ResponseSuccess, updatedWhitespace.Status)
+	require.False(t, h.cfg.IsGithubTokenValid().Valid)
 
 	// Token set, but invalid
-	_, err = h.cfg.UpdateGithubToken("invalid_token")
-	require.NoError(t, err)
-	require.False(t, h.cfg.IsGithubTokenValid())
+	updatedInvalid := h.cfg.UpdateGithubToken("invalid_token")
+	require.Equal(t, types.ResponseSuccess, updatedInvalid.Status)
+	require.False(t, h.cfg.IsGithubTokenValid().Valid)
 
 	// Valid token
 	res, err := mockGithubTokenValidationResponse(t, "github_pat_example")()
@@ -259,9 +259,9 @@ func TestClearConfigOverwritesRuntimeWithEmptyConfig(t *testing.T) {
 	original := testConfig()
 	h := setup(t, original)
 
-	updated, err := h.cfg.ClearConfig()
-	require.NoError(t, err)
-	require.Equal(t, types.AppConfig{}, updated)
+	updated := h.cfg.ClearConfig()
+	require.Equal(t, types.ResponseSuccess, updated.Status)
+	require.Equal(t, types.AppConfig{}, updated.Config)
 
 	runtimeConfig := h.runtime()
 	require.Equal(t, types.AppConfig{}, runtimeConfig.Config)
@@ -337,15 +337,15 @@ func TestOpenExecutableDialogAutoDetectSuccessDoesNotPersist(t *testing.T) {
 
 	_, err := h.cfg.UpdateMetroMakerDataFolder(metroMakerPath)
 	require.NoError(t, err)
-	_, err = h.cfg.SaveConfig()
-	require.NoError(t, err)
+	saved := h.cfg.SaveConfig()
+	require.Equal(t, types.ResponseSuccess, saved.Status)
 	detectedPath := createWritableCandidateFile(t, DefaultExecutableCandidates())
 
-	result, err := h.cfg.OpenExecutableDialog(types.SetConfigPathOptions{AllowAutoDetect: true})
-	require.NoError(t, err)
-	require.Equal(t, types.SourceAutoDetected, result.SetConfigSource)
-	require.Equal(t, detectedPath, result.AutoDetectedPath)
-	require.Equal(t, detectedPath, result.ResolveConfigResult.Config.ExecutablePath)
+	response := h.cfg.OpenExecutableDialog(types.SetConfigPathOptions{AllowAutoDetect: true})
+	require.Equal(t, types.ResponseSuccess, response.Status)
+	require.Equal(t, types.SourceAutoDetected, response.Result.SetConfigSource)
+	require.Equal(t, detectedPath, response.Result.AutoDetectedPath)
+	require.Equal(t, detectedPath, response.Result.ResolveConfigResult.Config.ExecutablePath)
 
 	runtimeCfg := h.runtime()
 	require.Equal(t, detectedPath, runtimeCfg.Config.ExecutablePath)
@@ -361,15 +361,15 @@ func TestOpenMetroMakerDialogAutoDetectSuccessDoesNotPersist(t *testing.T) {
 
 	_, err := h.cfg.UpdateExecutable(executablePath)
 	require.NoError(t, err)
-	_, err = h.cfg.SaveConfig()
-	require.NoError(t, err)
+	saved := h.cfg.SaveConfig()
+	require.Equal(t, types.ResponseSuccess, saved.Status)
 	detectedPath := createWritableCandidateDir(t, DefaultMetroMakerDataFolderCandidates())
 
-	result, err := h.cfg.OpenMetroMakerDataFolderDialog(types.SetConfigPathOptions{AllowAutoDetect: true})
-	require.NoError(t, err)
-	require.Equal(t, types.SourceAutoDetected, result.SetConfigSource)
-	require.Equal(t, detectedPath, result.AutoDetectedPath)
-	require.Equal(t, detectedPath, result.ResolveConfigResult.Config.MetroMakerDataPath)
+	response := h.cfg.OpenMetroMakerDataFolderDialog(types.SetConfigPathOptions{AllowAutoDetect: true})
+	require.Equal(t, types.ResponseSuccess, response.Status)
+	require.Equal(t, types.SourceAutoDetected, response.Result.SetConfigSource)
+	require.Equal(t, detectedPath, response.Result.AutoDetectedPath)
+	require.Equal(t, detectedPath, response.Result.ResolveConfigResult.Config.MetroMakerDataPath)
 
 	runtimeCfg := h.runtime()
 	require.Equal(t, detectedPath, runtimeCfg.Config.MetroMakerDataPath)

@@ -89,9 +89,9 @@ function App() {
 
     const pollStartupReady = async () => {
       try {
-        const ready = await IsStartupReady();
+        const readyResponse = await IsStartupReady();
         if (cancelled) return;
-        if (ready) {
+        if (readyResponse.status === 'success' && readyResponse.ready) {
           setStartupReady(true);
           return;
         }
@@ -176,9 +176,12 @@ function App() {
     if (!startupReady) return;
 
     ConsumePendingDeepLink()
-      .then((target) => {
-        const routeType = target?.type;
-        const routeID = target?.id;
+      .then((response) => {
+        if (response.status !== 'success') {
+          return;
+        }
+        const routeType = response.target?.type;
+        const routeID = response.target?.id;
         if (!routeType || !routeID) {
           return;
         }

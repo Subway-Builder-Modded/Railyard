@@ -41,6 +41,22 @@ export namespace types {
 	        this.chromeSandboxPath = source["chromeSandboxPath"];
 	    }
 	}
+	export class AppVersionResponse {
+	    status: string;
+	    message: string;
+	    version: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AppVersionResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.version = source["version"];
+	    }
+	}
 	export class AssetDownloadCountsResponse {
 	    status: string;
 	    message: string;
@@ -189,6 +205,55 @@ export namespace types {
 	        this.executablePathValid = source["executablePathValid"];
 	    }
 	}
+	export class DeepLinkTarget {
+	    type: string;
+	    id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeepLinkTarget(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.id = source["id"];
+	    }
+	}
+	export class DeepLinkResponse {
+	    status: string;
+	    message: string;
+	    target?: DeepLinkTarget;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeepLinkResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.target = this.convertValues(source["target"], DeepLinkTarget);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class DownloadCountsByAssetTypeResponse {
 	    status: string;
 	    message: string;
@@ -223,6 +288,54 @@ export namespace types {
 	        this.mods = source["mods"];
 	    }
 	}
+	export class GalleryImageResponse {
+	    status: string;
+	    message: string;
+	    imageUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GalleryImageResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.imageUrl = source["imageUrl"];
+	    }
+	}
+	export class GameRunningResponse {
+	    status: string;
+	    message: string;
+	    running: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new GameRunningResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.running = source["running"];
+	    }
+	}
+	export class GameVersionResponse {
+	    status: string;
+	    message: string;
+	    version: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GameVersionResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.version = source["version"];
+	    }
+	}
 	export class GenericResponse {
 	    status: string;
 	    message: string;
@@ -235,6 +348,22 @@ export namespace types {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.status = source["status"];
 	        this.message = source["message"];
+	    }
+	}
+	export class GithubTokenValidResponse {
+	    status: string;
+	    message: string;
+	    valid: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new GithubTokenValidResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.valid = source["valid"];
 	    }
 	}
 	export class InstalledMapInfo {
@@ -271,6 +400,40 @@ export namespace types {
 		    return a;
 		}
 	}
+	export class InstalledMapsResponse {
+	    status: string;
+	    message: string;
+	    maps: InstalledMapInfo[];
+	
+	    static createFrom(source: any = {}) {
+	        return new InstalledMapsResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.maps = this.convertValues(source["maps"], InstalledMapInfo);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class InstalledModInfo {
 	    id: string;
 	    version: string;
@@ -284,6 +447,40 @@ export namespace types {
 	        this.id = source["id"];
 	        this.version = source["version"];
 	    }
+	}
+	export class InstalledModsResponse {
+	    status: string;
+	    message: string;
+	    mods: InstalledModInfo[];
+	
+	    static createFrom(source: any = {}) {
+	        return new InstalledModsResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.mods = this.convertValues(source["mods"], InstalledModInfo);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class IntegrityVersionSource {
 	    update_type: string;
@@ -471,6 +668,40 @@ export namespace types {
 		    return a;
 		}
 	}
+	export class MapsResponse {
+	    status: string;
+	    message: string;
+	    maps: MapManifest[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MapsResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.maps = this.convertValues(source["maps"], MapManifest);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ModManifest {
 	    schema_version: number;
 	    id: string;
@@ -521,6 +752,56 @@ export namespace types {
 		    return a;
 		}
 	}
+	export class ModsResponse {
+	    status: string;
+	    message: string;
+	    mods: ModManifest[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ModsResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.mods = this.convertValues(source["mods"], ModManifest);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PlatformResponse {
+	    status: string;
+	    message: string;
+	    platform: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlatformResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.platform = source["platform"];
+	    }
+	}
 	export class RegistryIntegrityReport {
 	    schema_version: number;
 	    generated_at: string;
@@ -535,6 +816,78 @@ export namespace types {
 	        this.schema_version = source["schema_version"];
 	        this.generated_at = source["generated_at"];
 	        this.listings = this.convertValues(source["listings"], IntegrityListing, true);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class RegistryIntegrityReportResponse {
+	    status: string;
+	    message: string;
+	    report: RegistryIntegrityReport;
+	
+	    static createFrom(source: any = {}) {
+	        return new RegistryIntegrityReportResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.report = this.convertValues(source["report"], RegistryIntegrityReport);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ResolveConfigResponse {
+	    status: string;
+	    message: string;
+	    config: AppConfig;
+	    validation: ConfigPathValidation;
+	    hasGithubToken: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ResolveConfigResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.config = this.convertValues(source["config"], AppConfig);
+	        this.validation = this.convertValues(source["validation"], ConfigPathValidation);
+	        this.hasGithubToken = source["hasGithubToken"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -589,6 +942,22 @@ export namespace types {
 		    return a;
 		}
 	}
+	export class SandboxStatusResponse {
+	    status: string;
+	    message: string;
+	    installed: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SandboxStatusResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.installed = source["installed"];
+	    }
+	}
 	export class SetConfigPathOptions {
 	    allowAutoDetect: boolean;
 	
@@ -634,6 +1003,57 @@ export namespace types {
 		    }
 		    return a;
 		}
+	}
+	export class SetConfigPathResponse {
+	    status: string;
+	    message: string;
+	    result: SetConfigPathResult;
+	
+	    static createFrom(source: any = {}) {
+	        return new SetConfigPathResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.result = this.convertValues(source["result"], SetConfigPathResult);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class StartupReadyResponse {
+	    status: string;
+	    message: string;
+	    ready: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new StartupReadyResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.ready = source["ready"];
+	    }
 	}
 	export class SubscriptionOperation {
 	    assetId: string;
@@ -977,6 +1397,40 @@ export namespace types {
 	        this.manifest = source["manifest"];
 	        this.prerelease = source["prerelease"];
 	    }
+	}
+	export class VersionsResponse {
+	    status: string;
+	    message: string;
+	    versions: VersionInfo[];
+	
+	    static createFrom(source: any = {}) {
+	        return new VersionsResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.versions = this.convertValues(source["versions"], VersionInfo);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

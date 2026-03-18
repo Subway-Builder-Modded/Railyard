@@ -6,8 +6,14 @@ import { Navbar } from './Navbar';
 export function Layout({ children }: { children: React.ReactNode }) {
   const [version, setVersion] = React.useState<string>('');
   React.useMemo(() => {
-    GetCurrentVersion().then((s) => {
-      setVersion([...s].filter((c) => c !== '\u0000').join(''));
+    GetCurrentVersion().then((response) => {
+      if (response.status !== 'success') {
+        return;
+      }
+      const sanitized = [...(response.version || '')]
+        .filter((c) => c !== '\u0000')
+        .join('');
+      setVersion(sanitized);
     });
   }, []);
   return (

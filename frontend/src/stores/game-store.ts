@@ -114,8 +114,8 @@ export const useGameStore = create<GameState>((set) => ({
     };
 
     // Check initial state
-    IsGameRunning().then((running) => {
-      if (!running) {
+    IsGameRunning().then((response) => {
+      if (response.status !== 'success' || !response.running) {
         set({ running: false });
         return;
       }
@@ -210,11 +210,17 @@ export const useGameStore = create<GameState>((set) => ({
   },
 
   launch: async () => {
-    await LaunchGame();
+    const response = await LaunchGame();
+    if (response.status === 'error') {
+      throw new Error(response.message || 'Failed to launch game');
+    }
   },
 
   stop: async () => {
-    await StopGame();
+    const response = await StopGame();
+    if (response.status === 'error') {
+      throw new Error(response.message || 'Failed to stop game');
+    }
   },
 
   selectSession: (id: string) => set({ selectedSessionId: id }),

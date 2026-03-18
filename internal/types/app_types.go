@@ -12,6 +12,46 @@ type FileFoundStruct struct {
 	Required   bool
 }
 
+type DeepLinkTarget struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
+}
+
+type DeepLinkResponse struct {
+	GenericResponse
+	Target *DeepLinkTarget `json:"target,omitempty"`
+}
+
+type StartupReadyResponse struct {
+	GenericResponse
+	Ready bool `json:"ready"`
+}
+
+type AppVersionResponse struct {
+	GenericResponse
+	Version string `json:"version"`
+}
+
+type GameVersionResponse struct {
+	GenericResponse
+	Version string `json:"version"`
+}
+
+type PlatformResponse struct {
+	GenericResponse
+	Platform string `json:"platform"`
+}
+
+type SandboxStatusResponse struct {
+	GenericResponse
+	Installed bool `json:"installed"`
+}
+
+type GameRunningResponse struct {
+	GenericResponse
+	Running bool `json:"running"`
+}
+
 type MetroMakerModConfig struct {
 	TileZoomLevel int          `json:"tileZoomLevel"`
 	Places        []ConfigData `json:"places"`

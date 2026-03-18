@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"railyard/internal/deeplink"
+	"railyard/internal/types"
 
 	"github.com/wailsapp/wails/v2/pkg/options"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -69,7 +70,7 @@ func (a *App) HandleDeepLinkTarget(target deeplink.Target) {
 	}
 
 	a.deepLinks.enqueue(target)
-	if a.ctx != nil && a.IsStartupReady() {
+	if a.ctx != nil && a.IsStartupReady().Ready {
 		a.emitPendingDeepLinks()
 	}
 }
@@ -90,17 +91,23 @@ func (a *App) emitPendingDeepLinks() {
 	}
 }
 
-func (a *App) ConsumePendingDeepLink() map[string]string {
+func (a *App) ConsumePendingDeepLink() types.DeepLinkResponse {
 	target, ok := a.deepLinks.consume()
 	if !ok {
-		return nil
+		return types.DeepLinkResponse{
+			GenericResponse: types.SuccessResponse("No pending deep link"),
+			Target:          nil,
+		}
 	}
 
 	a.bringToFront()
 
-	return map[string]string{
-		"type": target.Type,
-		"id":   target.ID,
+	return types.DeepLinkResponse{
+		GenericResponse: types.SuccessResponse("Pending deep link resolved"),
+		Target: &types.DeepLinkTarget{
+			Type: target.Type,
+			ID:   target.ID,
+		},
 	}
 }
 

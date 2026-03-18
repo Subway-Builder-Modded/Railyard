@@ -77,11 +77,14 @@ func (s *Config) ResolveConfig() (types.ResolveConfigResult, error) {
 }
 
 // GetConfig returns the current in-memory config without re-reading from disk.
-func (s *Config) GetConfig() types.ResolveConfigResult {
+func (s *Config) GetConfig() types.ResolveConfigResponse {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return resolveConfigResultFromAppConfig(s.Cfg)
+	return types.ResolveConfigResponse{
+		GenericResponse:    types.SuccessResponse("Config resolved"),
+		ResolveConfigResult: resolveConfigResultFromAppConfig(s.Cfg),
+	}
 }
 
 func (s *Config) UpdateConfig(mutator func(*types.AppConfig), persist bool) (types.ResolveConfigResult, error) {
@@ -100,16 +103,34 @@ func (s *Config) UpdateConfig(mutator func(*types.AppConfig), persist bool) (typ
 	return resolveConfigResultFromAppConfig(s.Cfg), nil
 }
 
-func (s *Config) UpdateCheckForUpdatesOnLaunch(checkForUpdates bool) (types.ResolveConfigResult, error) {
-	return s.UpdateConfig(func(cfg *types.AppConfig) {
+func (s *Config) UpdateCheckForUpdatesOnLaunch(checkForUpdates bool) types.ResolveConfigResponse {
+	result, err := s.UpdateConfig(func(cfg *types.AppConfig) {
 		cfg.CheckForUpdatesOnLaunch = checkForUpdates
 	}, false)
+	if err != nil {
+		return types.ResolveConfigResponse{
+			GenericResponse: types.ErrorResponse(err.Error()),
+		}
+	}
+	return types.ResolveConfigResponse{
+		GenericResponse:    types.SuccessResponse("Config updated"),
+		ResolveConfigResult: result,
+	}
 }
 
-func (s *Config) CompleteSetup() (types.ResolveConfigResult, error) {
-	return s.UpdateConfig(func(cfg *types.AppConfig) {
+func (s *Config) CompleteSetup() types.ResolveConfigResponse {
+	result, err := s.UpdateConfig(func(cfg *types.AppConfig) {
 		cfg.SetupCompleted = true
 	}, true) // Persist to disk immediately
+	if err != nil {
+		return types.ResolveConfigResponse{
+			GenericResponse: types.ErrorResponse(err.Error()),
+		}
+	}
+	return types.ResolveConfigResponse{
+		GenericResponse:    types.SuccessResponse("Setup completed"),
+		ResolveConfigResult: result,
+	}
 }
 
 // UpdateExecutable updates and persists ExecutablePath to the runtime app config.
@@ -145,25 +166,53 @@ func (s *Config) SetConfig(next types.AppConfig) (types.AppConfig, error) {
 }
 
 // ClearConfig clears all config fields in memory (by replacing them with zero values).
-func (s *Config) ClearConfig() (types.AppConfig, error) {
-	return s.SetConfig(types.AppConfig{})
+func (s *Config) ClearConfig() types.ResolveConfigResponse {
+	updated, err := s.SetConfig(types.AppConfig{})
+	if err != nil {
+		return types.ResolveConfigResponse{GenericResponse: types.ErrorResponse(err.Error())}
+	}
+	return types.ResolveConfigResponse{
+		GenericResponse:    types.SuccessResponse("Config cleared"),
+		ResolveConfigResult: resolveConfigResultFromAppConfig(updated),
+	}
 }
 
 // SaveConfig persists the current runtime config state to disk.
-func (s *Config) SaveConfig() (types.ResolveConfigResult, error) {
-	return s.UpdateConfig(func(*types.AppConfig) {}, true)
+func (s *Config) SaveConfig() types.ResolveConfigResponse {
+	result, err := s.UpdateConfig(func(*types.AppConfig) {}, true)
+	if err != nil {
+		return types.ResolveConfigResponse{GenericResponse: types.ErrorResponse(err.Error())}
+	}
+	return types.ResolveConfigResponse{
+		GenericResponse:    types.SuccessResponse("Config saved"),
+		ResolveConfigResult: result,
+	}
 }
 
-func (s *Config) UpdateGithubToken(githubToken string) (types.ResolveConfigResult, error) {
-	return s.UpdateConfig(func(cfg *types.AppConfig) {
+func (s *Config) UpdateGithubToken(githubToken string) types.ResolveConfigResponse {
+	result, err := s.UpdateConfig(func(cfg *types.AppConfig) {
 		cfg.GithubToken = githubToken
 	}, false)
+	if err != nil {
+		return types.ResolveConfigResponse{GenericResponse: types.ErrorResponse(err.Error())}
+	}
+	return types.ResolveConfigResponse{
+		GenericResponse:    types.SuccessResponse("GitHub token updated"),
+		ResolveConfigResult: result,
+	}
 }
 
-func (s *Config) ClearGithubToken() (types.ResolveConfigResult, error) {
-	return s.UpdateConfig(func(cfg *types.AppConfig) {
+func (s *Config) ClearGithubToken() types.ResolveConfigResponse {
+	result, err := s.UpdateConfig(func(cfg *types.AppConfig) {
 		cfg.GithubToken = ""
 	}, false)
+	if err != nil {
+		return types.ResolveConfigResponse{GenericResponse: types.ErrorResponse(err.Error())}
+	}
+	return types.ResolveConfigResponse{
+		GenericResponse:    types.SuccessResponse("GitHub token cleared"),
+		ResolveConfigResult: result,
+	}
 }
 
 func (s *Config) GetGithubToken() string {
@@ -172,34 +221,40 @@ func (s *Config) GetGithubToken() string {
 	return s.Cfg.GithubToken
 }
 
-func (s *Config) IsGithubTokenValid() bool {
+func (s *Config) IsGithubTokenValid() types.GithubTokenValidResponse {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.Cfg.GithubToken == "" {
-		return false
+		return types.GithubTokenValidResponse{
+			GenericResponse: types.SuccessResponse("GitHub token not set"),
+			Valid:           false,
+		}
 	}
 
 	req, err := http.NewRequest("GET", "https://api.github.com/rate_limit", nil)
-	req.Header.Add("Authorization", "token "+s.Cfg.GithubToken)
 	if err != nil {
-		return false
+		return types.GithubTokenValidResponse{GenericResponse: types.ErrorResponse(err.Error())}
 	}
+	req.Header.Add("Authorization", "token "+s.Cfg.GithubToken)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return false
+		return types.GithubTokenValidResponse{GenericResponse: types.ErrorResponse(err.Error())}
 	}
 	defer resp.Body.Close()
 
-	return resp.StatusCode == http.StatusOK
+	return types.GithubTokenValidResponse{
+		GenericResponse: types.SuccessResponse("GitHub token validated"),
+		Valid:           resp.StatusCode == http.StatusOK,
+	}
 }
 
 /* ===== Dialog Functions ===== */
 
 // OpenMetroMakerDataFolderDialog opens a directory picker and persists MetroMakerDataPath when selected.
 // On user cancel, it returns the current config unchanged.
-func (s *Config) OpenMetroMakerDataFolderDialog(options types.SetConfigPathOptions) (types.SetConfigPathResult, error) {
-	return s.setConfigPathWithDialog(
+func (s *Config) OpenMetroMakerDataFolderDialog(options types.SetConfigPathOptions) types.SetConfigPathResponse {
+	result, err := s.setConfigPathWithDialog(
 		options,
 		func() (types.SetConfigPathResult, bool) {
 			return s.TryAutoDetectPath(
@@ -218,12 +273,19 @@ func (s *Config) OpenMetroMakerDataFolderDialog(options types.SetConfigPathOptio
 		},
 		s.UpdateMetroMakerDataFolder,
 	)
+	if err != nil {
+		return types.SetConfigPathResponse{GenericResponse: types.ErrorResponse(err.Error())}
+	}
+	return types.SetConfigPathResponse{
+		GenericResponse: types.SuccessResponse("Config path resolved"),
+		Result:          result,
+	}
 }
 
 // OpenExecutableDialog opens a file picker and persists ExecutablePath when selected.
 // On user cancel, it returns the current config unchanged.
-func (s *Config) OpenExecutableDialog(options types.SetConfigPathOptions) (types.SetConfigPathResult, error) {
-	return s.setConfigPathWithDialog(
+func (s *Config) OpenExecutableDialog(options types.SetConfigPathOptions) types.SetConfigPathResponse {
+	result, err := s.setConfigPathWithDialog(
 		options,
 		func() (types.SetConfigPathResult, bool) {
 			return s.TryAutoDetectPath(
@@ -247,6 +309,13 @@ func (s *Config) OpenExecutableDialog(options types.SetConfigPathOptions) (types
 		},
 		s.UpdateExecutable,
 	)
+	if err != nil {
+		return types.SetConfigPathResponse{GenericResponse: types.ErrorResponse(err.Error())}
+	}
+	return types.SetConfigPathResponse{
+		GenericResponse: types.SuccessResponse("Config path resolved"),
+		Result:          result,
+	}
 }
 
 func (s *Config) setConfigPathWithDialog(
@@ -269,8 +338,9 @@ func (s *Config) setConfigPathWithDialog(
 
 	// User cancellation results in an empty path
 	if strings.TrimSpace(selectedPath) == "" {
+		current := s.GetConfig()
 		return types.SetConfigPathResult{
-			ResolveConfigResult: s.GetConfig(),
+			ResolveConfigResult: current.ResolveConfigResult,
 			SetConfigSource:     types.SourceCancelled,
 		}, nil
 	}

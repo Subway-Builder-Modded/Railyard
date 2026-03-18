@@ -31,10 +31,20 @@ type ModManifest struct {
 	Update        UpdateConfig `json:"update"`
 }
 
+type ModsResponse struct {
+	GenericResponse
+	Mods []ModManifest `json:"mods"`
+}
+
 // InstalledModInfo represents the information stored about an installed mod in the registry's installed_mods.json file.
 type InstalledModInfo struct {
 	ID      string `json:"id"`
 	Version string `json:"version"`
+}
+
+type InstalledModsResponse struct {
+	GenericResponse
+	Mods []InstalledModInfo `json:"mods"`
 }
 
 // InstalledMapInfo represents the information stored about an installed map in the registry's installed_maps.json file.
@@ -42,6 +52,11 @@ type InstalledMapInfo struct {
 	ID        string     `json:"id"`
 	Version   string     `json:"version"`
 	MapConfig ConfigData `json:"config"`
+}
+
+type InstalledMapsResponse struct {
+	GenericResponse
+	Maps []InstalledMapInfo `json:"maps"`
 }
 
 // InstalledModFile represents the structure of the installed_mods.json file, which is a list of installed mods.
@@ -73,6 +88,11 @@ type MapManifest struct {
 	Update        UpdateConfig `json:"update"`
 }
 
+type MapsResponse struct {
+	GenericResponse
+	Maps []MapManifest `json:"maps"`
+}
+
 // IndexFile represents the top-level index.json in the mods/ or maps/ directory.
 type IndexFile struct {
 	SchemaVersion int      `json:"schema_version"`
@@ -100,6 +120,16 @@ type DownloadCountsByAssetTypeResponse struct {
 	GenericResponse
 	AssetType string                    `json:"assetType"`
 	Counts    map[string]map[string]int `json:"counts"`
+}
+
+type VersionsResponse struct {
+	GenericResponse
+	Versions []VersionInfo `json:"versions"`
+}
+
+type GalleryImageResponse struct {
+	GenericResponse
+	ImageURL string `json:"imageUrl"`
 }
 
 // VersionInfo represents a single release version for a mod or map.
@@ -153,6 +183,11 @@ type RegistryIntegrityReport struct {
 	SchemaVersion int                         `json:"schema_version"`
 	GeneratedAt   string                      `json:"generated_at"`
 	Listings      map[string]IntegrityListing `json:"listings"`
+}
+
+type RegistryIntegrityReportResponse struct {
+	GenericResponse
+	Report RegistryIntegrityReport `json:"report"`
 }
 
 // IntegrityListing represents a single mod/map listing with its versions

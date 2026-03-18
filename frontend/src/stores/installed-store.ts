@@ -8,8 +8,8 @@ import {
   UpdateSubscriptions,
 } from '../../wailsjs/go/profiles/UserProfiles';
 import {
-  GetInstalledMaps,
-  GetInstalledMods,
+  GetInstalledMapsResponse,
+  GetInstalledModsResponse,
 } from '../../wailsjs/go/registry/Registry';
 import { useDownloadQueueStore } from './download-queue-store';
 
@@ -83,14 +83,20 @@ interface InstalledState {
 
 export const useInstalledStore = create<InstalledState>((set, get) => {
   const getInstalledLists = async () => {
-    const [mods, maps] = await Promise.all([
-      GetInstalledMods(),
-      GetInstalledMaps(),
+    const [modsResponse, mapsResponse] = await Promise.all([
+      GetInstalledModsResponse(),
+      GetInstalledMapsResponse(),
     ]);
+    if (modsResponse.status !== 'success') {
+      throw new Error(modsResponse.message || 'Failed to load installed mods');
+    }
+    if (mapsResponse.status !== 'success') {
+      throw new Error(mapsResponse.message || 'Failed to load installed maps');
+    }
 
     return {
-      installedMods: mods || [],
-      installedMaps: maps || [],
+      installedMods: modsResponse.mods || [],
+      installedMaps: mapsResponse.maps || [],
     };
   };
 

@@ -14,27 +14,43 @@ export function GetDownloadCountsByAssetType(arg1:types.AssetType):Promise<types
 
 export function GetGalleryImage(arg1:string,arg2:string,arg3:string):Promise<string>;
 
+export function GetGalleryImageResponse(arg1:string,arg2:string,arg3:string):Promise<types.GalleryImageResponse>;
+
 export function GetInstalledMapCodes():Promise<Array<string>>;
 
 export function GetInstalledMaps():Promise<Array<types.InstalledMapInfo>>;
 
+export function GetInstalledMapsResponse():Promise<types.InstalledMapsResponse>;
+
 export function GetInstalledMods():Promise<Array<types.InstalledModInfo>>;
 
+export function GetInstalledModsResponse():Promise<types.InstalledModsResponse>;
+
 export function GetIntegrityReport(arg1:types.AssetType):Promise<types.RegistryIntegrityReport>;
+
+export function GetIntegrityReportResponse(arg1:types.AssetType):Promise<types.RegistryIntegrityReportResponse>;
 
 export function GetMap(arg1:string):Promise<types.MapManifest>;
 
 export function GetMaps():Promise<Array<types.MapManifest>>;
 
+export function GetMapsResponse():Promise<types.MapsResponse>;
+
 export function GetMod(arg1:string):Promise<types.ModManifest>;
 
 export function GetMods():Promise<Array<types.ModManifest>>;
 
+export function GetModsResponse():Promise<types.ModsResponse>;
+
 export function GetVersions(arg1:string,arg2:string):Promise<Array<types.VersionInfo>>;
+
+export function GetVersionsResponse(arg1:string,arg2:string):Promise<types.VersionsResponse>;
 
 export function Initialize():Promise<void>;
 
 export function Refresh():Promise<void>;
+
+export function RefreshResponse():Promise<types.GenericResponse>;
 
 export function RemoveInstalledMap(arg1:string):Promise<void>;
 

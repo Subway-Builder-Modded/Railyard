@@ -3,24 +3,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useRegistryStore } from './registry-store';
 
 const {
-  mockGetMods,
-  mockGetMaps,
-  mockGetIntegrityReport,
-  mockRefresh,
+  mockGetModsResponse,
+  mockGetMapsResponse,
+  mockGetIntegrityReportResponse,
+  mockRefreshResponse,
   mockGetDownloadCountsByAssetType,
 } = vi.hoisted(() => ({
-  mockGetMods: vi.fn(),
-  mockGetMaps: vi.fn(),
-  mockGetIntegrityReport: vi.fn(),
-  mockRefresh: vi.fn(),
+  mockGetModsResponse: vi.fn(),
+  mockGetMapsResponse: vi.fn(),
+  mockGetIntegrityReportResponse: vi.fn(),
+  mockRefreshResponse: vi.fn(),
   mockGetDownloadCountsByAssetType: vi.fn(),
 }));
 
 vi.mock('../../wailsjs/go/registry/Registry', () => ({
-  GetMods: mockGetMods,
-  GetMaps: mockGetMaps,
-  GetIntegrityReport: mockGetIntegrityReport,
-  Refresh: mockRefresh,
+  GetModsResponse: mockGetModsResponse,
+  GetMapsResponse: mockGetMapsResponse,
+  GetIntegrityReportResponse: mockGetIntegrityReportResponse,
+  RefreshResponse: mockRefreshResponse,
   GetDownloadCountsByAssetType: mockGetDownloadCountsByAssetType,
 }));
 
@@ -121,12 +121,28 @@ describe('useRegistryStore download totals', () => {
   });
 
   it('recomputes totals during refresh', async () => {
-    mockRefresh.mockResolvedValue(undefined);
-    mockGetMods.mockResolvedValue([]);
-    mockGetMaps.mockResolvedValue([]);
-    mockGetIntegrityReport
-      .mockResolvedValueOnce({ listings: {} })
-      .mockResolvedValueOnce({ listings: {} });
+    mockRefreshResponse.mockResolvedValue({ status: 'success', message: 'ok' });
+    mockGetModsResponse.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      mods: [],
+    });
+    mockGetMapsResponse.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      maps: [],
+    });
+    mockGetIntegrityReportResponse
+      .mockResolvedValueOnce({
+        status: 'success',
+        message: 'ok',
+        report: { listings: {} },
+      })
+      .mockResolvedValueOnce({
+        status: 'success',
+        message: 'ok',
+        report: { listings: {} },
+      });
     mockGetDownloadCountsByAssetType
       .mockResolvedValueOnce({
         status: 'success',
@@ -144,12 +160,12 @@ describe('useRegistryStore download totals', () => {
     await useRegistryStore.getState().refresh();
 
     const state = useRegistryStore.getState();
-    expect(mockRefresh).toHaveBeenCalledTimes(1);
-    expect(mockGetMods).toHaveBeenCalledTimes(1);
-    expect(mockGetMaps).toHaveBeenCalledTimes(1);
-    expect(mockGetIntegrityReport).toHaveBeenCalledTimes(2);
-    expect(mockGetIntegrityReport).toHaveBeenNthCalledWith(1, 'map');
-    expect(mockGetIntegrityReport).toHaveBeenNthCalledWith(2, 'mod');
+    expect(mockRefreshResponse).toHaveBeenCalledTimes(1);
+    expect(mockGetModsResponse).toHaveBeenCalledTimes(1);
+    expect(mockGetMapsResponse).toHaveBeenCalledTimes(1);
+    expect(mockGetIntegrityReportResponse).toHaveBeenCalledTimes(2);
+    expect(mockGetIntegrityReportResponse).toHaveBeenNthCalledWith(1, 'map');
+    expect(mockGetIntegrityReportResponse).toHaveBeenNthCalledWith(2, 'mod');
     expect(state.modDownloadTotals).toEqual({ mod_c: 9 });
     expect(state.mapDownloadTotals).toEqual({ map_c: 10 });
     expect(state.downloadTotalsLoaded).toBe(true);

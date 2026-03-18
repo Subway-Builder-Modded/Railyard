@@ -27,7 +27,7 @@ import { GetGameVersion } from '../../wailsjs/go/main/App';
 import type { types } from '../../wailsjs/go/models';
 import {
   GetAssetDownloadCounts,
-  GetVersions,
+  GetVersionsResponse,
 } from '../../wailsjs/go/registry/Registry';
 
 export function ProjectPage() {
@@ -68,7 +68,11 @@ export function ProjectPage() {
 
   useEffect(() => {
     GetGameVersion()
-      .then((v) => setGameVersion(v || ''))
+      .then((response) => {
+        if (response.status === 'success') {
+          setGameVersion(response.version || '');
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -84,10 +88,15 @@ export function ProjectPage() {
     let cancelled = false;
     setVersionsLoading(true);
     setVersionsError(null);
-    GetVersions(item.update.type, source)
-      .then(async (v) => {
+    GetVersionsResponse(item.update.type, source)
+      .then(async (response) => {
         if (cancelled) return;
-        const all = v || [];
+        if (response.status !== 'success') {
+          setVersionsError(response.message || 'Failed to load versions');
+          setVersionsLoading(false);
+          return;
+        }
+        const all = response.versions || [];
         const visibleVersions =
           type === 'mod' ? all.filter((ver) => ver.manifest) : all;
 

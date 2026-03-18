@@ -106,18 +106,29 @@ export function SettingsPage() {
 
   const [platform, setPlatform] = useState<string>('unknown');
   useMemo(() => {
-    GetPlatform().then(setPlatform);
+    GetPlatform().then((response) => {
+      if (response.status === 'success') {
+        setPlatform(response.platform || 'unknown');
+      }
+    });
   }, []);
 
   const [sandboxInstalled, setSandboxInstalled] = useState(false);
   useMemo(() => {
     if (platform !== 'linux') return;
-    SandboxIsInstalled().then(setSandboxInstalled);
+    SandboxIsInstalled().then((response) => {
+      if (response.status === 'success') {
+        setSandboxInstalled(response.installed);
+      }
+    });
   }, [platform]);
 
   const handleInstallSandbox = async () => {
     try {
-      await InstallLinuxSandbox();
+      const response = await InstallLinuxSandbox();
+      if (response.status === 'error') {
+        throw new Error(response.message || 'Failed to install Linux sandbox');
+      }
       setSandboxInstalled(true);
       toast.success('Linux sandbox installed successfully.');
     } catch (e) {
@@ -135,7 +146,10 @@ export function SettingsPage() {
 
   const handleUpdatesCheck = async () => {
     try {
-      await ManuallyCheckForUpdates();
+      const response = await ManuallyCheckForUpdates();
+      if (response.status === 'error') {
+        throw new Error(response.message || 'Failed to check for updates');
+      }
       toast.success('No updates found, or installation was cancelled.');
     } catch {
       toast.error('Failed to check for updates.');

@@ -3,25 +3,25 @@
 import {types} from '../models';
 import {context} from '../models';
 
-export function ClearConfig():Promise<types.AppConfig>;
+export function ClearConfig():Promise<types.ResolveConfigResponse>;
 
-export function ClearGithubToken():Promise<types.ResolveConfigResult>;
+export function ClearGithubToken():Promise<types.ResolveConfigResponse>;
 
-export function CompleteSetup():Promise<types.ResolveConfigResult>;
+export function CompleteSetup():Promise<types.ResolveConfigResponse>;
 
-export function GetConfig():Promise<types.ResolveConfigResult>;
+export function GetConfig():Promise<types.ResolveConfigResponse>;
 
 export function GetGithubToken():Promise<string>;
 
-export function IsGithubTokenValid():Promise<boolean>;
+export function IsGithubTokenValid():Promise<types.GithubTokenValidResponse>;
 
-export function OpenExecutableDialog(arg1:types.SetConfigPathOptions):Promise<types.SetConfigPathResult>;
+export function OpenExecutableDialog(arg1:types.SetConfigPathOptions):Promise<types.SetConfigPathResponse>;
 
-export function OpenMetroMakerDataFolderDialog(arg1:types.SetConfigPathOptions):Promise<types.SetConfigPathResult>;
+export function OpenMetroMakerDataFolderDialog(arg1:types.SetConfigPathOptions):Promise<types.SetConfigPathResponse>;
 
 export function ResolveConfig():Promise<types.ResolveConfigResult>;
 
-export function SaveConfig():Promise<types.ResolveConfigResult>;
+export function SaveConfig():Promise<types.ResolveConfigResponse>;
 
 export function SetConfig(arg1:types.AppConfig):Promise<types.AppConfig>;
 
@@ -29,12 +29,12 @@ export function SetContext(arg1:context.Context):Promise<void>;
 
 export function TryAutoDetectPath(arg1:Array<string>,arg2:boolean,arg3:any,arg4:any):Promise<types.SetConfigPathResult|boolean>;
 
-export function UpdateCheckForUpdatesOnLaunch(arg1:boolean):Promise<types.ResolveConfigResult>;
+export function UpdateCheckForUpdatesOnLaunch(arg1:boolean):Promise<types.ResolveConfigResponse>;
 
 export function UpdateConfig(arg1:any,arg2:boolean):Promise<types.ResolveConfigResult>;
 
 export function UpdateExecutable(arg1:string):Promise<types.ResolveConfigResult>;
 
-export function UpdateGithubToken(arg1:string):Promise<types.ResolveConfigResult>;
+export function UpdateGithubToken(arg1:string):Promise<types.ResolveConfigResponse>;
 
 export function UpdateMetroMakerDataFolder(arg1:string):Promise<types.ResolveConfigResult>;

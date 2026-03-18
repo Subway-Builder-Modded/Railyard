@@ -10,13 +10,13 @@ import (
 
 func TestIsStartupReady(t *testing.T) {
 	app := &App{}
-	require.False(t, app.IsStartupReady())
+	require.False(t, app.IsStartupReady().Ready)
 
 	app.setStartupReady(true)
-	require.True(t, app.IsStartupReady())
+	require.True(t, app.IsStartupReady().Ready)
 
 	app.setStartupReady(false)
-	require.False(t, app.IsStartupReady())
+	require.False(t, app.IsStartupReady().Ready)
 }
 
 func TestOpenInFileExplorerRejectsInvalidPaths(t *testing.T) {

@@ -26,6 +26,10 @@ export function GetGalleryImage(arg1, arg2, arg3) {
   return window['go']['registry']['Registry']['GetGalleryImage'](arg1, arg2, arg3);
 }
 
+export function GetGalleryImageResponse(arg1, arg2, arg3) {
+  return window['go']['registry']['Registry']['GetGalleryImageResponse'](arg1, arg2, arg3);
+}
+
 export function GetInstalledMapCodes() {
   return window['go']['registry']['Registry']['GetInstalledMapCodes']();
 }
@@ -34,12 +38,24 @@ export function GetInstalledMaps() {
   return window['go']['registry']['Registry']['GetInstalledMaps']();
 }
 
+export function GetInstalledMapsResponse() {
+  return window['go']['registry']['Registry']['GetInstalledMapsResponse']();
+}
+
 export function GetInstalledMods() {
   return window['go']['registry']['Registry']['GetInstalledMods']();
 }
 
+export function GetInstalledModsResponse() {
+  return window['go']['registry']['Registry']['GetInstalledModsResponse']();
+}
+
 export function GetIntegrityReport(arg1) {
   return window['go']['registry']['Registry']['GetIntegrityReport'](arg1);
+}
+
+export function GetIntegrityReportResponse(arg1) {
+  return window['go']['registry']['Registry']['GetIntegrityReportResponse'](arg1);
 }
 
 export function GetMap(arg1) {
@@ -50,6 +66,10 @@ export function GetMaps() {
   return window['go']['registry']['Registry']['GetMaps']();
 }
 
+export function GetMapsResponse() {
+  return window['go']['registry']['Registry']['GetMapsResponse']();
+}
+
 export function GetMod(arg1) {
   return window['go']['registry']['Registry']['GetMod'](arg1);
 }
@@ -58,8 +78,16 @@ export function GetMods() {
   return window['go']['registry']['Registry']['GetMods']();
 }
 
+export function GetModsResponse() {
+  return window['go']['registry']['Registry']['GetModsResponse']();
+}
+
 export function GetVersions(arg1, arg2) {
   return window['go']['registry']['Registry']['GetVersions'](arg1, arg2);
+}
+
+export function GetVersionsResponse(arg1, arg2) {
+  return window['go']['registry']['Registry']['GetVersionsResponse'](arg1, arg2);
 }
 
 export function Initialize() {
@@ -68,6 +96,10 @@ export function Initialize() {
 
 export function Refresh() {
   return window['go']['registry']['Registry']['Refresh']();
+}
+
+export function RefreshResponse() {
+  return window['go']['registry']['Registry']['RefreshResponse']();
 }
 
 export function RemoveInstalledMap(arg1) {

@@ -33,11 +33,11 @@ interface ConfigState {
   ) => Promise<types.SetConfigPathResult>;
   saveConfig: () => Promise<void>;
   clearConfig: () => Promise<void>;
-  updateGithubToken: (token: string) => Promise<types.ResolveConfigResult>;
-  clearGithubToken: () => Promise<types.ResolveConfigResult>;
+  updateGithubToken: (token: string) => Promise<types.ResolveConfigResponse>;
+  clearGithubToken: () => Promise<types.ResolveConfigResponse>;
   updateCheckForUpdatesOnLaunch: (
     checkForUpdates: boolean,
-  ) => Promise<types.ResolveConfigResult>;
+  ) => Promise<types.ResolveConfigResponse>;
   completeSetup: () => Promise<void>;
 }
 
@@ -57,8 +57,11 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const result = await GetConfig();
+      if (result.status === 'error') {
+        throw new Error(result.message || 'Failed to load config');
+      }
       const tokenValid = result.hasGithubToken
-        ? await IsGithubTokenValid()
+        ? (await IsGithubTokenValid()).valid
         : false;
       set({
         config: result.config,
@@ -80,9 +83,13 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   openDataFolderDialog: async (allowAutoDetect: boolean) => {
     set({ error: null });
     try {
-      const result = await OpenMetroMakerDataFolderDialog(
+      const response = await OpenMetroMakerDataFolderDialog(
         new types.SetConfigPathOptions({ allowAutoDetect }),
       );
+      if (response.status === 'error') {
+        throw new Error(response.message || 'Failed to open data folder dialog');
+      }
+      const result = response.result;
       set({
         config: result.resolveConfigResult.config,
         validation: result.resolveConfigResult.validation,
@@ -98,9 +105,15 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   openExecutableDialog: async (allowAutoDetect: boolean) => {
     set({ error: null });
     try {
-      const result = await OpenExecutableDialog(
+      const response = await OpenExecutableDialog(
         new types.SetConfigPathOptions({ allowAutoDetect }),
       );
+      if (response.status === 'error') {
+        throw new Error(
+          response.message || 'Failed to open executable dialog',
+        );
+      }
+      const result = response.result;
       set({
         config: result.resolveConfigResult.config,
         validation: result.resolveConfigResult.validation,
@@ -117,6 +130,9 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const result = await SaveConfig();
+      if (result.status === 'error') {
+        throw new Error(result.message || 'Failed to save config');
+      }
       set({
         config: result.config,
         validation: result.validation,
@@ -134,8 +150,14 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   clearConfig: async () => {
     set({ loading: true, error: null });
     try {
-      await ClearConfig();
+      const cleared = await ClearConfig();
+      if (cleared.status === 'error') {
+        throw new Error(cleared.message || 'Failed to clear config');
+      }
       const result = await GetConfig();
+      if (result.status === 'error') {
+        throw new Error(result.message || 'Failed to load config');
+      }
       set({
         config: result.config,
         validation: result.validation,
@@ -155,7 +177,12 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     set({ error: null });
     try {
       const result = await UpdateGithubToken(token.trim());
-      const valid = result.hasGithubToken ? await IsGithubTokenValid() : false;
+      if (result.status === 'error') {
+        throw new Error(result.message || 'Failed to update GitHub token');
+      }
+      const valid = result.hasGithubToken
+        ? (await IsGithubTokenValid()).valid
+        : false;
       set({
         config: result.config,
         validation: result.validation,
@@ -173,6 +200,9 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     set({ error: null });
     try {
       const result = await ClearGithubToken();
+      if (result.status === 'error') {
+        throw new Error(result.message || 'Failed to clear GitHub token');
+      }
       set({
         config: result.config,
         validation: result.validation,
@@ -190,6 +220,11 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     set({ error: null });
     try {
       const result = await UpdateCheckForUpdatesOnLaunch(checkForUpdates);
+      if (result.status === 'error') {
+        throw new Error(
+          result.message || 'Failed to update check for updates setting',
+        );
+      }
       set({
         config: result.config,
         validation: result.validation,
@@ -206,6 +241,9 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const result = await CompleteSetup();
+      if (result.status === 'error') {
+        throw new Error(result.message || 'Failed to complete setup');
+      }
       set({
         config: result.config,
         validation: result.validation,

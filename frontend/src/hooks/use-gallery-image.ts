@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { type AssetType, assetTypeToListingPath } from '@/lib/asset-types';
 
-import { GetGalleryImage } from '../../wailsjs/go/registry/Registry';
+import { GetGalleryImageResponse } from '../../wailsjs/go/registry/Registry';
 
 export function useGalleryImage(
   type: AssetType,
@@ -23,10 +23,14 @@ export function useGalleryImage(
     setLoading(true);
     setError(false);
 
-    GetGalleryImage(assetTypeToListingPath(type), id, imagePath)
-      .then((url) => {
+    GetGalleryImageResponse(assetTypeToListingPath(type), id, imagePath)
+      .then((response) => {
         if (!cancelled) {
-          setImageUrl(url);
+          if (response.status === 'success') {
+            setImageUrl(response.imageUrl || null);
+          } else {
+            setError(true);
+          }
           setLoading(false);
         }
       })

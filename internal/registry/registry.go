@@ -84,14 +84,38 @@ func (r *Registry) Refresh() error {
 	return nil
 }
 
+// RefreshResponse refreshes the registry and reports status metadata.
+func (r *Registry) RefreshResponse() types.GenericResponse {
+	if err := r.Refresh(); err != nil {
+		return types.ErrorResponse(err.Error())
+	}
+	return types.SuccessResponse("Registry refreshed")
+}
+
 // GetMods returns all mod manifests.
 func (r *Registry) GetMods() []types.ModManifest {
 	return r.mods
 }
 
+// GetModsResponse returns all mod manifests with status metadata.
+func (r *Registry) GetModsResponse() types.ModsResponse {
+	return types.ModsResponse{
+		GenericResponse: types.SuccessResponse("Mods loaded"),
+		Mods:            r.mods,
+	}
+}
+
 // GetMaps returns all map manifests.
 func (r *Registry) GetMaps() []types.MapManifest {
 	return r.maps
+}
+
+// GetMapsResponse returns all map manifests with status metadata.
+func (r *Registry) GetMapsResponse() types.MapsResponse {
+	return types.MapsResponse{
+		GenericResponse: types.SuccessResponse("Maps loaded"),
+		Maps:            r.maps,
+	}
 }
 
 func (r *Registry) GetIntegrityReport(assetType types.AssetType) (types.RegistryIntegrityReport, error) {
@@ -102,6 +126,22 @@ func (r *Registry) GetIntegrityReport(assetType types.AssetType) (types.Registry
 		return r.integrityMaps, nil
 	default:
 		return types.RegistryIntegrityReport{}, fmt.Errorf("invalid asset type: %s", assetType)
+	}
+}
+
+// GetIntegrityReportResponse returns the integrity report with status metadata.
+func (r *Registry) GetIntegrityReportResponse(assetType types.AssetType) types.RegistryIntegrityReportResponse {
+	report, err := r.GetIntegrityReport(assetType)
+	if err != nil {
+		return types.RegistryIntegrityReportResponse{
+			GenericResponse: types.ErrorResponse(err.Error()),
+			Report:          types.RegistryIntegrityReport{},
+		}
+	}
+
+	return types.RegistryIntegrityReportResponse{
+		GenericResponse: types.SuccessResponse("Integrity report loaded"),
+		Report:          report,
 	}
 }
 
@@ -147,6 +187,22 @@ func (r *Registry) GetGalleryImage(itemType string, itemID string, imagePath str
 
 	encoded := base64.StdEncoding.EncodeToString(data)
 	return fmt.Sprintf("data:%s;base64,%s", mimeType, encoded), nil
+}
+
+// GetGalleryImageResponse reads a gallery image and returns it with status metadata.
+func (r *Registry) GetGalleryImageResponse(itemType string, itemID string, imagePath string) types.GalleryImageResponse {
+	url, err := r.GetGalleryImage(itemType, itemID, imagePath)
+	if err != nil {
+		return types.GalleryImageResponse{
+			GenericResponse: types.ErrorResponse(err.Error()),
+			ImageURL:        "",
+		}
+	}
+
+	return types.GalleryImageResponse{
+		GenericResponse: types.SuccessResponse("Gallery image loaded"),
+		ImageURL:        url,
+	}
 }
 
 // mimeFromExtension returns the MIME type for common image file extensions.

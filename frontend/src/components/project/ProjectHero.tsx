@@ -6,7 +6,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { type AssetType, assetTypeToListingPath } from '@/lib/asset-types';
 
-import { GetGalleryImage } from '../../../wailsjs/go/registry/Registry';
+import { GetGalleryImageResponse } from '../../../wailsjs/go/registry/Registry';
 
 interface ProjectHeroProps {
   type: AssetType;
@@ -27,9 +27,11 @@ export function ProjectHero({ type, id, gallery }: ProjectHeroProps) {
 
     Promise.all(
       gallery.map((path) =>
-        GetGalleryImage(assetTypeToListingPath(type), id, path).catch(
-          () => null,
-        ),
+        GetGalleryImageResponse(assetTypeToListingPath(type), id, path)
+          .then((response) =>
+            response.status === 'success' ? response.imageUrl : null,
+          )
+          .catch(() => null),
       ),
     ).then((urls) => {
       setImages(urls);

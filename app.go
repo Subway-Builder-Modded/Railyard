@@ -178,10 +178,13 @@ func (a *App) setStartupReady(ready bool) {
 }
 
 // IsStartupReady reports whether backend startup routines have completed.
-func (a *App) IsStartupReady() bool {
+func (a *App) IsStartupReady() types.StartupReadyResponse {
 	a.startupMu.RLock()
 	defer a.startupMu.RUnlock()
-	return a.startupReady
+	return types.StartupReadyResponse{
+		GenericResponse: types.SuccessResponse("Startup status resolved"),
+		Ready:           a.startupReady,
+	}
 }
 
 // shutdown is called when the app shuts down.
@@ -196,8 +199,8 @@ func (a *App) shutdown(ctx context.Context) {
 		_, _ = fmt.Fprintf(os.Stderr, "failed to flush app logs on shutdown: %v\n", err)
 	}
 
-	if _, err := a.Config.SaveConfig(); err != nil {
-		log.Printf("Warning: failed to save config on shutdown: %v", err)
+	if result := a.Config.SaveConfig(); result.Status == types.ResponseError {
+		log.Printf("Warning: failed to save config on shutdown: %s", result.Message)
 	}
 	if err := a.Registry.WriteInstalledToDisk(); err != nil {
 		log.Printf("Warning: failed to persist installed registry state on shutdown: %v", err)
@@ -261,11 +264,14 @@ func (a *App) bootstrapInstalledState(activeProfile types.UserProfile) {
 }
 
 // GetGameVersion attempts to detect the installed Subway Builder version.
-// Returns empty string if detection fails.
-func (a *App) GetGameVersion() string {
+// Returns an empty version with a warning status if detection fails.
+func (a *App) GetGameVersion() types.GameVersionResponse {
 	cfg := a.Config.GetConfig()
 	if !cfg.Validation.ExecutablePathValid {
-		return ""
+		return types.GameVersionResponse{
+			GenericResponse: types.WarnResponse("Game version not detected"),
+			Version:         "",
+		}
 	}
 	exePath := cfg.Config.ExecutablePath
 
@@ -297,29 +303,35 @@ func (a *App) GetGameVersion() string {
 			continue
 		}
 		if pkg.Version != "" {
-			return pkg.Version
+			return types.GameVersionResponse{
+				GenericResponse: types.SuccessResponse("Game version resolved"),
+				Version:         pkg.Version,
+			}
 		}
 	}
-	return ""
+	return types.GameVersionResponse{
+		GenericResponse: types.WarnResponse("Game version not detected"),
+		Version:         "",
+	}
 }
 
-func (a *App) LaunchGame() error {
+func (a *App) LaunchGame() types.GenericResponse {
 	a.gameMu.Lock()
 	if a.gameCmd != nil && a.gameCmd.ProcessState == nil {
 		a.gameMu.Unlock()
-		return fmt.Errorf("game is already running")
+		return types.ErrorResponse("game is already running")
 	}
 	a.gameMu.Unlock()
 
 	cfg := a.Config.GetConfig()
 	if !cfg.Validation.ExecutablePathValid {
-		return fmt.Errorf("game executable path is not configured or invalid")
+		return types.ErrorResponse("game executable path is not configured or invalid")
 	}
 
 	port, err := a.startPMTilesServer()
 	if err != nil {
 		a.Logger.Warn("Failed to start PMTiles server", "error", err)
-		return err
+		return types.ErrorResponse(err.Error())
 	}
 
 	wailsruntime.EventsEmit(a.ctx, "server:port", port)
@@ -329,7 +341,7 @@ func (a *App) LaunchGame() error {
 
 	if err := a.generateMod(port); err != nil {
 		a.Logger.Warn("Failed to generate mod", "error", err)
-		return err
+		return types.ErrorResponse(err.Error())
 	}
 
 	exePath := strings.TrimPrefix(cfg.Config.ExecutablePath, "/run/host") // Fix the paths when calling outside of sandbox
@@ -368,16 +380,16 @@ func (a *App) LaunchGame() error {
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("failed to create stdout pipe: %w", err)
+		return types.ErrorResponse(fmt.Sprintf("failed to create stdout pipe: %v", err))
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return fmt.Errorf("failed to create stderr pipe: %w", err)
+		return types.ErrorResponse(fmt.Sprintf("failed to create stderr pipe: %v", err))
 	}
 
 	if err := cmd.Start(); err != nil {
 		a.Logger.Error("Failed to launch game", err)
-		return fmt.Errorf("failed to launch game: %w", err)
+		return types.ErrorResponse(fmt.Sprintf("failed to launch game: %v", err))
 	}
 
 	a.gameMu.Lock()
@@ -410,7 +422,7 @@ func (a *App) LaunchGame() error {
 		wailsruntime.EventsEmit(a.ctx, "game:status", "stopped")
 	}()
 
-	return nil
+	return types.SuccessResponse("Game launched")
 }
 
 func (a *App) streamGameOutput(r io.Reader, stream string) {
@@ -424,38 +436,50 @@ func (a *App) streamGameOutput(r io.Reader, stream string) {
 	}
 }
 
-func (a *App) IsGameRunning() bool {
+func (a *App) IsGameRunning() types.GameRunningResponse {
 	a.gameMu.Lock()
 	defer a.gameMu.Unlock()
-	return a.gameCmd != nil && a.gameCmd.ProcessState == nil
+	return types.GameRunningResponse{
+		GenericResponse: types.SuccessResponse("Game running status resolved"),
+		Running:         a.gameCmd != nil && a.gameCmd.ProcessState == nil,
+	}
 }
 
-func (a *App) StopGame() error {
+func (a *App) StopGame() types.GenericResponse {
 	a.gameMu.Lock()
 	cmd := a.gameCmd
 	a.gameMu.Unlock()
 
 	if cmd == nil || cmd.ProcessState != nil {
-		return fmt.Errorf("game is not running")
+		return types.ErrorResponse("game is not running")
 	}
 
 	if a.pmtilesServer != nil {
 		a.pmtilesServer.Close()
 	}
 
-	return cmd.Process.Kill()
+	if err := cmd.Process.Kill(); err != nil {
+		return types.ErrorResponse(fmt.Sprintf("failed to stop game: %v", err))
+	}
+
+	return types.SuccessResponse("Game stopped")
 }
 
-func (a *App) ManuallyCheckForUpdates() {
+func (a *App) ManuallyCheckForUpdates() types.GenericResponse {
 	a.Logger.Info("Manually checking for updates")
 	updater.CheckForUpdates(a.ctx, a.Downloader.OnProgress, a.Logger, a.Config.GetGithubToken())
+	return types.SuccessResponse("Update check started")
 }
 
-func (a *App) GetCurrentVersion() string {
-	return strings.ToValidUTF8(constants.RAILYARD_VERSION, "")
+func (a *App) GetCurrentVersion() types.AppVersionResponse {
+	version := strings.ToValidUTF8(constants.RAILYARD_VERSION, "")
+	return types.AppVersionResponse{
+		GenericResponse: types.SuccessResponse("App version resolved"),
+		Version:         version,
+	}
 }
 
-func (a *App) InstallLinuxSandbox() error {
+func (a *App) InstallLinuxSandbox() types.GenericResponse {
 	a.Logger.Info("Installing Linux sandbox")
 	if runtime.GOOS != "linux" {
 		panic("InstalLinuxSandbox shouldn't be possible to call on a non-linux platform")
@@ -463,7 +487,7 @@ func (a *App) InstallLinuxSandbox() error {
 
 	if a.Config.Cfg.ExecutablePath == "" {
 		a.Logger.Warn("Game executable path is not configured, stopping.")
-		return fmt.Errorf("game executable path is not configured")
+		return types.ErrorResponse("game executable path is not configured")
 	}
 
 	cmd := exec.Command(a.Config.Cfg.ExecutablePath, "--appimage-extract", "chrome-sandbox")
@@ -471,13 +495,13 @@ func (a *App) InstallLinuxSandbox() error {
 	err := cmd.Run()
 	if err != nil {
 		a.Logger.Error("Failed to extract chrome-sandbox using flatpak-spawn", err)
-		return fmt.Errorf("failed to extract chrome-sandbox: %w", err)
+		return types.ErrorResponse(fmt.Sprintf("failed to extract chrome-sandbox: %v", err))
 	}
 
 	sandboxPath := path.Join("/tmp", "squashfs-root", "chrome-sandbox")
 	if _, err := os.Stat(sandboxPath); os.IsNotExist(err) {
 		a.Logger.Error("Extracted chrome-sandbox not found at expected path", err)
-		return fmt.Errorf("extracted chrome-sandbox not found at expected path: %s", sandboxPath)
+		return types.ErrorResponse(fmt.Sprintf("extracted chrome-sandbox not found at expected path: %s", sandboxPath))
 	}
 
 	destPath := path.Join("/usr", "local", "bin", "chrome-sb-sandbox")
@@ -488,27 +512,31 @@ func (a *App) InstallLinuxSandbox() error {
 	}
 	if err := cmd.Run(); err != nil {
 		a.Logger.Error("Failed to install chrome-sandbox with pkexec", err)
-		return fmt.Errorf("failed to install chrome-sandbox with pkexec: %w", err)
+		return types.ErrorResponse(fmt.Sprintf("failed to install chrome-sandbox with pkexec: %v", err))
 	}
 	a.Config.Cfg.ChromeSandboxPath = destPath
-	return nil
+	return types.SuccessResponse("Linux sandbox installed")
 }
 
-func (a *App) SandboxIsInstalled() bool {
-	if runtime.GOOS != "linux" {
-		return false
+func (a *App) SandboxIsInstalled() types.SandboxStatusResponse {
+	installed := false
+	if runtime.GOOS == "linux" && a.Config.Cfg.ChromeSandboxPath != "" {
+		if _, err := os.Stat(a.Config.Cfg.ChromeSandboxPath); !os.IsNotExist(err) {
+			installed = true
+		}
 	}
-	if a.Config.Cfg.ChromeSandboxPath == "" {
-		return false
+
+	return types.SandboxStatusResponse{
+		GenericResponse: types.SuccessResponse("Sandbox status resolved"),
+		Installed:       installed,
 	}
-	if _, err := os.Stat(a.Config.Cfg.ChromeSandboxPath); !os.IsNotExist(err) {
-		return true
-	}
-	return false
 }
 
-func (a *App) GetPlatform() string {
-	return runtime.GOOS
+func (a *App) GetPlatform() types.PlatformResponse {
+	return types.PlatformResponse{
+		GenericResponse: types.SuccessResponse("Platform resolved"),
+		Platform:        runtime.GOOS,
+	}
 }
 
 func (a *App) startPMTilesServer() (int, error) {

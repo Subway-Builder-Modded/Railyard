@@ -34,6 +34,11 @@ type ResolveConfigResult struct {
 	HasGithubToken bool                 `json:"hasGithubToken"`
 }
 
+type ResolveConfigResponse struct {
+	GenericResponse
+	ResolveConfigResult
+}
+
 type SetConfigSource string
 
 const (
@@ -50,6 +55,16 @@ type SetConfigPathResult struct {
 	ResolveConfigResult ResolveConfigResult `json:"resolveConfigResult"`
 	SetConfigSource     SetConfigSource     `json:"source"`
 	AutoDetectedPath    string              `json:"autoDetectedPath,omitempty"`
+}
+
+type SetConfigPathResponse struct {
+	GenericResponse
+	Result SetConfigPathResult `json:"result"`
+}
+
+type GithubTokenValidResponse struct {
+	GenericResponse
+	Valid bool `json:"valid"`
 }
 
 // AreConfigPathsConfigured checks if both required paths have been set in AppConfig
