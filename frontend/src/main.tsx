@@ -41,9 +41,21 @@ const preventGestureZoom = (e: Event) => {
   e.stopPropagation();
 };
 
-document.addEventListener('gesturestart', preventGestureZoom as EventListener, true);
-document.addEventListener('gesturechange', preventGestureZoom as EventListener, true);
-document.addEventListener('gestureend', preventGestureZoom as EventListener, true);
+document.addEventListener(
+  'gesturestart',
+  preventGestureZoom as EventListener,
+  true,
+);
+document.addEventListener(
+  'gesturechange',
+  preventGestureZoom as EventListener,
+  true,
+);
+document.addEventListener(
+  'gestureend',
+  preventGestureZoom as EventListener,
+  true,
+);
 
 document.addEventListener(
   'contextmenu',

@@ -118,4 +118,13 @@ describe('useLibraryStore per-asset-type state', () => {
     expect(state.filters.query).toBe('routes');
     expect(state.filters.perPage).toBe(48);
   });
+
+  it('removes only specified selected ids', () => {
+    useLibraryStore.getState().selectAll(['mod-a', 'map-b', 'mod-c']);
+
+    useLibraryStore.getState().removeSelected(['map-b', 'missing-id']);
+
+    const state = useLibraryStore.getState();
+    expect(Array.from(state.selectedIds).sort()).toEqual(['mod-a', 'mod-c']);
+  });
 });

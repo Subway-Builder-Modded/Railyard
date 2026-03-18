@@ -18,7 +18,7 @@ interface LibraryActionBarProps {
 }
 
 export function LibraryActionBar({ allItems }: LibraryActionBarProps) {
-  const { selectedIds, clearSelection } = useLibraryStore();
+  const { selectedIds, removeSelected } = useLibraryStore();
   const [uninstallTargets, setUninstallTargets] = useState<
     UninstallTarget[] | null
   >(null);
@@ -66,8 +66,13 @@ export function LibraryActionBar({ allItems }: LibraryActionBarProps) {
           onOpenChange={(open) => {
             if (!open) {
               setUninstallTargets(null);
-              clearSelection();
             }
+          }}
+          onUninstallSuccess={(targets) => {
+            const removedKeys = targets.map(
+              (target) => `${target.type}-${target.id}`,
+            );
+            removeSelected(removedKeys);
           }}
           targets={uninstallTargets}
         />

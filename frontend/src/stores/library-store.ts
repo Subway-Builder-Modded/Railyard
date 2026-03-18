@@ -13,6 +13,7 @@ interface LibraryState extends SearchFilterStoreState {
   selectedIds: Set<string>;
   toggleSelected: (id: string) => void;
   selectAll: (ids: string[]) => void;
+  removeSelected: (ids: string[]) => void;
   clearSelection: () => void;
   isSelected: (id: string) => boolean;
 }
@@ -51,6 +52,17 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       return { selectedIds: next };
     }),
   selectAll: (ids) => set({ selectedIds: new Set(ids) }),
+  removeSelected: (ids) =>
+    set((state) => {
+      if (ids.length === 0) return state;
+
+      const next = new Set(state.selectedIds);
+      for (const id of ids) {
+        next.delete(id);
+      }
+
+      return { selectedIds: next };
+    }),
   clearSelection: () => set({ selectedIds: new Set() }),
   isSelected: (id) => get().selectedIds.has(id),
 }));

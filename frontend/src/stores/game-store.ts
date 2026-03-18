@@ -41,7 +41,9 @@ export const useGameStore = create<GameState>((set) => ({
     const appendLogToSession = (stream: 'stdout' | 'stderr', line: string) => {
       const timestamp = Date.now();
       set((state) => {
-        const activeIndex = state.sessions.findIndex((session) => session.endedAt === null);
+        const activeIndex = state.sessions.findIndex(
+          (session) => session.endedAt === null,
+        );
 
         if (activeIndex === -1) {
           const sessionId = `session-${timestamp}-${Math.random().toString(36).slice(2, 8)}`;

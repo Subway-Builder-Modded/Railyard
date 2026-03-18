@@ -43,7 +43,8 @@ export function LogsPage() {
   } = useGameStore();
   const selectedSession =
     sessions.find((session) => session.id === selectedSessionId) ?? null;
-  const latestSessionId = sessions.length > 0 ? sessions[sessions.length - 1].id : null;
+  const latestSessionId =
+    sessions.length > 0 ? sessions[sessions.length - 1].id : null;
   const logs = selectedSession?.logs ?? [];
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,7 +94,9 @@ export function LogsPage() {
                 {sessions.map((session) => (
                   <SelectItem key={session.id} value={session.id}>
                     <div className="flex w-full items-center justify-between gap-2">
-                      <span>{new Date(session.startedAt).toLocaleString()}</span>
+                      <span>
+                        {new Date(session.startedAt).toLocaleString()}
+                      </span>
                       {session.id === latestSessionId && (
                         <Badge
                           variant="outline"
@@ -154,7 +157,9 @@ export function LogsPage() {
         <EmptyState
           icon={Terminal}
           title={
-            sessions.length === 0 ? 'No game logs yet' : 'No logs in this session'
+            sessions.length === 0
+              ? 'No game logs yet'
+              : 'No logs in this session'
           }
           description={
             sessions.length === 0

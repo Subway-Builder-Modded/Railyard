@@ -23,6 +23,7 @@ interface UninstallTarget {
 interface UninstallDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUninstallSuccess?: (targets: UninstallTarget[]) => void;
   type?: AssetType;
   id?: string;
   name?: string;
@@ -32,6 +33,7 @@ interface UninstallDialogProps {
 export function UninstallDialog({
   open,
   onOpenChange,
+  onUninstallSuccess,
   type,
   id,
   name,
@@ -65,6 +67,7 @@ export function UninstallDialog({
           ? `${titleName} has been uninstalled.`
           : `${itemCount} assets have been uninstalled.`,
       );
+      onUninstallSuccess?.(uninstallTargets);
       onOpenChange(false);
     } catch {
       toast.error(

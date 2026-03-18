@@ -176,6 +176,7 @@ function LibraryTableRow({
   onToggleSelect,
 }: LibraryTableRowProps) {
   const [uninstallOpen, setUninstallOpen] = useState(false);
+  const removeSelected = useLibraryStore((s) => s.removeSelected);
   const metroMakerDataPath = useConfigStore(
     (s) => s.config?.metroMakerDataPath,
   );
@@ -335,6 +336,9 @@ function LibraryTableRow({
         <UninstallDialog
           open={uninstallOpen}
           onOpenChange={setUninstallOpen}
+          onUninstallSuccess={() => {
+            removeSelected([`${entry.type}-${entry.item.id}`]);
+          }}
           type={entry.type}
           id={entry.item.id}
           name={entry.item.name}
