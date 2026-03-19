@@ -145,13 +145,17 @@ export const useRegistryStore = create<RegistryState>((set, get) => ({
     if (get().initialized) return;
     set({ loading: true, error: null });
     try {
-      const [modsResponse, mapsResponse, mapIntegrityResponse, modIntegrityResponse] =
-        await Promise.all([
-          GetModsResponse(),
-          GetMapsResponse(),
-          GetIntegrityReportResponse('map'),
-          GetIntegrityReportResponse('mod'),
-        ]);
+      const [
+        modsResponse,
+        mapsResponse,
+        mapIntegrityResponse,
+        modIntegrityResponse,
+      ] = await Promise.all([
+        GetModsResponse(),
+        GetMapsResponse(),
+        GetIntegrityReportResponse('map'),
+        GetIntegrityReportResponse('mod'),
+      ]);
       if (modsResponse.status !== 'success') {
         throw new Error(modsResponse.message || 'Failed to load mods');
       }
@@ -195,15 +199,21 @@ export const useRegistryStore = create<RegistryState>((set, get) => ({
     try {
       const refreshResponse = await RefreshResponse();
       if (refreshResponse.status !== 'success') {
-        throw new Error(refreshResponse.message || 'Failed to refresh registry');
+        throw new Error(
+          refreshResponse.message || 'Failed to refresh registry',
+        );
       }
-      const [modsResponse, mapsResponse, mapIntegrityResponse, modIntegrityResponse] =
-        await Promise.all([
-          GetModsResponse(),
-          GetMapsResponse(),
-          GetIntegrityReportResponse('map'),
-          GetIntegrityReportResponse('mod'),
-        ]);
+      const [
+        modsResponse,
+        mapsResponse,
+        mapIntegrityResponse,
+        modIntegrityResponse,
+      ] = await Promise.all([
+        GetModsResponse(),
+        GetMapsResponse(),
+        GetIntegrityReportResponse('map'),
+        GetIntegrityReportResponse('mod'),
+      ]);
       if (modsResponse.status !== 'success') {
         throw new Error(modsResponse.message || 'Failed to load mods');
       }

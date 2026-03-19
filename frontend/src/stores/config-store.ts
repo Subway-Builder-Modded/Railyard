@@ -87,7 +87,9 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
         new types.SetConfigPathOptions({ allowAutoDetect }),
       );
       if (response.status === 'error') {
-        throw new Error(response.message || 'Failed to open data folder dialog');
+        throw new Error(
+          response.message || 'Failed to open data folder dialog',
+        );
       }
       const result = response.result;
       set({
@@ -109,9 +111,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
         new types.SetConfigPathOptions({ allowAutoDetect }),
       );
       if (response.status === 'error') {
-        throw new Error(
-          response.message || 'Failed to open executable dialog',
-        );
+        throw new Error(response.message || 'Failed to open executable dialog');
       }
       const result = response.result;
       set({

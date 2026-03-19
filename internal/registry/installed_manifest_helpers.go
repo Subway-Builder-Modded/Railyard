@@ -18,11 +18,7 @@ func mapConfigFromManifest(manifest *types.MapManifest, version string) types.Co
 	config.Creator = manifest.Author
 	config.Version = version
 	config.Country = &manifest.Country
-	config.InitialViewState.Latitude = manifest.InitialViewState.Latitude
-	config.InitialViewState.Longitude = manifest.InitialViewState.Longitude
-	config.InitialViewState.Zoom = manifest.InitialViewState.Zoom
-	config.InitialViewState.Pitch = manifest.InitialViewState.Pitch
-	config.InitialViewState.Bearing = manifest.InitialViewState.Bearing
+	config.InitialViewState = manifest.InitialViewState
 
 	return config
 }
