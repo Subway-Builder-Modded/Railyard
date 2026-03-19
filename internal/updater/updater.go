@@ -186,11 +186,17 @@ func VersionIsNewerThanInstalled(version string) bool {
 	for i := 0; i < len(installedParts) && i < len(versionParts); i++ {
 		versionPart, err1 := strconv.Atoi(versionParts[i])
 		installedPart, err2 := strconv.Atoi(installedParts[i])
-		if err1 == nil && err2 == nil && versionPart < installedPart {
+		if err1 != nil || err2 != nil {
+			return false
+		}
+		if versionPart > installedPart {
+			return true
+		}
+		if versionPart < installedPart {
 			return false
 		}
 	}
-	return true
+	return false
 }
 
 func pullReleases(log logger.Logger, githubToken string) ([]types.RailyardVersionInfo, error) {
