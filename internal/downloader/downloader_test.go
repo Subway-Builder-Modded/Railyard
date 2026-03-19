@@ -22,6 +22,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMain(m *testing.M) {
+	root, err := os.MkdirTemp("", "railyard-downloader-test-*")
+	if err != nil {
+		panic(err)
+	}
+
+	_ = os.Setenv("APPDATA", root)
+	_ = os.Setenv("LOCALAPPDATA", root)
+	_ = os.Setenv("ProgramFiles", root)
+	_ = os.Setenv("ProgramFiles(x86)", root)
+	_ = os.Setenv("XDG_CONFIG_HOME", root)
+	_ = os.Setenv("HOME", root)
+
+	code := m.Run()
+	_ = os.RemoveAll(root)
+	os.Exit(code)
+}
+
 func newTestDownloader() *Downloader {
 	return &Downloader{}
 }

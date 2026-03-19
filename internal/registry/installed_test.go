@@ -156,6 +156,18 @@ func TestBootstrapInstalledStateFromProfileSuccessOnEmptyState(t *testing.T) {
 				Author:      "Author A",
 				Country:     country,
 				Population:  123456,
+				InitialViewState: struct {
+					Latitude  float64  `json:"latitude"`
+					Longitude float64  `json:"longitude"`
+					Zoom      float64  `json:"zoom"`
+					Pitch     *float64 `json:"pitch,omitempty"`
+					Bearing   float64  `json:"bearing"`
+				}{
+					Latitude:  40.8518,
+					Longitude: 14.2681,
+					Zoom:      13,
+					Bearing:   0,
+				},
 			},
 		},
 	})
@@ -201,6 +213,18 @@ func TestBootstrapInstalledStateFromProfileSuccessOnEmptyState(t *testing.T) {
 				Creator:     "Author A",
 				Country:     &country,
 				Version:     "2.0.0",
+				InitialViewState: struct {
+					Latitude  float64  `json:"latitude"`
+					Longitude float64  `json:"longitude"`
+					Zoom      float64  `json:"zoom"`
+					Pitch     *float64 `json:"pitch,omitempty"`
+					Bearing   float64  `json:"bearing"`
+				}{
+					Latitude:  40.8518,
+					Longitude: 14.2681,
+					Zoom:      13,
+					Bearing:   0,
+				},
 			},
 		},
 	}, reg.GetInstalledMaps())

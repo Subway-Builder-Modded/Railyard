@@ -618,6 +618,8 @@ export namespace types {
 	    source_quality: string;
 	    level_of_detail: string;
 	    special_demand: string[];
+	    // Go type: struct { Latitude float64 "json:\"latitude\""; Longitude float64 "json:\"longitude\""; Zoom float64 "json:\"zoom\""; Pitch *float64 "json:\"pitch,omitempty\""; Bearing float64 "json:\"bearing\"" }
+	    initial_view_state: any;
 	    tags: string[];
 	    gallery: string[];
 	    source: string;
@@ -644,6 +646,7 @@ export namespace types {
 	        this.source_quality = source["source_quality"];
 	        this.level_of_detail = source["level_of_detail"];
 	        this.special_demand = source["special_demand"];
+	        this.initial_view_state = this.convertValues(source["initial_view_state"], Object);
 	        this.tags = source["tags"];
 	        this.gallery = source["gallery"];
 	        this.source = source["source"];
@@ -791,11 +794,11 @@ export namespace types {
 	    type: string;
 	    currentVersion: string;
 	    latestVersion: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new PendingSubscriptionUpdate(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.assetId = source["assetId"];

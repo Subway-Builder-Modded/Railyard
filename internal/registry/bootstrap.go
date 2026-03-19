@@ -97,7 +97,7 @@ func (r *Registry) bootstrapInstalledMaps(subscriptions types.Subscriptions, map
 			continue
 		}
 
-		installedMaps = append(installedMaps, installedMapInfoFromManifest(mapID, version, manifest, types.ConfigData{}))
+		installedMaps = append(installedMaps, installedMapInfoFromManifest(mapID, version, manifest))
 	}
 
 	return installedMaps
