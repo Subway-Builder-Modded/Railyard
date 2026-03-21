@@ -210,7 +210,7 @@ func runNonBlockingStartupRoutines(a *App, activeProfile types.UserProfile) {
 
 	// Sync subscriptions for active profile on startup
 	// TODO: Make this configurable within the profile itself
-	syncResult := a.Profiles.SyncSubscriptions(activeProfile.ID)
+	syncResult := a.Profiles.SyncSubscriptions(activeProfile.ID, false)
 	switch syncResult.Status {
 	case types.ResponseError:
 		a.Logger.MultipleError("Failed to sync profile subscriptions on startup", logger.AsErrors(syncResult.Errors), "profile_id", activeProfile.ID)

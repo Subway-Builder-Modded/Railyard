@@ -49,38 +49,28 @@ func (s *UserProfiles) logRequest(method string, attrs ...any) {
 
 // ===== Request Results ===== //
 
-func newUpdateSubscriptionsResult(
+func updateResultBase(
+	requestType types.UpdateSubscriptionRequestType,
 	status types.Status,
 	message string,
-	applied bool,
-	profile types.UserProfile,
-	persisted bool,
-	operations []types.SubscriptionOperation,
-	profileErrors []types.UserProfilesError,
 ) types.UpdateSubscriptionsResult {
 	return types.UpdateSubscriptionsResult{
 		GenericResponse: types.GenericResponse{
 			Status:  status,
 			Message: message,
 		},
-		RequestType:    types.UpdateSubscriptions,
-		HasUpdates:     false,
-		PendingCount:   0,
+		RequestType:    requestType,
 		PendingUpdates: []types.PendingSubscriptionUpdate{},
-		Applied:        applied,
-		Profile:        profile,
-		Persisted:      persisted,
-		Operations:     operations,
-		Errors:         profileErrors,
+		Operations:     []types.SubscriptionOperation{},
+		Errors:         []types.UserProfilesError{},
+		Conflicts:      []types.MapCodeConflict{},
 	}
 }
 
-func newSyncSubscriptionsResult(
+func syncResultBase(
 	status types.Status,
 	message string,
 	profileID string,
-	operations []types.SubscriptionOperation,
-	profileErrors []types.UserProfilesError,
 ) types.SyncSubscriptionsResult {
 	return types.SyncSubscriptionsResult{
 		GenericResponse: types.GenericResponse{
@@ -88,9 +78,19 @@ func newSyncSubscriptionsResult(
 			Message: message,
 		},
 		ProfileID:  profileID,
-		Operations: operations,
-		Errors:     profileErrors,
+		Operations: []types.SubscriptionOperation{},
+		Errors:     []types.UserProfilesError{},
 	}
+}
+
+func profileNotFoundUpdateResult(
+	profileErr *types.UserProfilesError,
+	requestType types.UpdateSubscriptionRequestType,
+	message string,
+) types.UpdateSubscriptionsResult {
+	result := updateResultBase(requestType, types.ResponseError, message)
+	result.Errors = []types.UserProfilesError{*profileErr}
+	return result
 }
 
 // ===== Request Errors ===== //
@@ -136,6 +136,7 @@ func (s *UserProfiles) profileSnapshot(profileID string) (types.UserProfile, uin
 	}
 
 	profile.Subscriptions.Maps = utils.CloneMap(profile.Subscriptions.Maps)
+	profile.Subscriptions.LocalMaps = utils.CloneMap(profile.Subscriptions.LocalMaps)
 	profile.Subscriptions.Mods = utils.CloneMap(profile.Subscriptions.Mods)
 	return profile, s.stateVersion, nil
 }
@@ -148,6 +149,18 @@ func (s *UserProfiles) isSnapshotStale(snapshotVersion uint64) bool {
 
 func updateSubscriptionError(profileID, assetID string, assetType types.AssetType, errorType types.UserProfilesErrorType, err error) types.UserProfilesError {
 	return userProfilesError(profileID, assetID, assetType, errorType, "", fmt.Sprintf("Failed update action: %v", err))
+}
+
+func conflictWarningResult(
+	requestType types.UpdateSubscriptionRequestType,
+	message string,
+	profile types.UserProfile,
+	conflicts []types.MapCodeConflict,
+) types.UpdateSubscriptionsResult {
+	result := updateResultBase(requestType, types.ResponseWarn, message)
+	result.Profile = profile
+	result.Conflicts = conflicts
+	return result
 }
 
 func syncFailedError(profileID, assetID string, assetType types.AssetType, err error) types.UserProfilesError {

@@ -9,22 +9,18 @@ import (
 )
 
 // SyncSubscriptions iterates through a profile's subscriptions and attempts to reconcile the state of asset installation on disk to the desired state in the profile by installing/uninstalling maps and mods as needed.
-func (s *UserProfiles) SyncSubscriptions(profileID string) types.SyncSubscriptionsResult {
+func (s *UserProfiles) SyncSubscriptions(profileID string, replaceOnConflict bool) types.SyncSubscriptionsResult {
 	s.logRequest("SyncSubscriptions", "profile_id", profileID)
 
 	profile, snapshotVersion, profileErr := s.profileSnapshot(profileID)
 	if profileErr != nil {
 		s.Logger.Error("Profile not found for sync", profileErr, "profile_id", profileID)
-		return newSyncSubscriptionsResult(
-			types.ResponseError,
-			"Profile not found for sync",
-			profileID,
-			[]types.SubscriptionOperation{},
-			[]types.UserProfilesError{*profileErr},
-		)
+		result := syncResultBase(types.ResponseError, "Profile not found for sync", profileID)
+		result.Errors = []types.UserProfilesError{*profileErr}
+		return result
 	}
 
-	mapArgs := s.buildMapSyncArgs(profile, func() bool { return s.isSnapshotStale(snapshotVersion) })
+	mapArgs := s.buildMapSyncArgs(profile, func() bool { return s.isSnapshotStale(snapshotVersion) }, replaceOnConflict)
 	modArgs := s.buildModSyncArgs(profile, func() bool { return s.isSnapshotStale(snapshotVersion) })
 
 	syncErrors := make([]types.UserProfilesError, 0)
@@ -54,13 +50,10 @@ func (s *UserProfiles) SyncSubscriptions(profileID string) types.SyncSubscriptio
 			"",
 			"Sync superseded by newer subscription update",
 		)
-		return newSyncSubscriptionsResult(
-			types.ResponseWarn,
-			"Sync cancelled by newer subscription update",
-			profileID,
-			operations,
-			[]types.UserProfilesError{staleWarning},
-		)
+		result := syncResultBase(types.ResponseWarn, "Sync cancelled by newer subscription update", profileID)
+		result.Operations = operations
+		result.Errors = []types.UserProfilesError{staleWarning}
+		return result
 	}
 
 	purgeOperations, purgeErrors := s.applyPurgeOperations(profileID, assetsToPurge)
@@ -72,33 +65,22 @@ func (s *UserProfiles) SyncSubscriptions(profileID string) types.SyncSubscriptio
 
 	if len(syncErrors) > 0 {
 		s.Logger.Warn("Subscription sync completed with errors", "error_count", len(syncErrors))
-		return newSyncSubscriptionsResult(
-			types.ResponseError,
-			fmt.Sprintf("subscription sync completed with %d error(s)", len(syncErrors)),
-			profileID,
-			operations,
-			syncErrors,
-		)
+		result := syncResultBase(types.ResponseError, fmt.Sprintf("subscription sync completed with %d error(s)", len(syncErrors)), profileID)
+		result.Operations = operations
+		result.Errors = syncErrors
+		return result
 	}
 
 	if len(purgeOperations) > 0 {
 		s.Logger.Warn("Subscription sync completed with purge warnings", "purge_count", len(purgeOperations))
-		return newSyncSubscriptionsResult(
-			types.ResponseWarn,
-			fmt.Sprintf("subscription sync auto-purged %d invalid subscription(s)", len(purgeOperations)),
-			profileID,
-			operations,
-			[]types.UserProfilesError{},
-		)
+		result := syncResultBase(types.ResponseWarn, fmt.Sprintf("subscription sync auto-purged %d invalid subscription(s)", len(purgeOperations)), profileID)
+		result.Operations = operations
+		return result
 	}
 
-	return newSyncSubscriptionsResult(
-		types.ResponseSuccess,
-		"subscriptions synced",
-		profileID,
-		operations,
-		[]types.UserProfilesError{},
-	)
+	result := syncResultBase(types.ResponseSuccess, "subscriptions synced", profileID)
+	result.Operations = operations
+	return result
 }
 
 // assetPurgeArgs captures the information needed to attempt a purge of an invalid subscription
@@ -137,13 +119,13 @@ type availableVersionArgs[U any] struct {
 }
 
 // TODO: Consolidate this into a generic argument builder using types.AssetType to reduce duplication
-func (s *UserProfiles) buildMapSyncArgs(profile types.UserProfile, isStale func() bool) assetSyncArgs[types.InstalledMapInfo, types.MapManifest] {
+func (s *UserProfiles) buildMapSyncArgs(profile types.UserProfile, isStale func() bool, replaceOnConflict bool) assetSyncArgs[types.InstalledMapInfo, types.MapManifest] {
 	return assetSyncArgs[types.InstalledMapInfo, types.MapManifest]{
 		assetType:     types.AssetTypeMap,
 		subscriptions: profile.Subscriptions.Maps,
 		isStale:       isStale,
 		installedArgs: installedVersionArgs[types.InstalledMapInfo]{
-			getInstalledAssetsFn: s.Registry.GetInstalledMaps,
+			getInstalledAssetsFn: s.Registry.GetRemoteInstalledMaps,
 			idFn:                 func(item types.InstalledMapInfo) string { return item.ID },
 			versionFn:            func(item types.InstalledMapInfo) string { return item.Version },
 		},
@@ -159,6 +141,9 @@ func (s *UserProfiles) buildMapSyncArgs(profile types.UserProfile, isStale func(
 				AssetType: types.AssetTypeMap,
 				AssetID:   assetID,
 				Version:   version,
+				Map: &types.MapInstallOptions{
+					ReplaceOnConflict: replaceOnConflict,
+				},
 			})
 		},
 		uninstall: func(assetID string) types.AssetUninstallResponse {

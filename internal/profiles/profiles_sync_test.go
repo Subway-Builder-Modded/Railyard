@@ -358,7 +358,7 @@ func TestSyncSubscriptions(t *testing.T) {
 				defer cleanup()
 			}
 
-			result := svc.SyncSubscriptions(types.DefaultProfileID)
+			result := svc.SyncSubscriptions(types.DefaultProfileID, false)
 			expectedStatus := tc.expectedStatus
 			if expectedStatus == "" {
 				if len(tc.expectedErrors) == 0 {

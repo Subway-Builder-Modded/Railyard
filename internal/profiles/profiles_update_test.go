@@ -143,6 +143,63 @@ func TestUpdateSubscriptionsUnsubscribeMissingEntryIsNoOp(t *testing.T) {
 	require.Empty(t, result.Operations)
 }
 
+func TestUpdateSubscriptionsUnsubscribeLocalMap(t *testing.T) {
+	testutil.NewHarness(t)
+	state := types.InitialProfilesState()
+	profile := state.Profiles[types.DefaultProfileID]
+	profile.Subscriptions.LocalMaps["AAA"] = "1.0.0"
+	state.Profiles[types.DefaultProfileID] = profile
+	svc := loadedUserProfilesService(t, state)
+
+	result := svc.UpdateSubscriptions(types.UpdateSubscriptionsRequest{
+		ProfileID: types.DefaultProfileID,
+		Action:    types.SubscriptionActionUnsubscribe,
+		Assets: map[string]types.SubscriptionUpdateItem{
+			"AAA": {Type: types.AssetTypeMap},
+		},
+	})
+
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, "Subscriptions updated", result.Message)
+	require.Empty(t, result.Errors)
+	require.Len(t, result.Operations, 1)
+	require.Equal(t, "AAA", result.Operations[0].AssetID)
+	require.Equal(t, types.AssetTypeMap, result.Operations[0].Type)
+	require.Equal(t, types.SubscriptionActionUnsubscribe, result.Operations[0].Action)
+	require.Equal(t, types.Version("1.0.0"), result.Operations[0].Version)
+	_, exists := result.Profile.Subscriptions.LocalMaps["AAA"]
+	require.False(t, exists)
+}
+
+func TestUpdateSubscriptionsSubscribeLocalMap(t *testing.T) {
+	testutil.NewHarness(t)
+	svc := loadedUserProfilesService(t, types.InitialProfilesState())
+
+	result := svc.UpdateSubscriptions(types.UpdateSubscriptionsRequest{
+		ProfileID: types.DefaultProfileID,
+		Action:    types.SubscriptionActionSubscribe,
+		Assets: map[string]types.SubscriptionUpdateItem{
+			"AAA": {
+				Type:    types.AssetTypeMap,
+				Version: types.Version("1.2.3"),
+				IsLocal: true,
+			},
+		},
+	})
+
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, "Subscriptions updated", result.Message)
+	require.Empty(t, result.Errors)
+	require.Len(t, result.Operations, 1)
+	require.Equal(t, "AAA", result.Operations[0].AssetID)
+	require.Equal(t, types.AssetTypeMap, result.Operations[0].Type)
+	require.Equal(t, types.SubscriptionActionSubscribe, result.Operations[0].Action)
+	require.Equal(t, types.Version("1.2.3"), result.Operations[0].Version)
+	require.Equal(t, "1.2.3", result.Profile.Subscriptions.LocalMaps["AAA"])
+	_, exists := result.Profile.Subscriptions.Maps["AAA"]
+	require.False(t, exists)
+}
+
 func TestUpdateSubscriptionsRejectsInvalidRequests(t *testing.T) {
 	testutil.NewHarness(t)
 	svc := loadedUserProfilesService(t, types.InitialProfilesState())
@@ -242,6 +299,77 @@ func TestUpdateSubscriptionsForceSyncErrors(t *testing.T) {
 	require.NotEmpty(t, result.Errors)
 	require.Equal(t, types.ErrorLookupFailed, result.Errors[len(result.Errors)-1].ErrorType)
 	require.Equal(t, types.DefaultProfileID, result.Errors[len(result.Errors)-1].ProfileID)
+}
+
+func TestUpdateSubscriptionsMapConflictWarnsThenReplaces(t *testing.T) {
+	testutil.NewHarness(t)
+
+	localAssetID := "AAA"
+	state := types.InitialProfilesState()
+	profile := state.Profiles[types.DefaultProfileID]
+	profile.Subscriptions.LocalMaps[localAssetID] = "1.0.0"
+	state.Profiles[types.DefaultProfileID] = profile
+
+	svc, cfg, reg := loadedUserProfilesServiceWithDependencies(t, state)
+	configureConfig(t, cfg)
+
+	localInstalled := types.InstalledMapInfo{
+		ID:      localAssetID,
+		Version: "1.0.0",
+		IsLocal: true,
+		MapConfig: types.ConfigData{
+			Code:    "AAA",
+			Version: "1.0.0",
+			Name:    "Local AAA",
+		},
+	}
+	reg.AddInstalledMap(localInstalled.ID, localInstalled.Version, true, localInstalled.MapConfig)
+	materializeInstalledAssets(t, cfg, nil, []types.InstalledMapInfo{localInstalled})
+
+	cleanup := mockRegistry(t, reg, []registryFixture{
+		{
+			assetID:   "map-b",
+			assetType: types.AssetTypeMap,
+			versions:  []string{"1.0.0"},
+			mapCode:   "AAA",
+		},
+	})
+	defer cleanup()
+
+	warnResult := svc.UpdateSubscriptions(types.UpdateSubscriptionsRequest{
+		ProfileID: types.DefaultProfileID,
+		Action:    types.SubscriptionActionSubscribe,
+		Assets: map[string]types.SubscriptionUpdateItem{
+			"map-b": {
+				Type:    types.AssetTypeMap,
+				Version: types.Version("1.0.0"),
+			},
+		},
+		ForceSync:         true,
+		ReplaceOnConflict: false,
+	})
+	require.Equal(t, types.ResponseWarn, warnResult.Status)
+	require.NotEmpty(t, warnResult.Conflicts)
+	require.Equal(t, localAssetID, warnResult.Conflicts[0].ExistingAssetID)
+	require.Contains(t, warnResult.Profile.Subscriptions.LocalMaps, localAssetID)
+	require.NotContains(t, warnResult.Profile.Subscriptions.Maps, "map-b")
+
+	replaceResult := svc.UpdateSubscriptions(types.UpdateSubscriptionsRequest{
+		ProfileID: types.DefaultProfileID,
+		Action:    types.SubscriptionActionSubscribe,
+		Assets: map[string]types.SubscriptionUpdateItem{
+			"map-b": {
+				Type:    types.AssetTypeMap,
+				Version: types.Version("1.0.0"),
+			},
+		},
+		ForceSync:         true,
+		ReplaceOnConflict: true,
+	})
+	require.NotEqual(t, types.ResponseError, replaceResult.Status, replaceResult.Message)
+	require.Equal(t, "1.0.0", replaceResult.Profile.Subscriptions.Maps["map-b"])
+	_, exists := replaceResult.Profile.Subscriptions.LocalMaps[localAssetID]
+	require.False(t, exists)
 }
 
 func TestUpdateSubscriptionsToLatest(t *testing.T) {
