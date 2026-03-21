@@ -42,6 +42,8 @@ export function GetMods():Promise<Array<types.ModManifest>>;
 
 export function GetModsResponse():Promise<types.ModsResponse>;
 
+export function GetRemoteInstalledMaps():Promise<Array<types.InstalledMapInfo>>;
+
 export function GetVersions(arg1:string,arg2:string):Promise<Array<types.VersionInfo>>;
 
 export function GetVersionsResponse(arg1:string,arg2:string):Promise<types.VersionsResponse>;

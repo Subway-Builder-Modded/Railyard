@@ -75,7 +75,7 @@ export function LibraryTable({
 }: LibraryTableProps) {
   const { selectedIds, toggleSelected, selectAll, clearSelection } =
     useLibraryStore();
-  const showCountryColumn = activeType === 'map';
+  const showMapColumns = activeType === 'map';
 
   const allKeys = items.map(composeItemKey);
   const allSelected =
@@ -131,7 +131,11 @@ export function LibraryTable({
                 />
               </button>
             </TableHead>
-            {showCountryColumn && (
+            {showMapColumns && (
+              <TableHead className="w-28 text-center">City Code</TableHead>
+            )}
+            <TableHead className="w-64">Tags</TableHead>
+            {showMapColumns && (
               <TableHead className="w-32 text-center">
                 <button
                   type="button"
@@ -168,7 +172,7 @@ export function LibraryTable({
                 entry={entry}
                 pendingUpdatesByKey={pendingUpdatesByKey}
                 isSelected={isSelected}
-                showCountryColumn={showCountryColumn}
+                showMapColumns={showMapColumns}
                 onRefreshPendingUpdates={onRefreshPendingUpdates}
                 onToggleSelect={() => toggleSelected(key)}
               />
@@ -184,7 +188,7 @@ interface LibraryTableRowProps {
   entry: InstalledTaggedItem;
   pendingUpdatesByKey: PendingUpdatesByKey;
   isSelected: boolean;
-  showCountryColumn: boolean;
+  showMapColumns: boolean;
   onRefreshPendingUpdates: () => Promise<void>;
   onToggleSelect: () => void;
 }
@@ -193,7 +197,7 @@ function LibraryTableRow({
   entry,
   pendingUpdatesByKey,
   isSelected,
-  showCountryColumn,
+  showMapColumns,
   onRefreshPendingUpdates,
   onToggleSelect,
 }: LibraryTableRowProps) {
@@ -217,6 +221,7 @@ function LibraryTableRow({
       ].filter((value): value is string => Boolean(value))
     : [];
   const badges = isMap ? mapBadges : (entry.item.tags ?? []);
+  const mapCityCode = map?.city_code?.trim().toUpperCase() ?? '';
   const mapCountry = map?.country?.trim().toUpperCase() ?? '';
   const CountryFlag = isMap ? getCountryFlagIcon(mapCountry) : null;
   const pendingUpdate = isLocalEntry
@@ -274,61 +279,70 @@ function LibraryTableRow({
 
         <TableCell>
           <div className="min-w-0">
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Link
-                    href={`/project/${assetTypeToListingPath(entry.type)}/${entry.item.id}`}
-                    className="font-medium text-sm text-foreground hover:underline truncate"
-                  >
-                    {entry.item.name}
-                  </Link>
-                </div>
-                <p className="text-xs text-muted-foreground truncate">
-                  by {entry.item.author}
-                </p>
-              </div>
-
-              {/* Show a large LOCAL badge for entries not downloaded from the registry */}
-              {isLocalEntry ? (
-                <div className="shrink-0 flex items-center">
-                  <Badge
-                    variant="secondary"
-                    className="text-sm font-semibold uppercase tracking-wide px-2.5 py-0.5"
-                  >
-                    Local
-                  </Badge>
-                </div>
-              ) : null}
-
-              {!isLocalEntry && badges.length > 0 && (
-                <div
-                  className={cn(
-                    'shrink-0 flex items-center gap-1 self-center justify-start text-left',
-                    isMap && 'ml-1',
-                  )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Link
+                  href={`/project/${assetTypeToListingPath(entry.type)}/${entry.item.id}`}
+                  className="font-medium text-sm text-foreground hover:underline truncate"
                 >
-                  {badges.slice(0, MAX_CARD_BADGES).map((badge) => (
-                    <Badge
-                      key={badge}
-                      variant="secondary"
-                      className="text-xs px-1.5 py-0"
-                    >
-                      {badge}
-                    </Badge>
-                  ))}
-                  {badges.length > MAX_CARD_BADGES && (
-                    <Badge variant="outline" className="text-xs px-1.5 py-0">
-                      +{badges.length - MAX_CARD_BADGES}
-                    </Badge>
-                  )}
-                </div>
-              )}
+                  {entry.item.name}
+                </Link>
+              </div>
+              <p className="text-xs text-muted-foreground truncate">
+                by {entry.item.author}
+              </p>
             </div>
           </div>
         </TableCell>
 
-        {showCountryColumn && (
+        {showMapColumns && (
+          <TableCell className="align-middle text-center">
+            {isMap && mapCityCode ? (
+              <span className="font-mono text-sm font-bold text-foreground">
+                {mapCityCode}
+              </span>
+            ) : (
+              <span className="block h-5" aria-hidden="true" />
+            )}
+          </TableCell>
+        )}
+
+        <TableCell className="align-middle">
+          {isLocalEntry ? (
+            <Badge
+              variant="secondary"
+              className="text-sm font-semibold uppercase tracking-wide px-2.5 py-0.5"
+            >
+              Local
+            </Badge>
+          ) : badges.length > 0 ? (
+            <div
+              className={cn(
+                'flex items-center gap-1 self-center justify-start text-left',
+                isMap && 'ml-1',
+              )}
+            >
+              {badges.slice(0, MAX_CARD_BADGES).map((badge) => (
+                <Badge
+                  key={badge}
+                  variant="secondary"
+                  className="text-xs px-1.5 py-0"
+                >
+                  {badge}
+                </Badge>
+              ))}
+              {badges.length > MAX_CARD_BADGES && (
+                <Badge variant="outline" className="text-xs px-1.5 py-0">
+                  +{badges.length - MAX_CARD_BADGES}
+                </Badge>
+              )}
+            </div>
+          ) : (
+            <span className="block h-5" aria-hidden="true" />
+          )}
+        </TableCell>
+
+        {showMapColumns && (
           <TableCell className="align-middle text-center">
             {isMap && mapCountry ? (
               <div className="mx-auto flex items-center justify-center gap-1.5 whitespace-nowrap">

@@ -82,6 +82,10 @@ export function GetModsResponse() {
   return window['go']['registry']['Registry']['GetModsResponse']();
 }
 
+export function GetRemoteInstalledMaps() {
+  return window['go']['registry']['Registry']['GetRemoteInstalledMaps']();
+}
+
 export function GetVersions(arg1, arg2) {
   return window['go']['registry']['Registry']['GetVersions'](arg1, arg2);
 }
