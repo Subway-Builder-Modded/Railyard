@@ -47,6 +47,11 @@ type SandboxStatusResponse struct {
 	Installed bool `json:"installed"`
 }
 
+type ImportAssetDialogResponse struct {
+	GenericResponse
+	Path string `json:"path"`
+}
+
 type GameRunningResponse struct {
 	GenericResponse
 	Running bool `json:"running"`

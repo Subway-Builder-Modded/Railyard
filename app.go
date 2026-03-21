@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -52,47 +51,6 @@ type App struct {
 	startupReady  bool
 
 	deepLinks deepLinkQueue
-}
-
-func (a *App) OpenInFileExplorer(targetPath string) types.GenericResponse {
-	a.Logger.Info("Spawning file explorer", "path", targetPath)
-	trimmedPath := strings.TrimSpace(targetPath)
-	if trimmedPath == "" {
-		a.Logger.Warn("Invalid path provided to OpenInFileExplorer", "path", targetPath)
-		return types.ErrorResponse("invalid path")
-	}
-	cleanedPath := paths.NormalizeLocalPath(trimmedPath)
-	if cleanedPath == "" {
-		a.Logger.Warn("Invalid path provided to OpenInFileExplorer", "path", targetPath)
-		return types.ErrorResponse("invalid path")
-	}
-
-	info, err := os.Stat(cleanedPath)
-	if err != nil {
-		a.Logger.Warn("Failed to stat path in OpenInFileExplorer", "path", cleanedPath, "error", err)
-		return types.ErrorResponse(fmt.Sprintf("failed to resolve path: %v", err))
-	}
-	if !info.IsDir() {
-		cleanedPath = filepath.Dir(cleanedPath)
-	}
-
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("explorer", cleanedPath)
-	case "darwin":
-		cmd = exec.Command("open", cleanedPath)
-	default:
-		cmd = exec.Command("xdg-open", cleanedPath)
-	}
-
-	if err := cmd.Start(); err != nil {
-		a.Logger.Warn("Failed to open path in file explorer", "path", cleanedPath, "error", err)
-		return types.ErrorResponse(fmt.Sprintf("failed to open path in file explorer: %v", err))
-	}
-
-	a.Logger.Info("File explorer opened successfully", "path", cleanedPath)
-	return types.SuccessResponse("opened in file explorer")
 }
 
 // NewApp creates a new App application struct
