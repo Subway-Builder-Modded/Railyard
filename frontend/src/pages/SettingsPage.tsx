@@ -5,7 +5,7 @@
   Gamepad2,
   Github,
   RefreshCw,
-  Shield
+  Shield,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -99,7 +99,7 @@ export function SettingsPage() {
 
   useEffect(() => {
     GetTotalMemory().then((totalMemoryMB) => {
-      setMaxMemoryMB(Math.floor(totalMemoryMB * (5/8)));
+      setMaxMemoryMB(Math.floor(totalMemoryMB * (5 / 8)));
     });
   }, []);
 
@@ -194,8 +194,16 @@ export function SettingsPage() {
     if (!profile) return;
     const parsed = Number.parseInt(extraMemoryDraft, 10);
 
-    if (!Number.isFinite(parsed) || parsed < MIN_MEMORY_MB || parsed > MAX_MEMORY_MB!) {
-      toast.error('Extra memory size must be between 4096 MB and no more than about 60% of your system memory (' + MAX_MEMORY_MB! + ' MB).');
+    if (
+      !Number.isFinite(parsed) ||
+      parsed < MIN_MEMORY_MB ||
+      parsed > MAX_MEMORY_MB!
+    ) {
+      toast.error(
+        'Extra memory size must be between 4096 MB and no more than about 60% of your system memory (' +
+          MAX_MEMORY_MB! +
+          ' MB).',
+      );
       return;
     }
 
@@ -214,7 +222,7 @@ export function SettingsPage() {
       await updateCommandLineArgs({ extraMemorySize: -1 });
       toast.success('Extra memory size cleared.');
     } catch {
-      toast.error('Failed to clear extra memory size.');  
+      toast.error('Failed to clear extra memory size.');
     }
   };
 
@@ -576,7 +584,6 @@ export function SettingsPage() {
               </SelectContent>
             </Select>
           </div>
-
         </CardContent>
       </Card>
 
@@ -616,15 +623,25 @@ export function SettingsPage() {
                 type="number"
                 min={MIN_MEMORY_MB}
                 max={MAX_MEMORY_MB ?? undefined}
-                placeholder={MAX_MEMORY_MB !== null ? MAX_MEMORY_MB!.toString() : "8192"}
+                placeholder={
+                  MAX_MEMORY_MB !== null ? MAX_MEMORY_MB!.toString() : '8192'
+                }
                 value={extraMemoryDraft}
                 onChange={(event) => setExtraMemoryDraft(event.target.value)}
                 className="w-[8lvh]"
               />
-              <Button variant="outline" size="sm" onClick={handleClearExtraMemory}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearExtraMemory}
+              >
                 Clear
               </Button>
-              <Button variant="outline" size="sm" onClick={handleSaveExtraMemory}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveExtraMemory}
+              >
                 Save
               </Button>
             </div>
@@ -632,11 +649,7 @@ export function SettingsPage() {
 
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium">Use Developer Tools</label>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleToggleDevTools}
-            >
+            <Button variant="outline" size="sm" onClick={handleToggleDevTools}>
               {profile?.systemPreferences.useDevTools ? 'Disable' : 'Enable'}
             </Button>
           </div>

@@ -50,7 +50,6 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   initialized: false,
   githubTokenValid: false,
 
-
   isConfigured: () => get().validation?.isConfigured ?? false,
 
   initialize: async () => {
@@ -257,5 +256,5 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
         loading: false,
       });
     }
-  }
+  },
 }));

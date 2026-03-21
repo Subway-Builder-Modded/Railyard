@@ -11,8 +11,8 @@ import {
   GetActiveProfile,
   ResetUserProfiles,
   UpdateSubscriptions,
+  UpdateSystemPreferences,
   UpdateUIPreferences,
-  UpdateSystemPreferences
 } from '../../wailsjs/go/profiles/UserProfiles';
 
 interface UIPreferencesPayload {
@@ -50,12 +50,15 @@ function resolveUIPreferences(
   };
 }
 
-function resolveSystemPreferences(profile: types.UserProfile | null): types.SystemPreferences {
+function resolveSystemPreferences(
+  profile: types.UserProfile | null,
+): types.SystemPreferences {
   return {
-    refreshRegistryOnStartup: profile?.systemPreferences?.refreshRegistryOnStartup ?? false,
+    refreshRegistryOnStartup:
+      profile?.systemPreferences?.refreshRegistryOnStartup ?? false,
     extraMemorySize: profile?.systemPreferences?.extraMemorySize ?? 0,
     useDevTools: profile?.systemPreferences?.useDevTools ?? false,
-  }
+  };
 }
 
 interface ProfileState {
@@ -79,7 +82,9 @@ interface ProfileState {
     version: string,
   ) => Promise<void>;
   resetProfile: () => Promise<void>;
-  updateCommandLineArgs: (preferences: Partial<UpdateCommandLineArgsPayload>) => Promise<void>;
+  updateCommandLineArgs: (
+    preferences: Partial<UpdateCommandLineArgsPayload>,
+  ) => Promise<void>;
 }
 
 export const useProfileStore = create<ProfileState>((set, get) => ({
@@ -173,11 +178,13 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     try {
       const payload = {
         ...resolveSystemPreferences(get().profile),
-        ...preferences
-      }
+        ...preferences,
+      };
       const result = await UpdateSystemPreferences(payload);
       if (result.status === 'error') {
-        throw new Error(result.message || 'Failed to update system preferences');
+        throw new Error(
+          result.message || 'Failed to update system preferences',
+        );
       }
       set({ profile: result.profile, loading: false });
     } catch (err) {
