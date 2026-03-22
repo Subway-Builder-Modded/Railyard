@@ -256,7 +256,6 @@
   }
 }
 
-/* Sidebar scroll: custom subtle overlay scrollbar, shown on hover. */
 .sidebar-scroll {
   overscroll-behavior: contain;
   scrollbar-width: none;

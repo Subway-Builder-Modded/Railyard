@@ -12,6 +12,7 @@ export type SortField =
   | 'downloads'
   | 'last_updated'
   | 'random';
+// Union type of valid sort directions
 export type SortDirection = 'asc' | 'desc';
 export type SortKey = `${SortField}:${SortDirection}`;
 
@@ -70,7 +71,7 @@ function sortOptionLabel(field: SortField): string {
       return 'Last Updated';
     case 'random':
       return 'Random';
-    default:
+    default: // Default case to ensure all fields are handled. Programmer error if this is ever reached
       throw new Error(`Unhandled sort field: ${String(field)}`);
   }
 }
