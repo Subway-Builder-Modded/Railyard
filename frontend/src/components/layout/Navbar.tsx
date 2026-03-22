@@ -45,11 +45,13 @@ type NavLinkConfig = {
 
 const navLinks: NavLinkConfig[] = [
   {
-    href: '/search',
+    href: '/browse',
     label: 'Browse',
     icon: Compass,
     isCurrent: (location: string) =>
-      location.startsWith('/search') || location.startsWith('/project'),
+      location.startsWith('/browse') ||
+      location.startsWith('/search') ||
+      location.startsWith('/project'),
   },
   {
     href: '/library',

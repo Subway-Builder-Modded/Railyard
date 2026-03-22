@@ -222,7 +222,7 @@ export function HomePage() {
           <SectionHeader title="Jump Back In" icon={History} />
           <div className="flex flex-col gap-2">
             <QuickNavCard
-              href="/search"
+              href="/browse"
               icon={Compass}
               label="Browse"
               description="Discover community-made content"
@@ -319,7 +319,7 @@ export function HomePage() {
           title="Discover Maps"
           icon={MapPin}
           action={
-            <Link href="/search">
+            <Link href="/browse">
               <Button
                 variant="ghost"
                 size="sm"
@@ -346,7 +346,7 @@ export function HomePage() {
           title="Discover Mods"
           icon={Package}
           action={
-            <Link href="/search">
+            <Link href="/browse">
               <Button
                 variant="ghost"
                 size="sm"

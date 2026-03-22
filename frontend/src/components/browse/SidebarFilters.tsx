@@ -27,7 +27,7 @@ import {
 } from '@/lib/map-filter-values';
 import { SEARCH_FILTER_EMPTY_LABELS } from '@/lib/search';
 import { cn } from '@/lib/utils';
-import { type SearchFilterState } from '@/stores/search-store';
+import { type BrowseFilterState } from '@/stores/browse-store';
 
 // Shared class for filter section title text (used both in static and
 // collapsible headers — only the text/icon style, no layout).
@@ -37,8 +37,8 @@ const FILTER_COUNT_BADGE_CLASS =
   'inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-border/65 bg-muted/45 px-1.5 text-[0.65rem] font-semibold tabular-nums text-muted-foreground transition-colors';
 
 interface SidebarFiltersProps {
-  filters: SearchFilterState;
-  onFiltersChange: Dispatch<SetStateAction<SearchFilterState>>;
+  filters: BrowseFilterState;
+  onFiltersChange: Dispatch<SetStateAction<BrowseFilterState>>;
   onTypeChange: (type: AssetType) => void;
   availableTags: string[];
   availableSpecialDemand: string[];

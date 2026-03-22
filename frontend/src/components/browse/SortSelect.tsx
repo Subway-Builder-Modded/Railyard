@@ -53,6 +53,8 @@ export function SortSelect({ value, onChange, tab }: SortSelectProps) {
         className={cn(
           'h-8 min-w-[11.5rem] justify-between rounded-xl border border-border/70 bg-background/90 px-3 text-xs font-semibold text-muted-foreground shadow-sm backdrop-blur-md',
           'hover:bg-accent/45 hover:text-primary data-[state=open]:bg-accent/45 data-[state=open]:text-primary',
+          // Ensure the chevron + option icon inherit the same active color as the label.
+          '[&_svg]:text-current',
         )}
       >
         {selectedOption ? (
@@ -77,7 +79,11 @@ export function SortSelect({ value, onChange, tab }: SortSelectProps) {
           <SelectItem
             key={opt.value}
             value={opt.value}
-            className="rounded-lg text-sm focus:bg-accent/45 focus:text-primary"
+            className={cn(
+              'rounded-lg text-sm',
+              'data-[highlighted]:bg-accent/45 data-[highlighted]:text-primary',
+              'data-[state=checked]:bg-accent/35 data-[state=checked]:text-primary',
+            )}
           >
             <span className="flex items-center gap-2">
               <SortOptionIcon option={opt} />

@@ -171,7 +171,7 @@ export function ProjectPage() {
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link href="/search">Browse</Link>
+              <Link href="/browse">Browse</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />

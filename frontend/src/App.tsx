@@ -244,6 +244,7 @@ function App() {
           <Switch>
             <Route path="/" component={HomePage} />
             <Route path="/library" component={LibraryPage} />
+            <Route path="/browse" component={BrowsePage} />
             <Route path="/search" component={BrowsePage} />
             <Route path="/project/:type/:id" component={ProjectPage} />
             <Route path="/logs" component={LogsPage} />
