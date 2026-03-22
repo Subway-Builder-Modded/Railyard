@@ -1,11 +1,10 @@
 import {
   ArrowRight,
-  CheckCircle2,
   CircleFadingArrowUp,
   Compass,
   Download,
-  History,
   Inbox,
+  History,
   MapPin,
   Package,
   RefreshCw,
@@ -16,7 +15,6 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'wouter';
 
-import { UpdateConfirmDialog } from '@/components/dialogs/UpdateConfirmDialog';
 import { DiscoverSectionGrid } from '@/components/homepage/DiscoverSectionGrid';
 import { PendingUpdateRow } from '@/components/homepage/PendingUpdateRow';
 import { QuickNavCard } from '@/components/homepage/QuickNavCard';
@@ -38,7 +36,6 @@ import { useInstalledStore } from '@/stores/installed-store';
 import { useRegistryStore } from '@/stores/registry-store';
 
 const UPDATE_ACCENT = getLocalAccentClasses('update');
-const DISCOVER_SECTION_ITEM_LIMIT = 8;
 
 export function HomePage() {
   const {
@@ -62,17 +59,6 @@ export function HomePage() {
     useState<PendingUpdatesByKey>({});
   const [updatesLoading, setUpdatesLoading] = useState(false);
   const [updatingAll, setUpdatingAll] = useState(false);
-  const [updateAllConfirmOpen, setUpdateAllConfirmOpen] = useState(false);
-  const [lastPendingUpdateEntries, setLastPendingUpdateEntries] = useState<
-    Array<{
-      key: string;
-      id: string;
-      type: AssetType;
-      name: string;
-      currentVersion: string;
-      latestVersion: string;
-    }>
-  >([]);
 
   const installedCount = installedMods.length + installedMaps.length;
 
@@ -139,44 +125,39 @@ export function HomePage() {
       }),
     [mapManifestById, modManifestById, pendingUpdatesByKey],
   );
-  const runUpdateOperations = useCallback(
-    async (
-      operations: Array<{ type: AssetType; id: string }>,
-      options?: { trackBulkUpdate?: boolean },
-    ) => {
-      const trackBulkUpdate = options?.trackBulkUpdate ?? false;
-      if (trackBulkUpdate) {
-        setUpdatingAll(true);
-      }
 
+  const handleUpdateSingle = useCallback(
+    async (type: AssetType, id: string) => {
       try {
-        await updateAssetsToLatest(operations);
+        await updateAssetsToLatest([{ type, id }]);
         void fetchPendingUpdates();
       } catch {
         // Errors via toasts in the store.
-      } finally {
-        if (trackBulkUpdate) {
-          setUpdatingAll(false);
-        }
       }
     },
     [fetchPendingUpdates, updateAssetsToLatest],
   );
 
   const handleUpdateAll = useCallback(async () => {
-    setUpdateAllConfirmOpen(false);
-    await runUpdateOperations(
-      pendingUpdateEntries.map(({ type, id }) => ({ type, id })),
-      { trackBulkUpdate: true },
-    );
-  }, [pendingUpdateEntries, runUpdateOperations]);
+    setUpdatingAll(true);
+    try {
+      await updateAssetsToLatest(
+        pendingUpdateEntries.map(({ type, id }) => ({ type, id })),
+      );
+      void fetchPendingUpdates();
+    } catch {
+      // Errors via toasts in the store.
+    } finally {
+      setUpdatingAll(false);
+    }
+  }, [fetchPendingUpdates, pendingUpdateEntries, updateAssetsToLatest]);
 
   const recentMaps = useMemo(
     () =>
       sortTaggedItemsByLastUpdated(
         maps.map((item) => ({ type: 'map' as const, item })),
         'desc',
-      ).slice(0, DISCOVER_SECTION_ITEM_LIMIT),
+      ).slice(0, 8),
     [maps],
   );
 
@@ -185,7 +166,7 @@ export function HomePage() {
       sortTaggedItemsByLastUpdated(
         mods.map((item) => ({ type: 'mod' as const, item })),
         'desc',
-      ).slice(0, DISCOVER_SECTION_ITEM_LIMIT),
+      ).slice(0, 8),
     [mods],
   );
 
@@ -196,26 +177,10 @@ export function HomePage() {
     [isOperating, pendingUpdateEntries, updatingAll],
   );
 
-  useEffect(() => {
-    if (pendingUpdateEntries.length > 0) {
-      setLastPendingUpdateEntries(pendingUpdateEntries);
-    }
-  }, [pendingUpdateEntries]);
-
-  const displayedPendingUpdateEntries =
-    hasActiveUpdateOperation && pendingUpdateEntries.length === 0
-      ? lastPendingUpdateEntries
-      : pendingUpdateEntries;
   const showEmptyUpdatesState =
-    displayedPendingUpdateEntries.length === 0 &&
-    !updatesLoading &&
-    !hasActiveUpdateOperation;
-  const emptyUpdatesMessage =
-    installedCount === 0
-      ? 'Available updates for installed content will appear here.'
-      : 'All installed content is up to date.';
-  const EmptyUpdatesIcon =
-    installedCount === 0 ? CircleFadingArrowUp : CheckCircle2;
+    pendingUpdateEntries.length === 0 && !hasActiveUpdateOperation;
+  const emptyUpdatesMessage ="Available updates for installed content will appear here.";
+  const EmptyUpdatesIcon = CircleFadingArrowUp;
 
   return (
     <div className="flex flex-col gap-[clamp(1.75rem,3vw,2.5rem)]">
@@ -271,11 +236,11 @@ export function HomePage() {
               ) : undefined
             }
             action={
-              !updatesLoading && pendingUpdateEntries.length > 0 ? (
+              !updatesLoading && pendingUpdateEntries.length > 1 ? (
                 <Button
                   size="sm"
                   disabled={updatingAll}
-                  onClick={() => setUpdateAllConfirmOpen(true)}
+                  onClick={handleUpdateAll}
                   className={cn('h-8 gap-1.5 text-xs', UPDATE_ACCENT.solidButton)}
                 >
                   {updatingAll ? (
@@ -298,12 +263,12 @@ export function HomePage() {
                 />
                 <p className="text-sm text-muted-foreground">{emptyUpdatesMessage}</p>
               </div>
-            ) : updatesLoading && displayedPendingUpdateEntries.length === 0 ? (
+            ) : updatesLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={i} className="h-[2.6rem] w-full rounded-lg" />
               ))
             ) : (
-              displayedPendingUpdateEntries.map(
+              pendingUpdateEntries.map(
                 ({ key, id, type, name, currentVersion, latestVersion }) => (
                   <PendingUpdateRow
                     key={key}
@@ -312,9 +277,7 @@ export function HomePage() {
                     currentVersion={currentVersion}
                     latestVersion={latestVersion}
                     isUpdating={isOperating(id)}
-                    onUpdate={() =>
-                      void runUpdateOperations([{ type, id }])
-                    }
+                    onUpdate={() => void handleUpdateSingle(type, id)}
                     updateButtonClassName={UPDATE_ACCENT.solidButton}
                   />
                 ),
@@ -323,22 +286,6 @@ export function HomePage() {
           </div>
         </div>
       </div>
-
-      <UpdateConfirmDialog
-        open={updateAllConfirmOpen}
-        onOpenChange={setUpdateAllConfirmOpen}
-        title="Update all?"
-        description={`This will update ${pendingUpdateEntries.length} asset${pendingUpdateEntries.length === 1 ? '' : 's'}.`}
-        entries={pendingUpdateEntries.map((entry) => ({
-          key: entry.key,
-          name: entry.name,
-          currentVersion: entry.currentVersion,
-          latestVersion: entry.latestVersion,
-        }))}
-        confirmLabel="Update All"
-        confirming={updatingAll}
-        onConfirm={() => void handleUpdateAll()}
-      />
 
       <section>
         <SectionHeader

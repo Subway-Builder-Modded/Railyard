@@ -8,7 +8,6 @@ import type { TaggedItem } from '@/lib/tagged-items';
 
 const DISCOVER_CARD_MIN_WIDTH = 220;
 const DISCOVER_CARD_GAP = 12;
-const DISCOVER_MIN_LAYOUT_WIDTH = DISCOVER_CARD_MIN_WIDTH * 2 + DISCOVER_CARD_GAP;
 
 interface DiscoverSectionGridProps {
   items: TaggedItem[];
@@ -38,13 +37,9 @@ export function DiscoverSectionGrid({
       const width = container.clientWidth;
       if (width <= 0) return;
 
-      const effectiveWidth = Math.max(width, DISCOVER_MIN_LAYOUT_WIDTH);
       const nextCount = Math.max(
         1,
-        Math.floor(
-          (effectiveWidth + DISCOVER_CARD_GAP) /
-            (DISCOVER_CARD_MIN_WIDTH + DISCOVER_CARD_GAP),
-        ),
+        Math.floor((width + DISCOVER_CARD_GAP) / (DISCOVER_CARD_MIN_WIDTH + DISCOVER_CARD_GAP)),
       );
       setVisibleCount(nextCount);
     };
