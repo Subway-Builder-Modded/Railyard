@@ -236,10 +236,7 @@ export function VersionsTable({
                     <span className="flex items-center gap-2">
                       {v.version}
                       {v.prerelease && (
-                        <Badge
-                          variant="outline"
-                          className="text-yellow-600 border-yellow-600"
-                        >
+                        <Badge variant="outline" size="sm">
                           Beta
                         </Badge>
                       )}
@@ -276,7 +273,7 @@ export function VersionsTable({
                         <span className="inline-flex h-8 w-8" />
                       )
                     ) : isThisInstalled ? (
-                      <Badge className="gap-1 bg-[var(--installed-primary)] text-[var(--install-foreground)]">
+                      <Badge variant="success" className="gap-1">
                         <CheckCircle className="h-3 w-3" />
                         Installed
                       </Badge>

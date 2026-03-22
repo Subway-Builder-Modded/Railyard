@@ -1,4 +1,4 @@
-import { SearchX } from 'lucide-react';
+import { SearchX, Compass } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 
 import { SearchBar } from '@/components/search/SearchBar';
@@ -9,6 +9,7 @@ import { CardSkeletonGrid } from '@/components/shared/CardSkeletonGrid';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ItemCard } from '@/components/shared/ItemCard';
+import { PageHeading } from '@/components/shared/PageHeading';
 import { Pagination } from '@/components/shared/Pagination';
 import { useFilteredItems } from '@/hooks/use-filtered-items';
 import type { AssetType } from '@/lib/asset-types';
@@ -127,15 +128,11 @@ export function SearchPage() {
 
   return (
     <div className="space-y-5">
-      {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground text-balance">
-          Browse
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Discover and install maps and mods for Subway Builder.
-        </p>
-      </div>
+      <PageHeading
+        icon={Compass}
+        title="Browse"
+        description="Discover and install maps and mods for Subway Builder."
+      />
 
       {error && <ErrorBanner message={error} />}
 

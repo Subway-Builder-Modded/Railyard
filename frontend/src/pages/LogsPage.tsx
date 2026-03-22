@@ -2,6 +2,7 @@ import { ArrowDownToLine, ExternalLink, Terminal, Trash2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 import { EmptyState } from '@/components/shared/EmptyState';
+import { PageHeading } from '@/components/shared/PageHeading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -77,14 +78,25 @@ export function LogsPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-theme(spacing.14)-theme(spacing.12))]">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">Game Logs</h1>
-          <Badge variant={running ? 'default' : 'secondary'}>
+      <PageHeading
+        icon={Terminal}
+        title="Game Logs"
+        description="Inspect game output, troubleshoot issues, and export diagnostics."
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <Badge variant={running ? 'success' : 'secondary'} size="sm">
             {running ? 'Running' : 'Stopped'}
           </Badge>
+          {logs.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {logs.length} lines
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
           {sessions.length > 0 && selectedSessionId && (
             <Select value={selectedSessionId} onValueChange={selectSession}>
               <SelectTrigger className="w-64">
@@ -98,10 +110,7 @@ export function LogsPage() {
                         {new Date(session.startedAt).toLocaleString()}
                       </span>
                       {session.id === latestSessionId && (
-                        <Badge
-                          variant="outline"
-                          className="rounded-full border-emerald-500 text-emerald-500"
-                        >
+                        <Badge variant="outline" size="sm">
                           Latest
                         </Badge>
                       )}
@@ -111,11 +120,7 @@ export function LogsPage() {
               </SelectContent>
             </Select>
           )}
-          {logs.length > 0 && (
-            <span className="text-xs text-muted-foreground mr-2">
-              {logs.length} lines
-            </span>
-          )}
+
           {serverPort && (
             <Button
               variant="outline"

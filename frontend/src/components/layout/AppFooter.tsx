@@ -4,6 +4,7 @@ import {
   APP_SHELL_PADDING_CLASS,
   APP_SHELL_WIDTH_CLASS,
 } from '@/components/layout/layout-shell';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
@@ -51,16 +52,18 @@ export function AppFooter({ version }: AppFooterProps) {
           <div className="mt-2.5">
             <div className="flex items-center justify-center gap-2.5">
               {COMMUNITY_LINKS.map(({ id, href, icon: Icon, label }) => (
-                <button
+                <Button
                   key={id}
                   type="button"
+                  intent="plain"
+                  size="sm"
                   onClick={() => BrowserOpenURL(href)}
                   aria-label={label}
-                  className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
+                  className="gap-2 text-muted-foreground hover:text-foreground font-semibold"
                 >
                   <Icon className="size-5" />
                   <span>{label}</span>
-                </button>
+                </Button>
               ))}
             </div>
           </div>

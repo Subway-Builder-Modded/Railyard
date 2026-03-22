@@ -185,12 +185,12 @@ export function SetupScreen() {
                     {config.metroMakerDataPath}
                   </code>
                   {validation?.metroMakerDataPathValid ? (
-                    <Badge variant="secondary" className="gap-1 text-green-600">
+                    <Badge variant="success" className="gap-1">
                       <CheckCircle className="h-3 w-3" />
                       Valid
                     </Badge>
                   ) : (
-                    <Badge variant="secondary" className="gap-1 text-red-600">
+                    <Badge variant="destructive" className="gap-1">
                       <XCircle className="h-3 w-3" />
                       Invalid
                     </Badge>
@@ -233,12 +233,12 @@ export function SetupScreen() {
                     {config.executablePath}
                   </code>
                   {validation?.executablePathValid ? (
-                    <Badge variant="secondary" className="gap-1 text-green-600">
+                    <Badge variant="success" className="gap-1">
                       <CheckCircle className="h-3 w-3" />
                       Valid
                     </Badge>
                   ) : (
-                    <Badge variant="secondary" className="gap-1 text-red-600">
+                    <Badge variant="destructive" className="gap-1">
                       <XCircle className="h-3 w-3" />
                       Invalid
                     </Badge>
