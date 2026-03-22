@@ -1,8 +1,21 @@
-import { Play, RefreshCw, Square, TrainTrack } from 'lucide-react';
-import { useState } from 'react';
+import {
+  BookText,
+  Compass,
+  Play,
+  RefreshCw,
+  ScrollText,
+  Settings,
+  Square,
+  TrainTrack,
+} from 'lucide-react';
+import { type ComponentType, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Link, useLocation } from 'wouter';
 
+import {
+  APP_SHELL_PADDING_CLASS,
+  APP_SHELL_WIDTH_CLASS,
+} from '@/components/layout/layout-shell';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -23,23 +36,69 @@ import { useGameStore } from '@/stores/game-store';
 import { useInstalledStore } from '@/stores/installed-store';
 import { useRegistryStore } from '@/stores/registry-store';
 
-const navLinks = [
-  { href: '/', label: 'Home' },
-  { href: '/library', label: 'Library' },
-  { href: '/search', label: 'Browse' },
-  { href: '/logs', label: 'Logs' },
-  { href: '/settings', label: 'Settings' },
+type NavLinkConfig = {
+  href: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  isCurrent: (location: string) => boolean;
+};
+
+const navLinks: NavLinkConfig[] = [
+  {
+    href: '/library',
+    label: 'Library',
+    icon: BookText,
+    isCurrent: (location: string) => location.startsWith('/library'),
+  },
+  {
+    href: '/search',
+    label: 'Browse',
+    icon: Compass,
+    isCurrent: (location: string) =>
+      location.startsWith('/search') || location.startsWith('/project'),
+  },
+  {
+    href: '/logs',
+    label: 'Logs',
+    icon: ScrollText,
+    isCurrent: (location: string) => location.startsWith('/logs'),
+  },
+  {
+    href: '/settings',
+    label: 'Settings',
+    icon: Settings,
+    isCurrent: (location: string) => location.startsWith('/settings'),
+  },
 ] as const;
 
 const MOD_REMINDER_KEY = 'railyard:mod-reminder-acknowledged';
+const NAV_ITEM_BASE_CLASS =
+  'group relative flex items-center gap-2 rounded-lg px-[clamp(0.45rem,0.95vw,0.7rem)] py-[clamp(0.4rem,0.82vw,0.56rem)] text-[clamp(0.8rem,0.95vw,0.9rem)] font-semibold text-white transition-all duration-150';
+const NAV_ITEM_GREEN_HOVER_CLASS = 'hover:text-primary hover:bg-accent/45';
+const NAV_CURRENT_INDICATOR_CLASS =
+  'absolute -bottom-[0.38rem] left-1/2 h-1 w-[calc(100%-1rem)] -translate-x-1/2 rounded-full bg-primary';
+const NAVBAR_TOP_OFFSET_PX = 12;
+const NAVBAR_BOTTOM_GAP_PX = 12;
 
 export function Navbar() {
+  const headerRef = useRef<HTMLElement>(null);
   const [location] = useLocation();
   const { refresh, loading, refreshing } = useRegistryStore();
   const canLaunch = useConfigStore((s) => s.validation?.executablePathValid);
   const { running, launch, stop } = useGameStore();
   const installedMaps = useInstalledStore((s) => s.installedMaps);
   const [showModReminder, setShowModReminder] = useState(false);
+
+  const runWithToast = async (
+    action: () => Promise<void>,
+    fallbackMessage: string,
+  ) => {
+    try {
+      await action();
+    } catch (err) {
+      toast.error(String(err) || fallbackMessage);
+    }
+  };
 
   const handleLaunch = async () => {
     const hasMaps = installedMaps.length > 0;
@@ -51,102 +110,155 @@ export function Navbar() {
       return;
     }
 
-    try {
-      await launch();
-    } catch (err) {
-      toast.error(String(err) || 'Failed to launch game.');
-    }
+    await runWithToast(launch, 'Failed to launch game.');
   };
 
   const handleAcknowledgeAndLaunch = async () => {
     localStorage.setItem(MOD_REMINDER_KEY, 'true');
     setShowModReminder(false);
-    try {
-      await launch();
-    } catch (err) {
-      toast.error(String(err) || 'Failed to launch game.');
-    }
+    await runWithToast(launch, 'Failed to launch game.');
   };
 
-  const handleStop = async () => {
-    try {
-      await stop();
-    } catch (err) {
-      toast.error(String(err) || 'Failed to stop game.');
+  const handleStop = async () => runWithToast(stop, 'Failed to stop game.');
+
+  useEffect(() => {
+    const element = headerRef.current;
+    if (!element) {
+      return;
     }
-  };
+
+    const updateOffset = () => {
+      const offset = Math.ceil(
+        element.getBoundingClientRect().height +
+          NAVBAR_TOP_OFFSET_PX +
+          NAVBAR_BOTTOM_GAP_PX,
+      );
+      document.documentElement.style.setProperty(
+        '--app-navbar-offset',
+        `${offset}px`,
+      );
+    };
+
+    updateOffset();
+    const observer = new ResizeObserver(updateOffset);
+    observer.observe(element);
+    window.addEventListener('resize', updateOffset);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateOffset);
+      document.documentElement.style.removeProperty('--app-navbar-offset');
+    };
+  }, []);
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex h-14 items-center justify-between">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-            <TrainTrack className="h-5 w-5" />
-            Railyard
-          </Link>
-          <nav className="flex items-center gap-4">
-            {navLinks.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
+    <header ref={headerRef} className="fixed inset-x-0 top-3 z-50">
+      <div className={cn(APP_SHELL_WIDTH_CLASS, APP_SHELL_PADDING_CLASS)}>
+        <div className="flex min-h-[4rem] flex-wrap items-center justify-between gap-y-2 rounded-2xl border border-border/70 bg-background/90 px-[clamp(0.8rem,2vw,1.4rem)] py-1.5 shadow-sm backdrop-blur-md">
+          <div className="flex min-w-0 flex-wrap items-center gap-[clamp(0.6rem,1.8vw,1.25rem)]">
+            <Link
+              href="/"
+              className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[clamp(1rem,1.55vw,1.15rem)] font-extrabold tracking-[0.01em] text-white"
+            >
+              <TrainTrack className="h-[1.2em] w-[1.2em]" />
+              <span>Railyard</span>
+            </Link>
+            <nav className="flex max-w-full flex-wrap items-center gap-1.5">
+              {navLinks.map(({ href, label, icon: Icon, isCurrent }) => {
+                const current = isCurrent(location);
+
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={current ? 'page' : undefined}
+                    className={cn(
+                      NAV_ITEM_BASE_CLASS,
+                      NAV_ITEM_GREEN_HOVER_CLASS,
+                      current ? 'text-primary bg-accent/45' : undefined,
+                    )}
+                  >
+                    <Icon className="h-[1.05em] w-[1.05em] shrink-0 text-white transition-colors group-hover:text-primary group-aria-[current=page]:text-primary" />
+                    <span>{label}</span>
+                    {current && (
+                      <span
+                        aria-hidden
+                        className={NAV_CURRENT_INDICATOR_CLASS}
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {running ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleStop}
                 className={cn(
-                  'text-sm transition-colors hover:text-foreground flex items-center gap-1.5',
-                  location === href
-                    ? 'text-foreground font-medium'
-                    : 'text-muted-foreground',
+                  NAV_ITEM_BASE_CLASS,
+                  'h-auto bg-accent/45 text-primary hover:!bg-destructive/20 hover:!text-destructive',
                 )}
               >
-                {label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="flex items-center gap-1">
-          {running ? (
+                <Square className="mr-1.5 h-[1.125rem] w-[1.125rem]" />
+                Running
+                <span
+                  aria-hidden
+                  className={cn(
+                    NAV_CURRENT_INDICATOR_CLASS,
+                    'transition-colors group-hover:bg-destructive',
+                  )}
+                />
+              </Button>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleLaunch}
+                      disabled={!canLaunch}
+                      className={cn(
+                        NAV_ITEM_BASE_CLASS,
+                        NAV_ITEM_GREEN_HOVER_CLASS,
+                        'h-auto disabled:opacity-50',
+                      )}
+                    >
+                      <Play className="mr-1.5 h-[1.125rem] w-[1.125rem]" />
+                      Launch
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!canLaunch && (
+                  <TooltipContent>
+                    Configure game executable in Settings first
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            )}
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleStop}
-              className="text-destructive hover:text-destructive"
-            >
-              <Square className="h-4 w-4 mr-1.5" />
-              Running
-            </Button>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleLaunch}
-                    disabled={!canLaunch}
-                  >
-                    <Play className="h-4 w-4 mr-1.5" />
-                    Launch
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {!canLaunch && (
-                <TooltipContent>
-                  Configure game executable in Settings first
-                </TooltipContent>
-              )}
-            </Tooltip>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={refresh}
-            disabled={loading || refreshing}
-          >
-            <RefreshCw
+              onClick={refresh}
+              disabled={loading || refreshing}
               className={cn(
-                'h-4 w-4',
-                (loading || refreshing) && 'animate-spin',
+                NAV_ITEM_BASE_CLASS,
+                NAV_ITEM_GREEN_HOVER_CLASS,
+                'h-auto',
               )}
-            />
-          </Button>
+            >
+              <RefreshCw
+                className={cn(
+                  'mr-1 h-[1.125rem] w-[1.125rem]',
+                  (loading || refreshing) && 'animate-spin',
+                )}
+              />
+              Refresh
+            </Button>
+          </div>
         </div>
       </div>
 

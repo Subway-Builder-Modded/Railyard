@@ -1,11 +1,20 @@
 import React from 'react';
 
+import { AppFooter } from '@/components/layout/AppFooter';
+import {
+  APP_CONTENT_SPACING_CLASS,
+  APP_SHELL_PADDING_CLASS,
+  APP_SHELL_WIDTH_CLASS,
+} from '@/components/layout/layout-shell';
+import { cn } from '@/lib/utils';
+
 import { GetCurrentVersion } from '../../../wailsjs/go/main/App';
 import { Navbar } from './Navbar';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [version, setVersion] = React.useState<string>('');
-  React.useMemo(() => {
+
+  React.useEffect(() => {
     GetCurrentVersion().then((response) => {
       if (response.status !== 'success') {
         return;
@@ -19,12 +28,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
-      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1">
+      <main
+        style={{ paddingTop: 'var(--app-navbar-offset, 6.25rem)' }}
+        className={cn(
+          'flex-1',
+          APP_SHELL_WIDTH_CLASS,
+          APP_SHELL_PADDING_CLASS,
+          APP_CONTENT_SPACING_CLASS,
+        )}
+      >
         {children}
       </main>
-      <footer className="text-center text-sm text-muted-foreground py-4">
-        <p>Railyard {version} | &copy; Subway Builder Modded 2026.</p>
-      </footer>
+      <AppFooter version={version} />
     </div>
   );
 }
