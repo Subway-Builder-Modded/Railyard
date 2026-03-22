@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { type AssetType, assetTypeToListingPath } from '@/lib/asset-types';
 import { getCountryFlagIcon } from '@/lib/flags';
 import { formatSourceQuality } from '@/lib/map-filter-values';
-import { MAX_CARD_BADGES } from '@/lib/search';
 import type { SearchViewMode } from '@/lib/search-view-mode';
 import { cn } from '@/lib/utils';
 
@@ -158,44 +157,154 @@ function ItemBadges({
 }) {
   if (badges.length === 0) return null;
 
+  const preferredVisibleCount = 3;
+  const fallbackVisibleCount = 2;
+
   const justifyClass = align === 'left' ? 'justify-start' : 'justify-end';
   const badgeClassName = compact
     ? 'text-[11px] px-1.5 py-0 h-5'
     : 'text-xs px-1.5 py-0';
 
-  const badgesLimited = useMemo(
-    () => badges.slice(0, MAX_CARD_BADGES),
+  const badgesPreferred = useMemo(
+    () => badges.slice(0, preferredVisibleCount),
     [badges],
   );
-  const baseOverflowCount = Math.max(0, badges.length - badgesLimited.length);
-
-  const baseBadges = badgesLimited.map((badge) => (
-    <Badge key={badge} variant="secondary" className={badgeClassName}>
-      {badge}
-    </Badge>
-  ));
-
-  const overflowBadge =
-    baseOverflowCount > 0 ? (
-      <Badge variant="outline" className={badgeClassName}>
-        +{baseOverflowCount}
-      </Badge>
-    ) : null;
 
   if (wrap) {
+    const overflowCount = Math.max(0, badges.length - badgesPreferred.length);
     return (
       <div className={cn('flex flex-wrap gap-1', justifyClass)}>
-        {baseBadges}
-        {overflowBadge}
+        {badgesPreferred.map((badge) => (
+          <Badge key={badge} variant="secondary" className={badgeClassName}>
+            {badge}
+          </Badge>
+        ))}
+        {overflowCount > 0 && (
+          <Badge variant="outline" className={badgeClassName}>
+            +{overflowCount}
+          </Badge>
+        )}
       </div>
     );
   }
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const measureRef = useRef<HTMLDivElement | null>(null);
+  const [visibleCount, setVisibleCount] = useState(() =>
+    Math.min(preferredVisibleCount, badgesPreferred.length),
+  );
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const measure = measureRef.current;
+    if (!container || !measure) return;
+
+    const update = () => {
+      const availableWidth = container.clientWidth;
+      const gap = Number.parseFloat(getComputedStyle(container).columnGap) || 0;
+      const badgeEls = Array.from(
+        measure.querySelectorAll<HTMLElement>('[data-measure="badge"]'),
+      );
+      const badgeWidths = badgeEls.map(
+        (el) => el.getBoundingClientRect().width,
+      );
+
+      const overflowEl = measure.querySelector<HTMLElement>(
+        '[data-measure="overflow"]',
+      );
+
+      const measureOverflowWidth = (count: number) => {
+        if (!overflowEl) return 0;
+        overflowEl.textContent = `+${count}`;
+        return overflowEl.getBoundingClientRect().width;
+      };
+
+      const widthForBadges = (count: number) =>
+        badgeWidths.slice(0, count).reduce((sum, width) => sum + width, 0) +
+        Math.max(0, count - 1) * gap;
+
+      const fits = (count: number) => {
+        const clamped = Math.max(0, Math.min(badgeWidths.length, count));
+        const overflowCount = Math.max(0, badges.length - clamped);
+        const overflowWidth =
+          overflowCount > 0 ? measureOverflowWidth(overflowCount) : 0;
+        const hasOverflow = overflowCount > 0;
+
+        const totalWidth =
+          widthForBadges(clamped) +
+          (hasOverflow ? (clamped > 0 ? gap : 0) + overflowWidth : 0);
+
+        return totalWidth <= availableWidth;
+      };
+
+      const maxPossible = Math.min(preferredVisibleCount, badgeWidths.length);
+      const preferred = maxPossible;
+      const fallback = Math.min(fallbackVisibleCount, maxPossible);
+
+      if (fits(preferred)) {
+        setVisibleCount(preferred);
+        return;
+      }
+
+      if (fits(fallback)) {
+        setVisibleCount(fallback);
+        return;
+      }
+
+      setVisibleCount(Math.min(1, maxPossible));
+    };
+
+    update();
+
+    const ro = new ResizeObserver(() => update());
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [badges.length, badgesPreferred.length]);
+
+  const overflowCount = Math.max(0, badges.length - visibleCount);
+
   return (
-    <div className={cn('flex flex-nowrap gap-1 overflow-hidden', justifyClass)}>
-      {baseBadges}
-      {overflowBadge}
-    </div>
+    <>
+      <div
+        ref={containerRef}
+        className={cn('flex flex-nowrap gap-1 overflow-hidden', justifyClass)}
+      >
+        {badgesPreferred.slice(0, visibleCount).map((badge) => (
+          <Badge key={badge} variant="secondary" className={badgeClassName}>
+            {badge}
+          </Badge>
+        ))}
+        {overflowCount > 0 && (
+          <Badge variant="outline" className={badgeClassName}>
+            +{overflowCount}
+          </Badge>
+        )}
+      </div>
+
+      <div
+        ref={measureRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-[99999px] -top-[99999px] flex gap-1 opacity-0"
+      >
+        {badgesPreferred.map((badge) => (
+          <Badge
+            key={badge}
+            data-measure="badge"
+            variant="secondary"
+            className={badgeClassName}
+          >
+            {badge}
+          </Badge>
+        ))}
+        <Badge
+          data-measure="overflow"
+          variant="outline"
+          className={badgeClassName}
+        >
+          +{badges.length}
+        </Badge>
+      </div>
+    </>
   );
 }
 
