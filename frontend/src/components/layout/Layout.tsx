@@ -29,7 +29,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
       <main
-        style={{ paddingTop: 'var(--app-navbar-offset, 6.25rem)' }}
+        style={{ paddingTop: 'var(--app-navbar-offset, 6rem)' }}
         className={cn(
           'flex-1',
           APP_SHELL_WIDTH_CLASS,

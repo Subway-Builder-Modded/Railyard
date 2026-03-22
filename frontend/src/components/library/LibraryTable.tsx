@@ -73,10 +73,12 @@ function SortableHeaderButton({
   const labelForAria = label.toLowerCase();
   const SortIcon = isActive && direction === 'asc' ? ChevronUp : ChevronDown;
   return (
-    <button
+    <Button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1 text-foreground font-medium hover:text-foreground/80 transition-colors"
+      intent="plain"
+      size="xs"
+      className="h-auto min-h-0 px-0 py-0 inline-flex items-center gap-1 text-foreground font-medium hover:bg-transparent hover:text-foreground/80 active:translate-y-0"
       aria-label={
         isActive && direction === 'asc'
           ? `Sort ${labelForAria} descending`
@@ -87,7 +89,7 @@ function SortableHeaderButton({
       <SortIcon
         className={cn('h-4 w-4', isActive ? 'opacity-100' : 'opacity-40')}
       />
-    </button>
+    </Button>
   );
 }
 

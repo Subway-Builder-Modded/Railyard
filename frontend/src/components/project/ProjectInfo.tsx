@@ -287,7 +287,7 @@ export function ProjectInfo({
             )
           ) : installedVersion ? (
             <>
-              <Badge className="gap-1 bg-[var(--installed-primary)] text-[var(--install-foreground)]">
+              <Badge variant="success" className="gap-1">
                 <CheckCircle className="h-3 w-3" />
                 Installed {installedVersion}
               </Badge>

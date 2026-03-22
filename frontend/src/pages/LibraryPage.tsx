@@ -9,6 +9,7 @@ import { LibraryTable } from '@/components/library/LibraryTable';
 import { SearchBar } from '@/components/search/SearchBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
+import { PageHeading } from '@/components/shared/PageHeading';
 import { Pagination } from '@/components/shared/Pagination';
 import { Button } from '@/components/ui/button';
 import { useFilteredInstalledItems } from '@/hooks/use-filtered-installed-items';
@@ -243,16 +244,11 @@ export function LibraryPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Library
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manage your installed maps and mods.
-          </p>
-        </div>
-      </div>
+      <PageHeading
+        icon={Inbox}
+        title="Library"
+        description="Manage your installed maps and mods."
+      />
 
       {missingInstalledItems.length > 0 && (
         <ErrorBanner

@@ -61,13 +61,16 @@ export function ProjectHero({ type, id, gallery }: ProjectHeroProps) {
     <>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {validImages.map((url, i) => (
-          <button
+          <Button
             key={i}
+            type="button"
+            intent="plain"
+            size="sm"
             onClick={() => setSelectedIndex(i)}
-            className="h-24 w-40 flex-shrink-0 rounded-md overflow-hidden ring-offset-background transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="h-24 w-40 flex-shrink-0 p-0 rounded-md overflow-hidden transition-opacity hover:opacity-80 active:translate-y-0"
           >
             <img src={url} alt="" className="w-full h-full object-cover" />
-          </button>
+          </Button>
         ))}
       </div>
 

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { type ComponentType, type Dispatch, type SetStateAction } from 'react';
 
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import type { AssetType } from '@/lib/asset-types';
@@ -24,10 +25,7 @@ import type { SearchFilterState } from '@/stores/search-store';
 
 const FILTER_SECTION_TITLE_CLASS =
   'text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1';
-const FILTER_SECTION_OPTION_CLASS =
-  'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors';
-const FILTER_SECTION_CLEAR_CLASS =
-  'mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors';
+const FILTER_SECTION_CLEAR_CLASS = 'mt-2';
 
 interface LibrarySidebarProps {
   filters: SearchFilterState;
@@ -78,14 +76,16 @@ export function LibrarySidebar({
         <p className={FILTER_SECTION_TITLE_CLASS}>Type</p>
         <nav className="space-y-0.5" aria-label="Content type filter">
           {typeOptions.map(({ value, label, icon: Icon }) => (
-            <button
+            <Button
               key={value}
               onClick={() => onTypeChange(value)}
+              intent="plain"
+              size="sm"
               className={cn(
-                'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md text-sm transition-colors',
+                'w-full justify-between font-medium',
                 filters.type === value
-                  ? 'bg-accent text-accent-foreground font-medium'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60',
+                  ? 'bg-muted/70 text-foreground border-border/70'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
               aria-current={filters.type === value ? 'true' : undefined}
             >
@@ -103,7 +103,7 @@ export function LibrarySidebar({
               >
                 {counts[value]}
               </span>
-            </button>
+            </Button>
           ))}
         </nav>
       </div>
@@ -230,11 +230,18 @@ function ChecklistFilterSection({
       ) : (
         <div className="space-y-1">
           {visibleValues.map((value) => (
-            <button
+            <Button
               key={value}
               type="button"
               onClick={() => toggle(value)}
-              className={cn(FILTER_SECTION_OPTION_CLASS, 'justify-between')}
+              intent="plain"
+              size="xs"
+              className={cn(
+                'w-full justify-between px-2 font-normal text-sm',
+                selected.includes(value)
+                  ? 'bg-muted/60 text-foreground border-border/60'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
             >
               <span className="flex items-center gap-2">
                 <Checkbox
@@ -246,18 +253,22 @@ function ChecklistFilterSection({
               <span className="text-xs tabular-nums text-muted-foreground">
                 {counts[value] ?? 0}
               </span>
-            </button>
+            </Button>
           ))}
         </div>
       )}
       {selected.length > 0 && (
-        <button
-          type="button"
-          onClick={() => onChange([])}
-          className={FILTER_SECTION_CLEAR_CLASS}
-        >
-          Clear {title.toLowerCase()}
-        </button>
+        <div className={FILTER_SECTION_CLEAR_CLASS}>
+          <Button
+            type="button"
+            intent="link"
+            size="xs"
+            onClick={() => onChange([])}
+            className="h-auto min-h-0 px-0 py-0 text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            Clear {title.toLowerCase()}
+          </Button>
+        </div>
       )}
     </div>
   );

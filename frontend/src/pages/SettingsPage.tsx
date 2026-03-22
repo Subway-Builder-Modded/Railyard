@@ -5,11 +5,12 @@
   Gamepad2,
   Github,
   RefreshCw,
-  Shield,
+  Settings,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { PageHeading } from '@/components/shared/PageHeading';
 import { ThemePicker, type ThemeValue } from '@/components/shared/ThemePicker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -359,7 +360,11 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+      <PageHeading
+        icon={Settings}
+        title="Settings"
+        description="Configure Railyard and customize your experience."
+      />
 
       <Card>
         <CardHeader>
@@ -383,7 +388,7 @@ export function SettingsPage() {
               <Badge
                 variant={
                   validation?.metroMakerDataPathValid
-                    ? 'default'
+                    ? 'success'
                     : config?.metroMakerDataPath
                       ? 'destructive'
                       : 'outline'
@@ -419,7 +424,7 @@ export function SettingsPage() {
               <Badge
                 variant={
                   validation?.executablePathValid
-                    ? 'default'
+                    ? 'success'
                     : config?.executablePath
                       ? 'destructive'
                       : 'outline'
@@ -694,7 +699,7 @@ export function SettingsPage() {
         </DialogContent>
       </Dialog>
 
-      <Card className="border-destructive/50">
+      <Card className="ring-destructive/35 bg-[color-mix(in_oklab,var(--color-destructive)_6%,transparent)]">
         <CardHeader>
           <CardTitle className="text-destructive">Danger Zone</CardTitle>
           <CardDescription>

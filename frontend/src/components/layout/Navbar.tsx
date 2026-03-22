@@ -1,9 +1,9 @@
 import {
-  BookText,
+  Inbox,
   Compass,
   Play,
   RefreshCw,
-  ScrollText,
+  Terminal,
   Settings,
   Square,
   TrainTrack,
@@ -47,7 +47,7 @@ const navLinks: NavLinkConfig[] = [
   {
     href: '/library',
     label: 'Library',
-    icon: BookText,
+    icon: Inbox,
     isCurrent: (location: string) => location.startsWith('/library'),
   },
   {
@@ -60,7 +60,7 @@ const navLinks: NavLinkConfig[] = [
   {
     href: '/logs',
     label: 'Logs',
-    icon: ScrollText,
+    icon: Terminal,
     isCurrent: (location: string) => location.startsWith('/logs'),
   },
   {
@@ -77,7 +77,7 @@ const NAV_ITEM_BASE_CLASS =
 const NAV_ITEM_GREEN_HOVER_CLASS = 'hover:text-primary hover:bg-accent/45';
 const NAV_CURRENT_INDICATOR_CLASS =
   'absolute -bottom-[0.38rem] left-1/2 h-1 w-[calc(100%-1rem)] -translate-x-1/2 rounded-full bg-primary';
-const NAVBAR_TOP_OFFSET_PX = 12;
+const NAVBAR_TOP_OFFSET_PX = 48;
 const NAVBAR_BOTTOM_GAP_PX = 12;
 
 export function Navbar() {

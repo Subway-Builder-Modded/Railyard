@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export type ThemeValue = 'dark' | 'light' | 'system';
@@ -184,18 +185,19 @@ export function ThemePicker({ value, onChange, disabled }: ThemePickerProps) {
       {THEME_OPTIONS.map((option) => {
         const isSelected = value === option.value;
         return (
-          <button
+          <Button
             key={option.value}
             type="button"
             disabled={disabled}
             onClick={() => onChange(option.value)}
+            intent="plain"
+            size="md"
             className={cn(
-              'group flex flex-col gap-2 rounded-lg border p-2 text-left transition-all',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'group h-auto flex-col items-stretch gap-2 border p-2 text-left transition-all active:translate-y-0',
               'disabled:cursor-not-allowed disabled:opacity-50',
               isSelected
-                ? 'border-primary ring-2 ring-primary/40 bg-primary/5'
-                : 'border-border hover:border-primary/40 hover:bg-accent/50',
+                ? 'border-foreground/25 ring-2 ring-foreground/10 bg-muted/15'
+                : 'border-border hover:border-foreground/20 hover:bg-muted/20',
             )}
             aria-pressed={isSelected}
           >
@@ -205,19 +207,19 @@ export function ThemePicker({ value, onChange, disabled }: ThemePickerProps) {
                 className={cn(
                   'flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
                   isSelected
-                    ? 'border-primary'
-                    : 'border-muted-foreground/40 group-hover:border-primary/60',
+                    ? 'border-foreground/60'
+                    : 'border-muted-foreground/40 group-hover:border-foreground/45',
                 )}
               >
                 {isSelected && (
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-foreground/80" />
                 )}
               </div>
               <span className="text-xs font-medium leading-none">
                 {option.label}
               </span>
             </div>
-          </button>
+          </Button>
         );
       })}
     </div>

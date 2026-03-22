@@ -1,4 +1,5 @@
 import { CheckCircle, Download, MapPin, Package, Users } from 'lucide-react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'wouter';
 
 import { Badge } from '@/components/ui/badge';
@@ -148,7 +149,7 @@ function ItemBadges({
   badges,
   align = 'right',
   compact = false,
-  wrap = true,
+  wrap = false,
 }: {
   badges: string[];
   align?: 'left' | 'right';
@@ -162,25 +163,140 @@ function ItemBadges({
     ? 'text-[11px] px-1.5 py-0 h-5'
     : 'text-xs px-1.5 py-0';
 
+  const badgesLimited = useMemo(
+    () => badges.slice(0, MAX_CARD_BADGES),
+    [badges],
+  );
+  const baseOverflowCount = Math.max(0, badges.length - badgesLimited.length);
+
+  if (wrap) {
+    return (
+      <div className={cn('flex flex-wrap gap-1', justifyClass)}>
+        {badgesLimited.map((badge) => (
+          <Badge key={badge} variant="secondary" className={badgeClassName}>
+            {badge}
+          </Badge>
+        ))}
+        {baseOverflowCount > 0 && (
+          <Badge variant="outline" className={badgeClassName}>
+            +{baseOverflowCount}
+          </Badge>
+        )}
+      </div>
+    );
+  }
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const measureRef = useRef<HTMLDivElement | null>(null);
+  const [visibleCount, setVisibleCount] = useState(() => badgesLimited.length);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const measure = measureRef.current;
+    if (!container || !measure) return;
+
+    const update = () => {
+      const availableWidth = container.clientWidth;
+      const gap = Number.parseFloat(getComputedStyle(container).columnGap) || 0;
+      const badgeEls = Array.from(
+        measure.querySelectorAll<HTMLElement>('[data-measure="badge"]'),
+      );
+      const badgeWidths = badgeEls.map(
+        (el) => el.getBoundingClientRect().width,
+      );
+
+      const overflowEl = measure.querySelector<HTMLElement>(
+        '[data-measure="overflow"]',
+      );
+
+      const measureOverflowWidth = (count: number) => {
+        if (!overflowEl) return 0;
+        overflowEl.textContent = `+${count}`;
+        return overflowEl.getBoundingClientRect().width;
+      };
+
+      const totalFor = (count: number) => {
+        const used = badgeWidths.slice(0, count).reduce((sum, w) => sum + w, 0);
+        return used + Math.max(0, count - 1) * gap;
+      };
+
+      let nextVisible = badgeWidths.length;
+      while (nextVisible > 0 && totalFor(nextVisible) > availableWidth) {
+        nextVisible -= 1;
+      }
+
+      const totalBadges = badgeWidths.length;
+      const totalOverflowCount =
+        baseOverflowCount + (totalBadges - nextVisible);
+      if (totalOverflowCount > 0) {
+        const overflowWidth = measureOverflowWidth(totalOverflowCount);
+
+        while (nextVisible >= 0) {
+          const widthWithoutOverflow = totalFor(nextVisible);
+          const hasSomeBadges = nextVisible > 0;
+          const widthWithOverflow =
+            widthWithoutOverflow + (hasSomeBadges ? gap : 0) + overflowWidth;
+
+          if (widthWithOverflow <= availableWidth) break;
+          nextVisible -= 1;
+        }
+      }
+
+      setVisibleCount(Math.max(0, Math.min(totalBadges, nextVisible)));
+    };
+
+    update();
+
+    const ro = new ResizeObserver(() => update());
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [badgesLimited, baseOverflowCount]);
+
+  const finalOverflowCount =
+    baseOverflowCount + (badgesLimited.length - visibleCount);
+
   return (
-    <div
-      className={cn(
-        'flex gap-1',
-        wrap ? 'flex-wrap' : 'flex-nowrap overflow-hidden',
-        justifyClass,
-      )}
-    >
-      {badges.slice(0, MAX_CARD_BADGES).map((badge) => (
-        <Badge key={badge} variant="secondary" className={badgeClassName}>
-          {badge}
+    <>
+      <div
+        ref={containerRef}
+        className={cn('flex flex-nowrap gap-1 overflow-hidden', justifyClass)}
+      >
+        {badgesLimited.slice(0, visibleCount).map((badge) => (
+          <Badge key={badge} variant="secondary" className={badgeClassName}>
+            {badge}
+          </Badge>
+        ))}
+        {finalOverflowCount > 0 && (
+          <Badge variant="outline" className={badgeClassName}>
+            +{finalOverflowCount}
+          </Badge>
+        )}
+      </div>
+
+      <div
+        ref={measureRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-[99999px] -top-[99999px] flex gap-1 opacity-0"
+      >
+        {badgesLimited.map((badge) => (
+          <Badge
+            key={badge}
+            data-measure="badge"
+            variant="secondary"
+            className={badgeClassName}
+          >
+            {badge}
+          </Badge>
+        ))}
+        <Badge
+          data-measure="overflow"
+          variant="outline"
+          className={badgeClassName}
+        >
+          +{badges.length}
         </Badge>
-      ))}
-      {badges.length > MAX_CARD_BADGES && (
-        <Badge variant="outline" className={badgeClassName}>
-          +{badges.length - MAX_CARD_BADGES}
-        </Badge>
-      )}
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -209,7 +325,7 @@ export function ItemCard({
             <div className="relative h-44 sm:h-36 sm:w-48 md:w-52 overflow-hidden bg-muted shrink-0">
               {installedVersion && (
                 <div className="absolute top-2 right-2 z-10">
-                  <Badge className="gap-1 text-xs shadow-sm bg-[var(--installed-primary)] text-[var(--install-foreground)]">
+                  <Badge variant="success" className="gap-1 text-xs shadow-sm">
                     <CheckCircle className="h-2.5 w-2.5" />
                     {installedVersion}
                   </Badge>
@@ -295,7 +411,10 @@ export function ItemCard({
           <div className="relative aspect-[16/10] overflow-hidden bg-muted shrink-0">
             {installedVersion && (
               <div className="absolute top-2 right-2 z-10">
-                <Badge className="gap-1 text-[11px] h-5 px-1.5 shadow-sm bg-[var(--installed-primary)] text-[var(--install-foreground)]">
+                <Badge
+                  variant="success"
+                  className="gap-1 text-[11px] h-5 px-1.5 shadow-sm"
+                >
                   <CheckCircle className="h-2.5 w-2.5" />
                   {installedVersion}
                 </Badge>
@@ -381,7 +500,7 @@ export function ItemCard({
         <div className="relative aspect-video overflow-hidden bg-muted shrink-0">
           {installedVersion && (
             <div className="absolute top-2 right-2 z-10">
-              <Badge className="gap-1 text-xs shadow-sm bg-[var(--installed-primary)] text-[var(--install-foreground)]">
+              <Badge variant="success" className="gap-1 text-xs shadow-sm">
                 <CheckCircle className="h-2.5 w-2.5" />
                 {installedVersion}
               </Badge>
