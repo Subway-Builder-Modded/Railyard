@@ -139,10 +139,11 @@ func TestResolveAPIErrorStatusCodes(t *testing.T) {
 				StatusCode: tt.status,
 				Subject:    "owner/repo",
 			}
-			apiErrorType, apiErrorSource, ok := ResolveAPIError(apiErr)
+			apiErrorType, apiErrorSource, apiStatusCode, ok := ResolveAPIError(apiErr)
 			require.True(t, ok)
 			require.Equal(t, tt.expected, apiErrorType)
 			require.Equal(t, types.APIErrorSourceGitHub, apiErrorSource)
+			require.Equal(t, tt.status, apiStatusCode)
 		})
 	}
 }
@@ -153,19 +154,22 @@ func TestResolveAPIErrorCauses(t *testing.T) {
 		Subject: "owner/repo",
 		Cause:   context.DeadlineExceeded,
 	}
-	apiErrorType, _, ok := ResolveAPIError(apiErr)
+	apiErrorType, _, apiStatusCode, ok := ResolveAPIError(apiErr)
 	require.True(t, ok)
 	require.Equal(t, types.APIErrorTypeTimeout, apiErrorType)
+	require.Zero(t, apiStatusCode)
 
 	apiErr.Cause = &timeoutErr{}
-	apiErrorType, _, ok = ResolveAPIError(apiErr)
+	apiErrorType, _, apiStatusCode, ok = ResolveAPIError(apiErr)
 	require.True(t, ok)
 	require.Equal(t, types.APIErrorTypeTimeout, apiErrorType)
+	require.Zero(t, apiStatusCode)
 
 	apiErr.Cause = errors.New("generic failure")
-	apiErrorType, _, ok = ResolveAPIError(apiErr)
+	apiErrorType, _, apiStatusCode, ok = ResolveAPIError(apiErr)
 	require.True(t, ok)
 	require.Equal(t, types.APIErrorTypeFetch, apiErrorType)
+	require.Zero(t, apiStatusCode)
 }
 
 type timeoutErr struct{}

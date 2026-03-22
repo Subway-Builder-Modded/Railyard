@@ -48,6 +48,7 @@ type GenericResponse struct {
 	Message        string         `json:"message"`
 	APIErrorType   APIErrorType   `json:"apiErrorType,omitempty"`
 	APIErrorSource APIErrorSource `json:"apiErrorSource,omitempty"`
+	APIStatusCode  int            `json:"apiStatusCode,omitempty"`
 }
 
 type DownloadTempResponse struct {

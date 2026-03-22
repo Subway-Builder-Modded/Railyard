@@ -25,8 +25,7 @@ export function toSubscriptionSyncErrorState(
   const apiErrors = apiErrorMessages(err.profileErrors);
   return {
     version,
-    message:
-      apiErrors.length > 0 ? apiErrors.join(' ') : (err.message ?? ''),
+    message: apiErrors.length > 0 ? apiErrors.join(' ') : (err.message ?? ''),
     errors: err.profileErrors,
   };
 }

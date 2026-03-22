@@ -43,9 +43,10 @@ func deleteOldTempInstallers() error {
 
 func updaterErrorResponse(err error) types.GenericResponse {
 	response := types.ErrorResponse(err.Error())
-	if apiErrorType, apiErrorSource, ok := requests.ResolveAPIError(err); ok {
+	if apiErrorType, apiErrorSource, apiStatusCode, ok := requests.ResolveAPIError(err); ok {
 		response.APIErrorType = apiErrorType
 		response.APIErrorSource = apiErrorSource
+		response.APIStatusCode = apiStatusCode
 	}
 	return response
 }

@@ -96,6 +96,7 @@ export function ProjectPage() {
           const typedMessage = apiErrorMessage({
             apiErrorType: response.apiErrorType,
             apiErrorSource: response.apiErrorSource,
+            apiStatusCode: response.apiStatusCode,
           });
           setVersionsError(
             typedMessage ?? response.message ?? 'Failed to load versions',

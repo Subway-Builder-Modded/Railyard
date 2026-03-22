@@ -107,16 +107,16 @@ func classifyAPICause(cause error) types.APIErrorType {
 	return types.APIErrorTypeFetch
 }
 
-func ResolveAPIError(err error) (types.APIErrorType, types.APIErrorSource, bool) {
+func ResolveAPIError(err error) (types.APIErrorType, types.APIErrorSource, int, bool) {
 	var apiErr APIError
 	if errors.As(err, &apiErr) {
 		if apiErr.StatusCode > 0 {
-			return classifyAPIStatus(apiErr.StatusCode), apiErr.Source, true
+			return classifyAPIStatus(apiErr.StatusCode), apiErr.Source, apiErr.StatusCode, true
 		}
 		if apiErr.Cause != nil {
-			return classifyAPICause(apiErr.Cause), apiErr.Source, true
+			return classifyAPICause(apiErr.Cause), apiErr.Source, 0, true
 		}
 	}
 
-	return "", "", false
+	return "", "", 0, false
 }

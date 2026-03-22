@@ -181,6 +181,7 @@ func syncInstallFailedError(profileID, assetID string, assetType types.AssetType
 	)
 	profileError.APIErrorType = response.APIErrorType
 	profileError.APIErrorSource = response.APIErrorSource
+	profileError.APIStatusCode = response.APIStatusCode
 	return profileError
 }
 

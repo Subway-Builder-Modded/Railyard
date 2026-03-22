@@ -176,6 +176,7 @@ export function SettingsPage() {
       const typedMessage = apiErrorMessage({
         apiErrorType: response.apiErrorType,
         apiErrorSource: response.apiErrorSource,
+        apiStatusCode: response.apiStatusCode,
       });
       if (response.status === 'error') {
         throw new Error(

@@ -164,6 +164,7 @@ type UserProfilesError struct {
 	DownloaderErrorType DownloaderErrorType   `json:"downloaderErrorType,omitempty"`
 	APIErrorType        APIErrorType          `json:"apiErrorType,omitempty"`
 	APIErrorSource      APIErrorSource        `json:"apiErrorSource,omitempty"`
+	APIStatusCode       int                   `json:"apiStatusCode,omitempty"`
 	Message             string                `json:"message"`
 }
 

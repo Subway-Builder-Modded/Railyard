@@ -46,6 +46,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    version: string;
 	
 	    static createFrom(source: any = {}) {
@@ -58,6 +59,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.version = source["version"];
 	    }
 	}
@@ -66,6 +68,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    assetType: string;
 	    assetId: string;
 	    counts: Record<string, number>;
@@ -80,6 +83,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.assetType = source["assetType"];
 	        this.assetId = source["assetId"];
 	        this.counts = source["counts"];
@@ -159,6 +163,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    assetType: string;
 	    assetId: string;
 	    version: string;
@@ -176,6 +181,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.assetType = source["assetType"];
 	        this.assetId = source["assetId"];
 	        this.version = source["version"];
@@ -207,6 +213,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    assetType: string;
 	    assetId: string;
 	    errorType?: string;
@@ -221,6 +228,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.assetType = source["assetType"];
 	        this.assetId = source["assetId"];
 	        this.errorType = source["errorType"];
@@ -262,6 +270,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    target?: DeepLinkTarget;
 	
 	    static createFrom(source: any = {}) {
@@ -274,6 +283,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.target = this.convertValues(source["target"], DeepLinkTarget);
 	    }
 	
@@ -301,6 +311,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    assetType: string;
 	    counts: Record<string, any>;
 	
@@ -314,6 +325,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.assetType = source["assetType"];
 	        this.counts = source["counts"];
 	    }
@@ -339,6 +351,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    imageUrl: string;
 	
 	    static createFrom(source: any = {}) {
@@ -351,6 +364,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.imageUrl = source["imageUrl"];
 	    }
 	}
@@ -359,6 +373,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    running: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -371,6 +386,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.running = source["running"];
 	    }
 	}
@@ -379,6 +395,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    version: string;
 	
 	    static createFrom(source: any = {}) {
@@ -391,6 +408,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.version = source["version"];
 	    }
 	}
@@ -399,6 +417,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new GenericResponse(source);
@@ -410,6 +429,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	    }
 	}
 	export class GithubTokenValidResponse {
@@ -417,6 +437,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    valid: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -429,6 +450,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.valid = source["valid"];
 	    }
 	}
@@ -437,6 +459,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    path: string;
 	
 	    static createFrom(source: any = {}) {
@@ -449,6 +472,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.path = source["path"];
 	    }
 	}
@@ -574,6 +598,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    maps: InstalledMapInfo[];
 	
 	    static createFrom(source: any = {}) {
@@ -586,6 +611,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.maps = this.convertValues(source["maps"], InstalledMapInfo);
 	    }
 	
@@ -628,6 +654,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    mods: InstalledModInfo[];
 	
 	    static createFrom(source: any = {}) {
@@ -640,6 +667,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.mods = this.convertValues(source["mods"], InstalledModInfo);
 	    }
 	
@@ -857,6 +885,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    maps: MapManifest[];
 	
 	    static createFrom(source: any = {}) {
@@ -869,6 +898,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.maps = this.convertValues(source["maps"], MapManifest);
 	    }
 	
@@ -945,6 +975,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    mods: ModManifest[];
 	
 	    static createFrom(source: any = {}) {
@@ -957,6 +988,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.mods = this.convertValues(source["mods"], ModManifest);
 	    }
 	
@@ -1001,6 +1033,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    platform: string;
 	
 	    static createFrom(source: any = {}) {
@@ -1013,6 +1046,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.platform = source["platform"];
 	    }
 	}
@@ -1055,6 +1089,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    report: RegistryIntegrityReport;
 	
 	    static createFrom(source: any = {}) {
@@ -1067,6 +1102,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.report = this.convertValues(source["report"], RegistryIntegrityReport);
 	    }
 	
@@ -1093,6 +1129,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    config: AppConfig;
 	    validation: ConfigPathValidation;
 	    hasGithubToken: boolean;
@@ -1107,6 +1144,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.config = this.convertValues(source["config"], AppConfig);
 	        this.validation = this.convertValues(source["validation"], ConfigPathValidation);
 	        this.hasGithubToken = source["hasGithubToken"];
@@ -1169,6 +1207,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    installed: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -1181,6 +1220,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.installed = source["installed"];
 	    }
 	}
@@ -1235,6 +1275,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    result: SetConfigPathResult;
 	
 	    static createFrom(source: any = {}) {
@@ -1247,6 +1288,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.result = this.convertValues(source["result"], SetConfigPathResult);
 	    }
 	
@@ -1274,6 +1316,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    ready: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -1286,6 +1329,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.ready = source["ready"];
 	    }
 	}
@@ -1361,6 +1405,7 @@ export namespace types {
 	    downloaderErrorType?: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    message: string;
 	
 	    static createFrom(source: any = {}) {
@@ -1376,6 +1421,7 @@ export namespace types {
 	        this.downloaderErrorType = source["downloaderErrorType"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.message = source["message"];
 	    }
 	}
@@ -1384,6 +1430,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    profileId: string;
 	    operations: SubscriptionOperation[];
 	    errors: UserProfilesError[];
@@ -1398,6 +1445,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.profileId = source["profileId"];
 	        this.operations = this.convertValues(source["operations"], SubscriptionOperation);
 	        this.errors = this.convertValues(source["errors"], UserProfilesError);
@@ -1539,6 +1587,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    requestType: string;
 	    hasUpdates: boolean;
 	    pendingCount: number;
@@ -1560,6 +1609,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.requestType = source["requestType"];
 	        this.hasUpdates = source["hasUpdates"];
 	        this.pendingCount = source["pendingCount"];
@@ -1630,6 +1680,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    profile: UserProfile;
 	    errors: UserProfilesError[];
 	
@@ -1643,6 +1694,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.profile = this.convertValues(source["profile"], UserProfile);
 	        this.errors = this.convertValues(source["errors"], UserProfilesError);
 	    }
@@ -1701,6 +1753,7 @@ export namespace types {
 	    message: string;
 	    apiErrorType?: string;
 	    apiErrorSource?: string;
+	    apiStatusCode?: number;
 	    versions: VersionInfo[];
 	    errorType?: string;
 	
@@ -1714,6 +1767,7 @@ export namespace types {
 	        this.message = source["message"];
 	        this.apiErrorType = source["apiErrorType"];
 	        this.apiErrorSource = source["apiErrorSource"];
+	        this.apiStatusCode = source["apiStatusCode"];
 	        this.versions = this.convertValues(source["versions"], VersionInfo);
 	        this.errorType = source["errorType"];
 	    }
