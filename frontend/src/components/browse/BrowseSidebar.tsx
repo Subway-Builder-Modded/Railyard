@@ -12,7 +12,7 @@ import {
 import { SidebarFilters } from '@/components/browse/SidebarFilters';
 import type { AssetType } from '@/lib/asset-types';
 import { cn } from '@/lib/utils';
-import type { SearchFilterState } from '@/stores/search-store';
+import type { BrowseFilterState } from '@/stores/browse-store';
 
 /** Width of the expanded sidebar panel (rem). */
 const SIDEBAR_WIDTH_REM = 15.5;
@@ -32,8 +32,8 @@ export const SIDEBAR_CONTENT_OFFSET = `${SIDEBAR_WIDTH_REM + SIDEBAR_GAP_REM}rem
 export interface BrowseSidebarProps {
   open: boolean;
   onToggle: () => void;
-  filters: SearchFilterState;
-  onFiltersChange: Dispatch<SetStateAction<SearchFilterState>>;
+  filters: BrowseFilterState;
+  onFiltersChange: Dispatch<SetStateAction<BrowseFilterState>>;
   onTypeChange: (type: AssetType) => void;
   availableTags: string[];
   availableSpecialDemand: string[];
@@ -144,6 +144,12 @@ export function BrowseSidebar({ open, onToggle, ...filterProps }: BrowseSidebarP
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(updateAll);
     };
+    const handleScroll = () => {
+      // Important: update anchoring immediately on scroll. If we wait for RAF here,
+      // a fast upward fling from the bottom can show one frame of stale "anchored"
+      // positioning (sidebar briefly shifts down before snapping back).
+      recomputeAnchor();
+    };
 
     updateAll();
 
@@ -160,17 +166,17 @@ export function BrowseSidebar({ open, onToggle, ...filterProps }: BrowseSidebarP
     if (mainEl) ro.observe(mainEl);
     if (panelRef.current) ro.observe(panelRef.current);
     window.addEventListener('resize', scheduleUpdate);
-    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       cancelAnimationFrame(rafId);
       ro.disconnect();
       window.removeEventListener('resize', scheduleUpdate);
-      window.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('scroll', handleScroll);
     };
   }, [open]);
 
-  const lastFiltersRef = useRef<SearchFilterState | null>(null);
+  const lastFiltersRef = useRef<BrowseFilterState | null>(null);
   useEffect(() => {
     if (!open) return;
     if (!lastFiltersRef.current) {

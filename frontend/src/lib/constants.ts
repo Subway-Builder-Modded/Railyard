@@ -32,9 +32,9 @@ const SORT_FIELDS = [
   'last_updated',
   'downloads',
   'population',
+  'name',
   'city_code',
   'country',
-  'name',
   'author',
   'random',
 ] as const;
@@ -53,7 +53,7 @@ function directionsForField(field: SortField): readonly SortDirection[] {
   return DESC_ASC_DIRECTIONS;
 }
 
-function sortOptionLabel(field: SortField, direction: SortDirection): string {
+function sortOptionLabel(field: SortField): string {
   switch (field) {
     case 'name':
       return 'Name';
@@ -79,7 +79,7 @@ function sortOptionLabel(field: SortField, direction: SortDirection): string {
 export const SORT_OPTIONS = SORT_FIELDS.flatMap((field) =>
   directionsForField(field).map((direction) => ({
     value: `${field}:${direction}` as SortKey,
-    label: sortOptionLabel(field, direction),
+    label: sortOptionLabel(field),
     sort: { field, direction },
     mapOnly:
       field === 'population' || field === 'city_code' || field === 'country',

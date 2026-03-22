@@ -270,7 +270,7 @@ export function SettingsPage() {
     }
   };
 
-  const handleDefaultSearchViewModeChange = async (value: string) => {
+  const handleDefaultBrowseViewModeChange = async (value: string) => {
     if (!profile) {
       console.warn(
         '[settings] Cannot update default browse view mode: profile is not loaded.',
@@ -571,7 +571,7 @@ export function SettingsPage() {
                     | undefined
                 )?.searchViewMode,
               )}
-              onValueChange={handleDefaultSearchViewModeChange}
+              onValueChange={handleDefaultBrowseViewModeChange}
             >
               <SelectTrigger className="w-35">
                 <SelectValue />

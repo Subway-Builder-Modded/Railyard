@@ -16,18 +16,18 @@ import { useFilteredItems } from '@/hooks/use-filtered-items';
 import type { AssetType } from '@/lib/asset-types';
 import { buildAssetListingCounts } from '@/lib/listing-counts';
 import { buildSpecialDemandValues } from '@/lib/map-filter-values';
+import { createRandomSeed, useBrowseStore } from '@/stores/browse-store';
 import { useInstalledStore } from '@/stores/installed-store';
 import { useProfileStore } from '@/stores/profile-store';
 import { useRegistryStore } from '@/stores/registry-store';
-import { createRandomSeed, useSearchStore } from '@/stores/search-store';
 
 export function BrowsePage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const viewMode = useSearchStore((s) => s.viewMode);
-  const setViewMode = useSearchStore((s) => s.setViewMode);
-  const initializeViewMode = useSearchStore((s) => s.initializeViewMode);
-  const defaultSearchViewMode = useProfileStore((s) => s.searchViewMode)();
+  const viewMode = useBrowseStore((s) => s.viewMode);
+  const setViewMode = useBrowseStore((s) => s.setViewMode);
+  const initializeViewMode = useBrowseStore((s) => s.initializeViewMode);
+  const defaultBrowseViewMode = useProfileStore((s) => s.searchViewMode)();
 
   const {
     mods,
@@ -84,8 +84,8 @@ export function BrowsePage() {
   }, [ensureDownloadTotals]);
 
   useEffect(() => {
-    initializeViewMode(defaultSearchViewMode);
-  }, [defaultSearchViewMode, initializeViewMode]);
+    initializeViewMode(defaultBrowseViewMode);
+  }, [defaultBrowseViewMode, initializeViewMode]);
 
   const { items, page, totalPages, totalResults, filters, setFilters, setType, setPage } =
     useFilteredItems({ mods, maps, modDownloadTotals, mapDownloadTotals });
