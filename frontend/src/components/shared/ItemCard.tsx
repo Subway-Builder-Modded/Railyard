@@ -1,5 +1,5 @@
 import { CheckCircle, Download, MapPin, Package, Users } from 'lucide-react';
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'wouter';
 
 import { Badge } from '@/components/ui/badge';
@@ -203,8 +203,8 @@ function ItemBadges({
       const availableWidth = container.clientWidth;
       const gap = Number.parseFloat(getComputedStyle(container).columnGap) || 0;
       const badgeEls = Array.from(
-        measure.querySelectorAll<HTMLElement>('[data-measure="badge"]'),
-      );
+        measure.querySelectorAll('[data-measure="badge"]'),
+      ) as HTMLElement[];
       const badgeWidths = badgeEls.map(
         (el) => el.getBoundingClientRect().width,
       );
@@ -259,7 +259,7 @@ function ItemBadges({
     const ro = new ResizeObserver(() => update());
     ro.observe(container);
     return () => ro.disconnect();
-  }, [badges.length, badgesPreferred.length]);
+  }, [badges.length, badgesPreferred]);
 
   const overflowCount = Math.max(0, badges.length - visibleCount);
 
