@@ -1,4 +1,4 @@
-import { Github } from 'lucide-react';
+import { BookText, Github, Megaphone } from 'lucide-react';
 
 import {
   APP_SHELL_PADDING_CLASS,
@@ -6,7 +6,21 @@ import {
 } from '@/components/layout/layout-shell';
 import { cn } from '@/lib/utils';
 
+import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime';
+
 const COMMUNITY_LINKS = [
+  {
+    id: 'docs',
+    label: 'Documentation',
+    href: 'https://subwaybuildermodded.com/railyard/docs',
+    icon: BookText,
+  },
+  {
+    id: 'updates',
+    label: 'Updates',
+    href: 'https://subwaybuildermodded.com/railyard/updates',
+    icon: Megaphone,
+  },
   {
     id: 'discord',
     label: 'Discord',
@@ -37,17 +51,16 @@ export function AppFooter({ version }: AppFooterProps) {
           <div className="mt-2.5">
             <div className="flex items-center justify-center gap-2.5">
               {COMMUNITY_LINKS.map(({ id, href, icon: Icon, label }) => (
-                <a
+                <button
                   key={id}
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
+                  type="button"
+                  onClick={() => BrowserOpenURL(href)}
                   aria-label={label}
                   className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
                 >
                   <Icon className="size-5" />
                   <span>{label}</span>
-                </a>
+                </button>
               ))}
             </div>
           </div>

@@ -1,5 +1,6 @@
 import {
-  BookOpen,
+  BookText,
+  Compass,
   Play,
   RefreshCw,
   ScrollText,
@@ -7,7 +8,7 @@ import {
   Square,
   TrainTrack,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { type ComponentType, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Link, useLocation } from 'wouter';
 
@@ -35,17 +36,24 @@ import { useGameStore } from '@/stores/game-store';
 import { useInstalledStore } from '@/stores/installed-store';
 import { useRegistryStore } from '@/stores/registry-store';
 
-const navLinks = [
+type NavLinkConfig = {
+  href: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  isCurrent: (location: string) => boolean;
+};
+
+const navLinks: NavLinkConfig[] = [
   {
     href: '/library',
     label: 'Library',
-    icon: BookOpen,
+    icon: BookText,
     isCurrent: (location: string) => location.startsWith('/library'),
   },
   {
     href: '/search',
     label: 'Browse',
-    icon: TrainTrack,
+    icon: Compass,
     isCurrent: (location: string) =>
       location.startsWith('/search') || location.startsWith('/project'),
   },
@@ -67,6 +75,8 @@ const MOD_REMINDER_KEY = 'railyard:mod-reminder-acknowledged';
 const NAV_ITEM_BASE_CLASS =
   'group relative flex items-center gap-2 rounded-lg px-[clamp(0.45rem,0.95vw,0.7rem)] py-[clamp(0.4rem,0.82vw,0.56rem)] text-[clamp(0.8rem,0.95vw,0.9rem)] font-semibold text-white transition-all duration-150';
 const NAV_ITEM_GREEN_HOVER_CLASS = 'hover:text-primary hover:bg-accent/45';
+const NAV_CURRENT_INDICATOR_CLASS =
+  'absolute -bottom-[0.38rem] left-1/2 h-1 w-[calc(100%-1rem)] -translate-x-1/2 rounded-full bg-primary';
 const NAVBAR_TOP_OFFSET_PX = 12;
 const NAVBAR_BOTTOM_GAP_PX = 12;
 
@@ -173,7 +183,7 @@ export function Navbar() {
                     {current && (
                       <span
                         aria-hidden
-                        className="absolute -bottom-[0.38rem] left-1/2 h-1 w-[calc(100%-1rem)] -translate-x-1/2 rounded-full bg-primary"
+                        className={NAV_CURRENT_INDICATOR_CLASS}
                       />
                     )}
                   </Link>
@@ -196,7 +206,10 @@ export function Navbar() {
                 Running
                 <span
                   aria-hidden
-                  className="absolute -bottom-[0.38rem] left-1/2 h-1 w-[calc(100%-1rem)] -translate-x-1/2 rounded-full bg-primary transition-colors group-hover:bg-destructive"
+                  className={cn(
+                    NAV_CURRENT_INDICATOR_CLASS,
+                    'transition-colors group-hover:bg-destructive',
+                  )}
                 />
               </Button>
             ) : (
