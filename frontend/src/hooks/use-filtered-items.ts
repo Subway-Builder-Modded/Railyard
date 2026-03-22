@@ -40,17 +40,11 @@ export interface TaggedItemFilterState {
 
 export function buildSearchText(item: TaggedItem): string {
   const base = item.item;
-  const values: string[] = [
-    base.name ?? '',
-    base.author ?? ''
-  ];
+  const values: string[] = [base.name ?? '', base.author ?? ''];
 
   if (item.type === 'map') {
     const map = base as types.MapManifest;
-    values.push(
-      map.city_code ?? '',
-      map.country ?? ''
-    );
+    values.push(map.city_code ?? '', map.country ?? '');
   }
 
   return values.filter(Boolean).join(' ');
@@ -172,9 +166,9 @@ export function useFilteredItems({
       prev.perPage === defaultPerPage
         ? prev
         : {
-          ...prev,
-          perPage: defaultPerPage,
-        },
+            ...prev,
+            perPage: defaultPerPage,
+          },
     );
   }, [defaultPerPage, setFilters]);
 

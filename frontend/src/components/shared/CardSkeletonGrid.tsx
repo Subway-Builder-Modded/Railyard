@@ -1,12 +1,18 @@
 import { Skeleton } from '@/components/ui/skeleton';
 
+import { ResponsiveCardGrid } from './ResponsiveCardGrid';
+
 interface CardSkeletonGridProps {
   count?: number;
+  preset?: 'default' | 'compact';
 }
 
-export function CardSkeletonGrid({ count = 6 }: CardSkeletonGridProps) {
+export function CardSkeletonGrid({
+  count = 6,
+  preset = 'default',
+}: CardSkeletonGridProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <ResponsiveCardGrid preset={preset}>
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
@@ -40,6 +46,6 @@ export function CardSkeletonGrid({ count = 6 }: CardSkeletonGridProps) {
           </div>
         </div>
       ))}
-    </div>
+    </ResponsiveCardGrid>
   );
 }

@@ -6,6 +6,7 @@ import { CardSkeletonGrid } from '@/components/shared/CardSkeletonGrid';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ItemCard } from '@/components/shared/ItemCard';
+import { ResponsiveCardGrid } from '@/components/shared/ResponsiveCardGrid';
 import { Button } from '@/components/ui/button';
 import type { AssetType } from '@/lib/asset-types';
 import {
@@ -108,11 +109,11 @@ export function HomePage() {
             description="No mods or maps are available yet. Try refreshing."
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <ResponsiveCardGrid>
             {discoverItems.map(({ type, item }) => (
               <ItemCard key={`${type}-${item.id}`} type={type} item={item} />
             ))}
-          </div>
+          </ResponsiveCardGrid>
         )}
       </section>
     </div>

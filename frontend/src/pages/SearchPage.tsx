@@ -11,11 +11,11 @@ import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { ItemCard } from '@/components/shared/ItemCard';
 import { PageHeading } from '@/components/shared/PageHeading';
 import { Pagination } from '@/components/shared/Pagination';
+import { ResponsiveCardGrid } from '@/components/shared/ResponsiveCardGrid';
 import { useFilteredItems } from '@/hooks/use-filtered-items';
 import type { AssetType } from '@/lib/asset-types';
 import { buildAssetListingCounts } from '@/lib/listing-counts';
 import { buildSpecialDemandValues } from '@/lib/map-filter-values';
-import { cn } from '@/lib/utils';
 import { useInstalledStore } from '@/stores/installed-store';
 import { useProfileStore } from '@/stores/profile-store';
 import { useRegistryStore } from '@/stores/registry-store';
@@ -119,12 +119,10 @@ export function SearchPage() {
   const modCount = mods.length;
   const mapCount = maps.length;
 
-  const resultsLayoutClassName = useMemo(() => {
-    if (viewMode === 'list') return 'space-y-4';
-    if (viewMode === 'compact')
-      return 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3';
-    return 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4';
-  }, [viewMode]);
+  const cardGridPreset = useMemo(
+    () => (viewMode === 'compact' ? 'compact' : 'default'),
+    [viewMode],
+  );
 
   return (
     <div className="space-y-5">
@@ -206,7 +204,7 @@ export function SearchPage() {
 
           {/* Cards / empty / loading */}
           {loading ? (
-            <CardSkeletonGrid count={filters.perPage} />
+            <CardSkeletonGrid count={filters.perPage} preset={cardGridPreset} />
           ) : items.length === 0 ? (
             <EmptyState
               icon={SearchX}
@@ -219,24 +217,45 @@ export function SearchPage() {
             />
           ) : (
             <>
-              <div className={cn(resultsLayoutClassName)}>
-                {items.map(({ type: itemType, item }) => (
-                  <ItemCard
-                    key={`${itemType}-${item.id}`}
-                    type={itemType}
-                    item={item}
-                    viewMode={viewMode}
-                    installedVersion={installedVersionByItemKey.get(
-                      `${itemType}-${item.id}`,
-                    )}
-                    totalDownloads={
-                      itemType === 'mod'
-                        ? (modDownloadTotals[item.id] ?? 0)
-                        : (mapDownloadTotals[item.id] ?? 0)
-                    }
-                  />
-                ))}
-              </div>
+              {viewMode === 'list' ? (
+                <div className="space-y-4">
+                  {items.map(({ type: itemType, item }) => (
+                    <ItemCard
+                      key={`${itemType}-${item.id}`}
+                      type={itemType}
+                      item={item}
+                      viewMode={viewMode}
+                      installedVersion={installedVersionByItemKey.get(
+                        `${itemType}-${item.id}`,
+                      )}
+                      totalDownloads={
+                        itemType === 'mod'
+                          ? (modDownloadTotals[item.id] ?? 0)
+                          : (mapDownloadTotals[item.id] ?? 0)
+                      }
+                    />
+                  ))}
+                </div>
+              ) : (
+                <ResponsiveCardGrid preset={cardGridPreset}>
+                  {items.map(({ type: itemType, item }) => (
+                    <ItemCard
+                      key={`${itemType}-${item.id}`}
+                      type={itemType}
+                      item={item}
+                      viewMode={viewMode}
+                      installedVersion={installedVersionByItemKey.get(
+                        `${itemType}-${item.id}`,
+                      )}
+                      totalDownloads={
+                        itemType === 'mod'
+                          ? (modDownloadTotals[item.id] ?? 0)
+                          : (mapDownloadTotals[item.id] ?? 0)
+                      }
+                    />
+                  ))}
+                </ResponsiveCardGrid>
+              )}
               <Pagination
                 page={page}
                 totalPages={totalPages}

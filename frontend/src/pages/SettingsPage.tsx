@@ -6,6 +6,7 @@
   Github,
   RefreshCw,
   Settings,
+  Shield,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';

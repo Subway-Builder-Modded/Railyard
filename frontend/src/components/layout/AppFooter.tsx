@@ -59,7 +59,7 @@ export function AppFooter({ version }: AppFooterProps) {
                   size="sm"
                   onClick={() => BrowserOpenURL(href)}
                   aria-label={label}
-                  className="gap-2 text-muted-foreground hover:text-foreground font-semibold"
+                  className="gap-2 text-muted-foreground hover:text-primary font-semibold"
                 >
                   <Icon className="size-5" />
                   <span>{label}</span>
