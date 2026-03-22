@@ -84,3 +84,40 @@ func TestClearVersionsCache(t *testing.T) {
 	_, ok = reg.getCachedVersions("github|owner/repo")
 	require.False(t, ok)
 }
+
+func TestGetVersionsResponseSetsGitHubAuthErrorType(t *testing.T) {
+	reg := NewRegistry(testutil.TestLogSink{}, config.NewConfig(testutil.TestLogSink{}))
+	originalBaseURL := registryGitHubAPIBaseURL
+	t.Cleanup(func() {
+		registryGitHubAPIBaseURL = originalBaseURL
+	})
+
+	server := testutil.NewLocalhostServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/repos/owner/repo/releases", r.URL.Path)
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer server.Close()
+
+	registryGitHubAPIBaseURL = server.URL
+	response := reg.GetVersionsResponse("github", "owner/repo")
+
+	require.Equal(t, types.ResponseError, response.Status)
+	require.Equal(t, types.VersionsErrorGitHubAuth, response.ErrorType)
+	require.Contains(t, response.Message, types.GitHubTokenDocsURL)
+}
+
+func TestGetVersionsResponseSetsGitHubFetchErrorType(t *testing.T) {
+	reg := NewRegistry(testutil.TestLogSink{}, config.NewConfig(testutil.TestLogSink{}))
+	originalBaseURL := registryGitHubAPIBaseURL
+	t.Cleanup(func() {
+		registryGitHubAPIBaseURL = originalBaseURL
+	})
+
+	// Port 1 on localhost should be closed; this forces a fetch/connect error.
+	registryGitHubAPIBaseURL = "http://127.0.0.1:1"
+	response := reg.GetVersionsResponse("github", "owner/repo")
+
+	require.Equal(t, types.ResponseError, response.Status)
+	require.Equal(t, types.VersionsErrorGitHubFetch, response.ErrorType)
+	require.Contains(t, response.Message, "failed to fetch")
+}

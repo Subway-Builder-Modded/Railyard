@@ -20,6 +20,7 @@ const (
 const RequestTimeout = 15 * time.Second
 const RequestUserAgent = "Railyard-Desktop-App"
 const GitHubAPIBaseURL = "https://api.github.com"
+const GitHubTokenDocsURL = "https://subwaybuildermodded.com/railyard/docs/latest/players/github-token"
 
 type GenericResponse struct {
 	Status  Status `json:"status"`

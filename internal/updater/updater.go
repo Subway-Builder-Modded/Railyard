@@ -214,12 +214,12 @@ func pullReleases(log logger.Logger, githubToken string) ([]types.RailyardVersio
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch GitHub releases for %q: %w", constants.RAILYARD_REPO, err)
+		return nil, requests.NewAPIFetchError(requests.APISourceGitHub, constants.RAILYARD_REPO, err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, fmt.Errorf("GitHub API returned status %d for %q", resp.StatusCode, constants.RAILYARD_REPO)
+		return nil, requests.NewAPIStatusError(requests.APISourceGitHub, resp.StatusCode, constants.RAILYARD_REPO)
 	}
 	defer resp.Body.Close()
 

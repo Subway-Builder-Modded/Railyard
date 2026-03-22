@@ -2,6 +2,8 @@ import type { AssetType } from '@/lib/asset-types';
 
 export const PER_PAGE_OPTIONS = [12, 24, 48] as const;
 export type PerPage = (typeof PER_PAGE_OPTIONS)[number];
+export const GITHUB_TOKEN_DOCS_URL =
+  'https://subwaybuildermodded.com/railyard/docs/latest/players/github-token';
 
 export type SortField =
   | 'name'

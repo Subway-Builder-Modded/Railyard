@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { Separator } from '@/components/ui/separator';
 import { listingPathToAssetType } from '@/lib/asset-types';
+import { GITHUB_TOKEN_DOCS_URL } from '@/lib/constants';
 import { isCompatible } from '@/lib/semver';
 import {
   mergeVersionDownloads,
@@ -92,7 +93,17 @@ export function ProjectPage() {
       .then(async (response) => {
         if (cancelled) return;
         if (response.status !== 'success') {
-          setVersionsError(response.message || 'Failed to load versions');
+          if (response.errorType === 'github_auth_error') {
+            setVersionsError(
+              `GitHub API authentication/rate limit issue. Add a GitHub token: ${GITHUB_TOKEN_DOCS_URL}`,
+            );
+          } else if (response.errorType === 'github_fetch_error') {
+            setVersionsError(
+              `Failed to fetch GitHub release data. Check your network connection and try again. If needed, add a GitHub token: ${GITHUB_TOKEN_DOCS_URL}`,
+            );
+          } else {
+            setVersionsError(response.message || 'Failed to load versions');
+          }
           setVersionsLoading(false);
           return;
         }

@@ -246,5 +246,5 @@ func TestPullReleasesPropagatesFetchError(t *testing.T) {
 	log := logger.LoggerAtPath(filepath.Join(t.TempDir(), "updater_check_error.log"))
 	_, err := pullReleases(log, "")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "GitHub API returned status")
+	require.Contains(t, err.Error(), "API returned status")
 }

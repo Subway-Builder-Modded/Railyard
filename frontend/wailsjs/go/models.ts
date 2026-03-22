@@ -1596,6 +1596,7 @@ export namespace types {
 	    status: string;
 	    message: string;
 	    versions: VersionInfo[];
+	    errorType?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new VersionsResponse(source);
@@ -1606,6 +1607,7 @@ export namespace types {
 	        this.status = source["status"];
 	        this.message = source["message"];
 	        this.versions = this.convertValues(source["versions"], VersionInfo);
+	        this.errorType = source["errorType"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

@@ -131,9 +131,17 @@ type DownloadCountsByAssetTypeResponse struct {
 	Counts    map[string]map[string]int `json:"counts"`
 }
 
+type VersionsErrorType string
+
+const (
+	VersionsErrorGitHubAuth  VersionsErrorType = "github_auth_error"
+	VersionsErrorGitHubFetch VersionsErrorType = "github_fetch_error"
+)
+
 type VersionsResponse struct {
 	GenericResponse
-	Versions []VersionInfo `json:"versions"`
+	Versions  []VersionInfo     `json:"versions"`
+	ErrorType VersionsErrorType `json:"errorType,omitempty"`
 }
 
 type GalleryImageResponse struct {

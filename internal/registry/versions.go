@@ -2,6 +2,7 @@ package registry
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -63,6 +64,7 @@ func (r *Registry) GetVersionsResponse(updateType string, repoOrURL string) type
 		return types.VersionsResponse{
 			GenericResponse: types.ErrorResponse(err.Error()),
 			Versions:        []types.VersionInfo{},
+			ErrorType:       versionsErrorType(err),
 		}
 	}
 
@@ -93,13 +95,13 @@ func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch GitHub releases for %q: %w", repo, err)
+		return nil, requests.NewAPIFetchError(requests.APISourceGitHub, repo, err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		status := resp.StatusCode
 		resp.Body.Close()
-		return nil, fmt.Errorf("GitHub API returned status %d for %q", status, repo)
+		return nil, requests.NewAPIStatusError(requests.APISourceGitHub, status, repo)
 	}
 	defer resp.Body.Close()
 
@@ -245,6 +247,22 @@ func cloneVersionInfos(input []types.VersionInfo) []types.VersionInfo {
 	output := make([]types.VersionInfo, len(input))
 	copy(output, input)
 	return output
+}
+
+func versionsErrorType(err error) types.VersionsErrorType {
+	var statusErr requests.APIStatusError
+	if errors.As(err, &statusErr) && statusErr.Source == requests.APISourceGitHub {
+		if requests.IsAuthStatus(statusErr.StatusCode) {
+			return types.VersionsErrorGitHubAuth
+		}
+		return ""
+	}
+
+	var fetchErr requests.APIFetchError
+	if errors.As(err, &fetchErr) && fetchErr.Source == requests.APISourceGitHub {
+		return types.VersionsErrorGitHubFetch
+	}
+	return ""
 }
 
 func (r *Registry) getCachedVersions(key string) ([]types.VersionInfo, bool) {

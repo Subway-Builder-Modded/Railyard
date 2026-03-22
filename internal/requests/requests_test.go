@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"railyard/internal/testutil"
+	"railyard/internal/types"
 
 	"github.com/stretchr/testify/require"
 )
@@ -103,4 +104,10 @@ func TestGetWithGithubTokenSkipsAuthForNonGitHubHostWhenNotForced(t *testing.T) 
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Empty(t, seenAuth)
+}
+
+func TestAPIStatusErrorIncludesDocsForGitHubForbidden(t *testing.T) {
+	err := NewAPIStatusError(APISourceGitHub, http.StatusForbidden, "owner/repo")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), types.GitHubTokenDocsURL)
 }
