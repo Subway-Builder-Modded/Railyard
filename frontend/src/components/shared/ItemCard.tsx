@@ -149,16 +149,22 @@ function ItemBadges({
   align = 'right',
   compact = false,
   wrap = false,
+  fixedVisibleCount,
 }: {
   badges: string[];
   align?: 'left' | 'right';
   compact?: boolean;
   wrap?: boolean;
+  fixedVisibleCount?: number;
 }) {
   if (badges.length === 0) return null;
 
   const preferredVisibleCount = 3;
   const fallbackVisibleCount = 2;
+  const resolvedPreferredCount =
+    fixedVisibleCount === undefined
+      ? preferredVisibleCount
+      : Math.max(1, fixedVisibleCount);
 
   const justifyClass = align === 'left' ? 'justify-start' : 'justify-end';
   const badgeClassName = compact
@@ -166,8 +172,8 @@ function ItemBadges({
     : 'text-xs px-1.5 py-0';
 
   const badgesPreferred = useMemo(
-    () => badges.slice(0, preferredVisibleCount),
-    [badges],
+    () => badges.slice(0, resolvedPreferredCount),
+    [badges, resolvedPreferredCount],
   );
 
   if (wrap) {
@@ -191,10 +197,15 @@ function ItemBadges({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
   const [visibleCount, setVisibleCount] = useState(() =>
-    Math.min(preferredVisibleCount, badgesPreferred.length),
+    Math.min(resolvedPreferredCount, badgesPreferred.length),
   );
 
   useLayoutEffect(() => {
+    if (fixedVisibleCount !== undefined) {
+      setVisibleCount(Math.min(resolvedPreferredCount, badgesPreferred.length));
+      return;
+    }
+
     const container = containerRef.current;
     const measure = measureRef.current;
     if (!container || !measure) return;
@@ -237,21 +248,18 @@ function ItemBadges({
         return totalWidth <= availableWidth;
       };
 
-      const maxPossible = Math.min(preferredVisibleCount, badgeWidths.length);
+      const maxPossible = Math.min(resolvedPreferredCount, badgeWidths.length);
       const preferred = maxPossible;
       const fallback = Math.min(fallbackVisibleCount, maxPossible);
 
-      if (fits(preferred)) {
+      if (preferred <= fallback || fits(preferred)) {
         setVisibleCount(preferred);
         return;
       }
 
-      if (fits(fallback)) {
-        setVisibleCount(fallback);
-        return;
-      }
-
-      setVisibleCount(Math.min(1, maxPossible));
+      // Product behavior: once three badges no longer fit, we collapse early to
+      // two visible badges rather than cascading down to a single badge.
+      setVisibleCount(Math.max(1, fallback));
     };
 
     update();
@@ -259,7 +267,7 @@ function ItemBadges({
     const ro = new ResizeObserver(() => update());
     ro.observe(container);
     return () => ro.disconnect();
-  }, [badges.length, badgesPreferred]);
+  }, [badges.length, badgesPreferred, fixedVisibleCount, resolvedPreferredCount]);
 
   const overflowCount = Math.max(0, badges.length - visibleCount);
 
@@ -391,6 +399,7 @@ export function ItemCard({
                   badges={presentation.badges}
                   align="left"
                   wrap={false}
+                  fixedVisibleCount={3}
                 />
               </div>
             </div>
