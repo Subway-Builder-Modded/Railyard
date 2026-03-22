@@ -1,4 +1,4 @@
-import { SearchX, Compass } from 'lucide-react';
+import { Compass, SearchX } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 
 import { SearchBar } from '@/components/search/SearchBar';

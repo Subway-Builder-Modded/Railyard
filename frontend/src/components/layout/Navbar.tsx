@@ -1,11 +1,11 @@
 import {
-  Inbox,
   Compass,
+  Inbox,
   Play,
   RefreshCw,
-  Terminal,
   Settings,
   Square,
+  Terminal,
   TrainTrack,
 } from 'lucide-react';
 import { type ComponentType, useEffect, useRef, useState } from 'react';
