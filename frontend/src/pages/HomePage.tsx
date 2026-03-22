@@ -1,10 +1,11 @@
 import {
   ArrowRight,
+  CheckCircle2,
   CircleFadingArrowUp,
   Compass,
   Download,
-  Inbox,
   History,
+  Inbox,
   MapPin,
   Package,
   RefreshCw,
@@ -59,6 +60,16 @@ export function HomePage() {
     useState<PendingUpdatesByKey>({});
   const [updatesLoading, setUpdatesLoading] = useState(false);
   const [updatingAll, setUpdatingAll] = useState(false);
+  const [lastPendingUpdateEntries, setLastPendingUpdateEntries] = useState<
+    Array<{
+      key: string;
+      id: string;
+      type: AssetType;
+      name: string;
+      currentVersion: string;
+      latestVersion: string;
+    }>
+  >([]);
 
   const installedCount = installedMods.length + installedMaps.length;
 
@@ -177,10 +188,26 @@ export function HomePage() {
     [isOperating, pendingUpdateEntries, updatingAll],
   );
 
+  useEffect(() => {
+    if (pendingUpdateEntries.length > 0) {
+      setLastPendingUpdateEntries(pendingUpdateEntries);
+    }
+  }, [pendingUpdateEntries]);
+
+  const displayedPendingUpdateEntries =
+    hasActiveUpdateOperation && pendingUpdateEntries.length === 0
+      ? lastPendingUpdateEntries
+      : pendingUpdateEntries;
   const showEmptyUpdatesState =
-    pendingUpdateEntries.length === 0 && !hasActiveUpdateOperation;
-  const emptyUpdatesMessage ="Available updates for installed content will appear here.";
-  const EmptyUpdatesIcon = CircleFadingArrowUp;
+    displayedPendingUpdateEntries.length === 0 &&
+    !updatesLoading &&
+    !hasActiveUpdateOperation;
+  const emptyUpdatesMessage =
+    installedCount === 0
+      ? 'Available updates for installed content will appear here.'
+      : 'All installed content is up to date.';
+  const EmptyUpdatesIcon =
+    installedCount === 0 ? CircleFadingArrowUp : CheckCircle2;
 
   return (
     <div className="flex flex-col gap-[clamp(1.75rem,3vw,2.5rem)]">
@@ -263,12 +290,12 @@ export function HomePage() {
                 />
                 <p className="text-sm text-muted-foreground">{emptyUpdatesMessage}</p>
               </div>
-            ) : updatesLoading ? (
+            ) : updatesLoading && displayedPendingUpdateEntries.length === 0 ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={i} className="h-[2.6rem] w-full rounded-lg" />
               ))
             ) : (
-              pendingUpdateEntries.map(
+              displayedPendingUpdateEntries.map(
                 ({ key, id, type, name, currentVersion, latestVersion }) => (
                   <PendingUpdateRow
                     key={key}
