@@ -39,11 +39,7 @@ type SearchableItem = {
 };
 
 function normalizeForSearch(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
+  return value.toLowerCase().trim();
 }
 
 const wordSegmenter = new Intl.Segmenter(undefined, {
@@ -92,8 +88,8 @@ function matchesQueryWithFuse(
   items: TaggedItem[],
   query: string,
 ): TaggedItem[] {
-  const queryTokens = tokenizeForSearch(query);
-  if (queryTokens.length === 0) {
+  const normalizedQuery = normalizeForSearch(query);
+  if (!normalizedQuery) {
     return items;
   }
 
@@ -102,13 +98,7 @@ function matchesQueryWithFuse(
     tokens: buildSearchTokens(entry),
   }));
   const fuse = new Fuse(searchable, FUSE_SEARCH_OPTIONS);
-  const andQuery = {
-    $and: queryTokens.map((token) => ({
-      tokens: `^${token}`,
-    })),
-  };
-
-  return fuse.search(andQuery).map(({ item }) => item.entry);
+  return fuse.search(normalizedQuery).map(({ item }) => item.entry);
 }
 
 export function matchesSingleValueFilter(
