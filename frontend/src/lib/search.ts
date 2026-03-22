@@ -9,11 +9,12 @@ export const SEARCH_FILTER_EMPTY_LABELS = {
 export const MAX_CARD_BADGES = 3;
 
 export const FUSE_SEARCH_OPTIONS = {
-  keys: ['searchText'],
-  threshold: 0.35,
+  keys: ['tokens'] as string[],
+  threshold: 0,
   ignoreLocation: true,
   ignoreFieldNorm: true,
-  minMatchCharLength: 1,
+  minMatchCharLength: 2,
   shouldSort: false,
   ignoreDiacritics: true,
+  useExtendedSearch: true,
 };

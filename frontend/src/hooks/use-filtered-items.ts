@@ -22,11 +22,6 @@ interface UseFilteredItemsParams {
   mapDownloadTotals: Record<string, number>;
 }
 
-type SearchableItem = {
-  entry: TaggedItem;
-  searchText: string;
-};
-
 export interface TaggedItemFilterState {
   query: string;
   type: 'mod' | 'map';
@@ -38,7 +33,26 @@ export interface TaggedItemFilterState {
   map: SearchFilterState['map'];
 }
 
-export function buildSearchText(item: TaggedItem): string {
+type SearchableItem = {
+  entry: TaggedItem;
+  tokens: string[];
+};
+
+function normalizeForSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function tokenizeForSearch(value: string): string[] {
+  return normalizeForSearch(value)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+function buildSearchTokens(item: TaggedItem): string[] {
   const base = item.item;
   const values: string[] = [
     base.name ?? '',
@@ -46,9 +60,7 @@ export function buildSearchText(item: TaggedItem): string {
     base.description ?? '',
   ];
 
-  if (item.type === 'mod') {
-    values.push(...(base.tags ?? []));
-  } else {
+  if (item.type === 'map') {
     const map = base as types.MapManifest;
     values.push(
       map.city_code ?? '',
@@ -60,7 +72,30 @@ export function buildSearchText(item: TaggedItem): string {
     );
   }
 
-  return values.filter(Boolean).join(' ');
+  return values.flatMap((value) => tokenizeForSearch(value));
+}
+
+function matchesQueryWithFuse(
+  items: TaggedItem[],
+  query: string,
+): TaggedItem[] {
+  const queryTokens = tokenizeForSearch(query);
+  if (queryTokens.length === 0) {
+    return items;
+  }
+
+  const searchable: SearchableItem[] = items.map((entry) => ({
+    entry,
+    tokens: buildSearchTokens(entry),
+  }));
+  const fuse = new Fuse(searchable, FUSE_SEARCH_OPTIONS);
+  const andQuery = {
+    $and: queryTokens.map((token) => ({
+      tokens: `^${token}`,
+    })),
+  };
+
+  return fuse.search(andQuery).map(({ item }) => item.entry);
 }
 
 export function matchesSingleValueFilter(
@@ -142,14 +177,7 @@ export function filterAndSortTaggedItems<T extends TaggedItem>(
   result = result.filter((i) => matchesMapAttributeFilters(i, filters.map));
   const query = filters.query.trim();
   if (query) {
-    const searchable: SearchableItem[] = result.map((entry) => ({
-      entry,
-      searchText: buildSearchText(entry),
-    }));
-
-    const fuse = new Fuse(searchable, FUSE_SEARCH_OPTIONS);
-
-    result = fuse.search(query).map(({ item }) => item.entry as T);
+    result = matchesQueryWithFuse(result, query) as T[];
   }
 
   if (filters.sort.field === 'random') {
