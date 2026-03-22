@@ -57,6 +57,13 @@ export function compareItems(
   switch (sort.field) {
     case 'name':
       return compareText(a.item.name ?? '', b.item.name ?? '', sort.direction);
+    case 'city_code': {
+      const cityCodeA =
+        a.type === 'map' ? ((a.item as types.MapManifest).city_code ?? '') : '';
+      const cityCodeB =
+        b.type === 'map' ? ((b.item as types.MapManifest).city_code ?? '') : '';
+      return compareText(cityCodeA, cityCodeB, sort.direction);
+    }
     case 'country': {
       const countryA =
         a.type === 'map' ? ((a.item as types.MapManifest).country ?? '') : '';

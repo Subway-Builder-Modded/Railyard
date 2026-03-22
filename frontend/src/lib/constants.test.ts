@@ -42,11 +42,13 @@ describe('sort helpers', () => {
     expect(modOptions).toHaveLength(9);
     expect(modOptions.map((opt) => opt.value)).not.toContain('population:asc');
     expect(modOptions.map((opt) => opt.value)).not.toContain('population:desc');
+    expect(modOptions.map((opt) => opt.value)).not.toContain('city_code:asc');
+    expect(modOptions.map((opt) => opt.value)).not.toContain('city_code:desc');
     expect(modOptions.map((opt) => opt.value)).toContain('last_updated:asc');
     expect(modOptions.map((opt) => opt.value)).toContain('last_updated:desc');
     expect(modOptions.map((opt) => opt.value)).toContain('random:asc');
     expect(modOptions.map((opt) => opt.value)).not.toContain('random:desc');
-    expect(mapOptions).toHaveLength(13);
+    expect(mapOptions).toHaveLength(15);
     expect(mapOptions).toEqual(SORT_OPTIONS);
   });
 
@@ -62,6 +64,9 @@ describe('sort helpers', () => {
     );
     expect(labels.indexOf('Country (A-Z)')).toBeLessThan(
       labels.indexOf('Country (Z-A)'),
+    );
+    expect(labels.indexOf('City Code (A-Z)')).toBeLessThan(
+      labels.indexOf('City Code (Z-A)'),
     );
   });
 

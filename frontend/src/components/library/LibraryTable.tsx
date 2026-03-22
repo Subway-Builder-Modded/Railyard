@@ -25,7 +25,7 @@ import {
 import { type InstalledTaggedItem } from '@/hooks/use-filtered-installed-items';
 import type { AssetType } from '@/lib/asset-types';
 import { assetTypeToListingPath } from '@/lib/asset-types';
-import type { SortState } from '@/lib/constants';
+import type { SortDirection, SortState } from '@/lib/constants';
 import { toggleSortField } from '@/lib/constants';
 import { getCountryFlagIcon } from '@/lib/flags';
 import { formatSourceQuality } from '@/lib/map-filter-values';
@@ -49,6 +49,40 @@ interface LibraryTableProps {
   onRefreshPendingUpdates: () => Promise<void>;
   sort: SortState;
   onSortChange: (sort: SortState) => void;
+}
+
+interface SortableHeaderButtonProps {
+  label: string;
+  isActive: boolean;
+  direction: SortDirection;
+  onClick: () => void;
+}
+
+function SortableHeaderButton({
+  label,
+  isActive,
+  direction,
+  onClick,
+}: SortableHeaderButtonProps) {
+  const labelForAria = label.toLowerCase();
+  const SortIcon = isActive && direction === 'asc' ? ChevronUp : ChevronDown;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 text-foreground font-medium hover:text-foreground/80 transition-colors"
+      aria-label={
+        isActive && direction === 'asc'
+          ? `Sort ${labelForAria} descending`
+          : `Sort ${labelForAria} ascending`
+      }
+    >
+      <span>{label}</span>
+      <SortIcon
+        className={cn('h-4 w-4', isActive ? 'opacity-100' : 'opacity-40')}
+      />
+    </button>
+  );
 }
 
 function composeItemKey(item: InstalledTaggedItem): string {
@@ -75,7 +109,7 @@ export function LibraryTable({
 }: LibraryTableProps) {
   const { selectedIds, toggleSelected, selectAll, clearSelection } =
     useLibraryStore();
-  const showCountryColumn = activeType === 'map';
+  const showMapColumns = activeType === 'map';
 
   const allKeys = items.map(composeItemKey);
   const allSelected =
@@ -91,18 +125,15 @@ export function LibraryTable({
   };
 
   const isNameSorted = sort.field === 'name';
-  const NameSortIcon =
-    isNameSorted && sort.direction === 'asc' ? ChevronUp : ChevronDown;
+  const isCityCodeSorted = sort.field === 'city_code';
   const isCountrySorted = sort.field === 'country';
-  const CountrySortIcon =
-    isCountrySorted && sort.direction === 'asc' ? ChevronUp : ChevronDown;
 
   return (
     <div className="rounded-md border border-border">
-      <Table>
+      <Table className="table-auto">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead className="w-10">
+            <TableHead>
               <Checkbox
                 checked={
                   allSelected ? true : someSelected ? 'indeterminate' : false
@@ -112,49 +143,38 @@ export function LibraryTable({
               />
             </TableHead>
             <TableHead>
-              <button
-                type="button"
+              <SortableHeaderButton
+                label="Name"
+                isActive={isNameSorted}
+                direction={sort.direction}
                 onClick={() => onSortChange(toggleSortField(sort, 'name'))}
-                className="inline-flex items-center gap-1 text-foreground font-medium hover:text-foreground/80 transition-colors"
-                aria-label={
-                  isNameSorted && sort.direction === 'asc'
-                    ? 'Sort name descending'
-                    : 'Sort name ascending'
-                }
-              >
-                <span>Name</span>
-                <NameSortIcon
-                  className={cn(
-                    'h-4 w-4',
-                    isNameSorted ? 'opacity-100' : 'opacity-40',
-                  )}
-                />
-              </button>
+              />
             </TableHead>
-            {showCountryColumn && (
-              <TableHead className="w-32 text-center">
-                <button
-                  type="button"
-                  onClick={() => onSortChange(toggleSortField(sort, 'country'))}
-                  className="inline-flex items-center gap-1 text-foreground font-medium hover:text-foreground/80 transition-colors"
-                  aria-label={
-                    isCountrySorted && sort.direction === 'asc'
-                      ? 'Sort country descending'
-                      : 'Sort country ascending'
+            {showMapColumns && (
+              <TableHead className="text-center">
+                <SortableHeaderButton
+                  label="City Code"
+                  isActive={isCityCodeSorted}
+                  direction={sort.direction}
+                  onClick={() =>
+                    onSortChange(toggleSortField(sort, 'city_code'))
                   }
-                >
-                  <span>Country</span>
-                  <CountrySortIcon
-                    className={cn(
-                      'h-4 w-4',
-                      isCountrySorted ? 'opacity-100' : 'opacity-40',
-                    )}
-                  />
-                </button>
+                />
               </TableHead>
             )}
-            <TableHead className="w-28 text-center">Version</TableHead>
-            <TableHead className="w-24"></TableHead>
+            <TableHead>Tags</TableHead>
+            {showMapColumns && (
+              <TableHead className="text-center">
+                <SortableHeaderButton
+                  label="Country"
+                  isActive={isCountrySorted}
+                  direction={sort.direction}
+                  onClick={() => onSortChange(toggleSortField(sort, 'country'))}
+                />
+              </TableHead>
+            )}
+            <TableHead className="text-center">Version</TableHead>
+            <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -168,7 +188,7 @@ export function LibraryTable({
                 entry={entry}
                 pendingUpdatesByKey={pendingUpdatesByKey}
                 isSelected={isSelected}
-                showCountryColumn={showCountryColumn}
+                showMapColumns={showMapColumns}
                 onRefreshPendingUpdates={onRefreshPendingUpdates}
                 onToggleSelect={() => toggleSelected(key)}
               />
@@ -184,7 +204,7 @@ interface LibraryTableRowProps {
   entry: InstalledTaggedItem;
   pendingUpdatesByKey: PendingUpdatesByKey;
   isSelected: boolean;
-  showCountryColumn: boolean;
+  showMapColumns: boolean;
   onRefreshPendingUpdates: () => Promise<void>;
   onToggleSelect: () => void;
 }
@@ -193,7 +213,7 @@ function LibraryTableRow({
   entry,
   pendingUpdatesByKey,
   isSelected,
-  showCountryColumn,
+  showMapColumns,
   onRefreshPendingUpdates,
   onToggleSelect,
 }: LibraryTableRowProps) {
@@ -217,6 +237,7 @@ function LibraryTableRow({
       ].filter((value): value is string => Boolean(value))
     : [];
   const badges = isMap ? mapBadges : (entry.item.tags ?? []);
+  const mapCityCode = map?.city_code?.trim().toUpperCase() ?? '';
   const mapCountry = map?.country?.trim().toUpperCase() ?? '';
   const CountryFlag = isMap ? getCountryFlagIcon(mapCountry) : null;
   const pendingUpdate = isLocalEntry
@@ -274,61 +295,70 @@ function LibraryTableRow({
 
         <TableCell>
           <div className="min-w-0">
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Link
-                    href={`/project/${assetTypeToListingPath(entry.type)}/${entry.item.id}`}
-                    className="font-medium text-sm text-foreground hover:underline truncate"
-                  >
-                    {entry.item.name}
-                  </Link>
-                </div>
-                <p className="text-xs text-muted-foreground truncate">
-                  by {entry.item.author}
-                </p>
-              </div>
-
-              {/* Show a large LOCAL badge for entries not downloaded from the registry */}
-              {isLocalEntry ? (
-                <div className="shrink-0 flex items-center">
-                  <Badge
-                    variant="secondary"
-                    className="text-sm font-semibold uppercase tracking-wide px-2.5 py-0.5"
-                  >
-                    Local
-                  </Badge>
-                </div>
-              ) : null}
-
-              {!isLocalEntry && badges.length > 0 && (
-                <div
-                  className={cn(
-                    'shrink-0 flex items-center gap-1 self-center justify-start text-left',
-                    isMap && 'ml-1',
-                  )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Link
+                  href={`/project/${assetTypeToListingPath(entry.type)}/${entry.item.id}`}
+                  className="font-medium text-sm text-foreground hover:underline truncate"
                 >
-                  {badges.slice(0, MAX_CARD_BADGES).map((badge) => (
-                    <Badge
-                      key={badge}
-                      variant="secondary"
-                      className="text-xs px-1.5 py-0"
-                    >
-                      {badge}
-                    </Badge>
-                  ))}
-                  {badges.length > MAX_CARD_BADGES && (
-                    <Badge variant="outline" className="text-xs px-1.5 py-0">
-                      +{badges.length - MAX_CARD_BADGES}
-                    </Badge>
-                  )}
-                </div>
-              )}
+                  {entry.item.name}
+                </Link>
+              </div>
+              <p className="text-xs text-muted-foreground truncate">
+                by {entry.item.author}
+              </p>
             </div>
           </div>
         </TableCell>
 
-        {showCountryColumn && (
+        {showMapColumns && (
+          <TableCell className="align-middle text-center">
+            {isMap && mapCityCode ? (
+              <span className="font-mono text-sm font-bold text-foreground">
+                {mapCityCode}
+              </span>
+            ) : (
+              <span className="block h-5" aria-hidden="true" />
+            )}
+          </TableCell>
+        )}
+
+        <TableCell className="align-middle">
+          {isLocalEntry ? (
+            <Badge
+              variant="secondary"
+              className="text-sm font-semibold uppercase tracking-wide px-2.5 py-0.5"
+            >
+              Local
+            </Badge>
+          ) : badges.length > 0 ? (
+            <div
+              className={cn(
+                'flex flex-wrap items-center gap-1 self-center justify-start text-left',
+                isMap && 'ml-1',
+              )}
+            >
+              {badges.slice(0, MAX_CARD_BADGES).map((badge) => (
+                <Badge
+                  key={badge}
+                  variant="secondary"
+                  className="text-xs px-1.5 py-0"
+                >
+                  {badge}
+                </Badge>
+              ))}
+              {badges.length > MAX_CARD_BADGES && (
+                <Badge variant="outline" className="text-xs px-1.5 py-0">
+                  +{badges.length - MAX_CARD_BADGES}
+                </Badge>
+              )}
+            </div>
+          ) : (
+            <span className="block h-5" aria-hidden="true" />
+          )}
+        </TableCell>
+
+        {showMapColumns && (
           <TableCell className="align-middle text-center">
             {isMap && mapCountry ? (
               <div className="mx-auto flex items-center justify-center gap-1.5 whitespace-nowrap">

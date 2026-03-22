@@ -5,6 +5,7 @@ export type PerPage = (typeof PER_PAGE_OPTIONS)[number];
 
 export type SortField =
   | 'name'
+  | 'city_code'
   | 'country'
   | 'author'
   | 'population'
@@ -31,6 +32,7 @@ const SORT_FIELDS = [
   'last_updated',
   'downloads',
   'population',
+  'city_code',
   'country',
   'name',
   'author',
@@ -40,7 +42,12 @@ const DESC_ASC_DIRECTIONS = ['desc', 'asc'] as const;
 
 function directionsForField(field: SortField): readonly SortDirection[] {
   if (field === 'random') return ['asc'] as const;
-  if (field === 'name' || field === 'country' || field === 'author') {
+  if (
+    field === 'name' ||
+    field === 'city_code' ||
+    field === 'country' ||
+    field === 'author'
+  ) {
     return ['asc', 'desc'] as const;
   }
   return DESC_ASC_DIRECTIONS;
@@ -50,6 +57,8 @@ function sortOptionLabel(field: SortField, direction: SortDirection): string {
   switch (field) {
     case 'name':
       return direction === 'asc' ? 'Name (A-Z)' : 'Name (Z-A)';
+    case 'city_code':
+      return direction === 'asc' ? 'City Code (A-Z)' : 'City Code (Z-A)';
     case 'country':
       return direction === 'asc' ? 'Country (A-Z)' : 'Country (Z-A)';
     case 'author':
@@ -76,7 +85,8 @@ export const SORT_OPTIONS = SORT_FIELDS.flatMap((field) =>
     value: `${field}:${direction}` as SortKey,
     label: sortOptionLabel(field, direction),
     sort: { field, direction },
-    mapOnly: field === 'population' || field === 'country',
+    mapOnly:
+      field === 'population' || field === 'city_code' || field === 'country',
   })),
 ) satisfies SortOption[];
 
