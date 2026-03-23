@@ -8,12 +8,7 @@ import {
   Tag,
   X,
 } from 'lucide-react';
-import {
-  type ComponentType,
-  type Dispatch,
-  type SetStateAction,
-  useState,
-} from 'react';
+import { type ComponentType, type Dispatch, type SetStateAction, useState } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
@@ -27,16 +22,20 @@ import {
 } from '@/lib/map-filter-values';
 import { SEARCH_FILTER_EMPTY_LABELS } from '@/lib/search';
 import { cn } from '@/lib/utils';
-import { type BrowseFilterState } from '@/stores/browse-store';
+import type { AssetQueryFilters } from '@/stores/asset-query-filter-store';
 
-const FILTER_SECTION_TITLE_CLASS =
+// ─── Shared style constants ────────────────────────────────────────────────────
+
+export const FILTER_SECTION_TITLE_CLASS =
   'text-xs font-semibold uppercase tracking-widest text-muted-foreground';
-const FILTER_COUNT_BADGE_CLASS =
+export const FILTER_COUNT_BADGE_CLASS =
   'inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-border/65 bg-muted/45 px-1.5 text-[0.65rem] font-semibold tabular-nums text-muted-foreground transition-colors';
 
-interface SidebarFiltersProps {
-  filters: BrowseFilterState;
-  onFiltersChange: Dispatch<SetStateAction<BrowseFilterState>>;
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+export interface SidebarFiltersProps {
+  filters: AssetQueryFilters;
+  onFiltersChange: Dispatch<SetStateAction<AssetQueryFilters>>;
   onTypeChange: (type: AssetType) => void;
   availableTags: string[];
   availableSpecialDemand: string[];
@@ -49,10 +48,14 @@ interface SidebarFiltersProps {
   mapCount: number;
 }
 
+// ─── Type selector ─────────────────────────────────────────────────────────────
+
 const typeOptions = [
   { value: 'map' as const, label: 'Maps', icon: MapPin },
   { value: 'mod' as const, label: 'Mods', icon: Package },
 ];
+
+// ─── Main component ────────────────────────────────────────────────────────────
 
 export function SidebarFilters({
   filters,
@@ -73,10 +76,7 @@ export function SidebarFilters({
   return (
     <div className="space-y-5">
       <div>
-        <p
-          className={cn(FILTER_SECTION_TITLE_CLASS, 'mb-1 px-1 py-1.5')}
-          aria-hidden
-        >
+        <p className={cn(FILTER_SECTION_TITLE_CLASS, 'mb-1 px-1 py-1.5')} aria-hidden>
           Type
         </p>
         <nav className="space-y-0.5" aria-label="Content type filter">
@@ -97,9 +97,7 @@ export function SidebarFilters({
                     'text-[clamp(0.78rem,0.9vw,0.86rem)] font-semibold',
                     'transition-all duration-150',
                     'group-hover:bg-accent/45 group-hover:text-primary',
-                    isCurrent
-                      ? 'bg-accent/45 text-primary'
-                      : 'text-muted-foreground',
+                    isCurrent ? 'bg-accent/45 text-primary' : 'text-muted-foreground',
                   )}
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0 transition-colors" />
@@ -115,7 +113,6 @@ export function SidebarFilters({
                     {counts[value]}
                   </span>
                 </span>
-
                 {isCurrent && (
                   <span
                     aria-hidden
@@ -138,10 +135,7 @@ export function SidebarFilters({
             counts={modTagCounts}
             selected={filters.mod.tags}
             onChange={(values) =>
-              onFiltersChange((prev) => ({
-                ...prev,
-                mod: { ...prev.mod, tags: values },
-              }))
+              onFiltersChange((prev) => ({ ...prev, mod: { ...prev.mod, tags: values } }))
             }
             emptyLabel={SEARCH_FILTER_EMPTY_LABELS.tags}
           />
@@ -158,10 +152,7 @@ export function SidebarFilters({
             counts={mapLocationCounts}
             selected={filters.map.locations}
             onChange={(values) =>
-              onFiltersChange((prev) => ({
-                ...prev,
-                map: { ...prev.map, locations: values },
-              }))
+              onFiltersChange((prev) => ({ ...prev, map: { ...prev.map, locations: values } }))
             }
           />
           <ChecklistFilterSection
@@ -211,104 +202,7 @@ export function SidebarFilters({
   );
 }
 
-interface FilterSectionProperties {
-  title: string;
-  values: readonly string[];
-  counts: Record<string, number>;
-  selected: string[];
-  icon: ComponentType<{ className?: string }>;
-  onChange: (values: string[]) => void;
-  emptyLabel?: string;
-  formatValue?: (value: string) => string;
-}
-
-function ChecklistFilterSection({
-  title,
-  icon: Icon,
-  values,
-  counts,
-  selected,
-  onChange,
-  emptyLabel = SEARCH_FILTER_EMPTY_LABELS.generic,
-  formatValue = (value) => value,
-}: FilterSectionProperties) {
-  const [open, setOpen] = useState(true);
-  const visibleValues = filterVisibleListingValues(values, counts, selected);
-
-  const toggle = (value: string) => {
-    onChange(
-      selected.includes(value)
-        ? selected.filter((v) => v !== value)
-        : [...selected, value],
-    );
-  };
-
-  return (
-    <div>
-      <CollapsibleFilterHeader
-        title={title}
-        icon={Icon}
-        open={open}
-        onToggle={() => setOpen((prev) => !prev)}
-      />
-      <div
-        className={cn(
-          'grid transition-all duration-200 ease-out',
-          open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
-        )}
-      >
-        <div className="min-h-0 overflow-hidden">
-          {visibleValues.length === 0 ? (
-            <p className="px-1 py-1 text-xs text-muted-foreground">
-              {emptyLabel}
-            </p>
-          ) : (
-            <div className="space-y-1 pt-1">
-              {visibleValues.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => toggle(value)}
-                  className={cn(
-                    'flex w-full items-center justify-between rounded-md px-2 py-1 text-sm font-normal',
-                    'transition-colors',
-                    selected.includes(value)
-                      ? 'bg-muted/60 text-foreground'
-                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                  )}
-                >
-                  <span className="flex items-center gap-2">
-                    <Checkbox
-                      checked={selected.includes(value)}
-                      aria-hidden="true"
-                    />
-                    <span>{formatValue(value)}</span>
-                  </span>
-                  <span className={FILTER_COUNT_BADGE_CLASS}>
-                    {counts[value] ?? 0}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {selected.length > 0 && (
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={() => onChange([])}
-                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border/60 px-2 py-0.5 text-[0.68rem] font-medium leading-none text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
-              >
-                <X className="h-2.5 w-2.5 shrink-0" />
-                <span>Clear</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+// ─── Collapsible section header ────────────────────────────────────────────────
 
 interface CollapsibleFilterHeaderProps {
   title: string;
@@ -345,5 +239,97 @@ function CollapsibleFilterHeader({
         )}
       />
     </button>
+  );
+}
+
+// ─── Checklist filter section ──────────────────────────────────────────────────
+
+interface FilterSectionProperties {
+  title: string;
+  values: readonly string[];
+  counts: Record<string, number>;
+  selected: string[];
+  icon: ComponentType<{ className?: string }>;
+  onChange: (values: string[]) => void;
+  emptyLabel?: string;
+  formatValue?: (value: string) => string;
+}
+
+function ChecklistFilterSection({
+  title,
+  icon: Icon,
+  values,
+  counts,
+  selected,
+  onChange,
+  emptyLabel = SEARCH_FILTER_EMPTY_LABELS.generic,
+  formatValue = (value) => value,
+}: FilterSectionProperties) {
+  const [open, setOpen] = useState(true);
+  const visibleValues = filterVisibleListingValues(values, counts, selected);
+
+  const toggle = (value: string) => {
+    onChange(
+      selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value],
+    );
+  };
+
+  return (
+    <div>
+      <CollapsibleFilterHeader
+        title={title}
+        icon={Icon}
+        open={open}
+        onToggle={() => setOpen((prev) => !prev)}
+      />
+      <div
+        className={cn(
+          'grid transition-all duration-200 ease-out',
+          open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+        )}
+      >
+        <div className="min-h-0 overflow-hidden">
+          {visibleValues.length === 0 ? (
+            <p className="px-1 py-1 text-xs text-muted-foreground">{emptyLabel}</p>
+          ) : (
+            <div className="space-y-1 pt-1">
+              {visibleValues.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => toggle(value)}
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-md px-2 py-1 text-sm font-normal',
+                    'transition-colors',
+                    selected.includes(value)
+                      ? 'bg-muted/60 text-foreground'
+                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Checkbox checked={selected.includes(value)} aria-hidden="true" />
+                    <span>{formatValue(value)}</span>
+                  </span>
+                  <span className={FILTER_COUNT_BADGE_CLASS}>{counts[value] ?? 0}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {selected.length > 0 && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border/60 px-2 py-0.5 text-[0.68rem] font-medium leading-none text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+              >
+                <X className="h-2.5 w-2.5 shrink-0" />
+                <span>Clear</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

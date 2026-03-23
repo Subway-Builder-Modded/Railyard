@@ -10,6 +10,8 @@ interface GalleryImageProps {
   id: string;
   imagePath?: string;
   className?: string;
+  /** Override the fallback icon size. Defaults to `h-12 w-12`. */
+  fallbackIconClassName?: string;
 }
 
 export function GalleryImage({
@@ -17,6 +19,7 @@ export function GalleryImage({
   id,
   imagePath,
   className,
+  fallbackIconClassName = 'h-12 w-12',
 }: GalleryImageProps) {
   const { imageUrl, loading, error } = useGalleryImage(type, id, imagePath);
   const FallbackIcon = type === 'mod' ? Package : MapPin;
@@ -33,7 +36,7 @@ export function GalleryImage({
           className,
         )}
       >
-        <FallbackIcon className="h-12 w-12 text-muted-foreground" />
+        <FallbackIcon className={cn('text-muted-foreground', fallbackIconClassName)} />
       </div>
     );
   }

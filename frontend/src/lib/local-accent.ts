@@ -73,3 +73,6 @@ const LOCAL_ACCENT_TONE_CLASSES = buildLocalAccentToneClasses(
 export function getLocalAccentClasses(tone: LocalAccentTone) {
   return LOCAL_ACCENT_TONE_CLASSES[tone];
 }
+
+/** Pre-built accent class map — prefer this over repeated `getLocalAccentClasses()` calls. */
+export const LOCAL_ACCENTS = LOCAL_ACCENT_TONE_CLASSES;

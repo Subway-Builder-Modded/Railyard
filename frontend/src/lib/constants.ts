@@ -151,6 +151,14 @@ export function toggleSortField(
   };
 }
 
+/** Sort fields whose natural ascending order is A→Z (text). Used to invert arrow direction vs numeric fields. */
+export const TEXT_SORT_FIELDS = new Set<SortField>([
+  'name',
+  'city_code',
+  'country',
+  'author',
+]);
+
 export function normalizeSortStateForType(
   state: SortState,
   type: AssetType,
