@@ -1,12 +1,16 @@
+import { CircleFadingArrowUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
-  UpdateConfirmDialog,
+  AssetActionDialog,
   type UpdateConfirmEntry,
-} from '@/components/dialogs/UpdateConfirmDialog';
+} from '@/components/dialogs/AssetActionDialog';
+import { getLocalAccentClasses } from '@/lib/local-accent';
 import type { PendingUpdateTarget } from '@/lib/subscription-updates';
 import { useInstalledStore } from '@/stores/installed-store';
+
+const UPDATE_ACCENT = getLocalAccentClasses('update');
 
 interface UpdateSubscriptionsDialogProps {
   open: boolean;
@@ -79,14 +83,18 @@ export function UpdateSubscriptionsDialog({
   };
 
   return (
-    <UpdateConfirmDialog
+    <AssetActionDialog
       open={open}
       onOpenChange={onOpenChange}
       title={title}
       description={description}
+      icon={CircleFadingArrowUp}
+      iconClassName="h-5 w-5 text-[var(--update-primary)]"
       entries={confirmEntries}
       confirmLabel="Update"
-      confirming={loading}
+      tone="update"
+      confirmClassName={UPDATE_ACCENT.solidButton}
+      loading={loading}
       onConfirm={handleUpdate}
     />
   );

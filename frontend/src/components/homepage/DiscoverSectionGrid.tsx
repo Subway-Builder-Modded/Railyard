@@ -8,7 +8,8 @@ import type { TaggedItem } from '@/lib/tagged-items';
 
 const DISCOVER_CARD_MIN_WIDTH = 220;
 const DISCOVER_CARD_GAP = 12;
-const DISCOVER_MIN_LAYOUT_WIDTH = DISCOVER_CARD_MIN_WIDTH * 2 + DISCOVER_CARD_GAP;
+const DISCOVER_MIN_LAYOUT_WIDTH =
+  DISCOVER_CARD_MIN_WIDTH * 2 + DISCOVER_CARD_GAP;
 
 interface DiscoverSectionGridProps {
   items: TaggedItem[];
@@ -109,10 +110,7 @@ export function DiscoverSectionGrid({
       style={{ gridTemplateColumns: gridColumns }}
     >
       {displayedItems.map(({ type, item }) => (
-        <div
-          key={`${type}-${item.id}`}
-          className="min-w-0"
-        >
+        <div key={`${type}-${item.id}`} className="min-w-0">
           <ItemCard
             type={type}
             item={item}

@@ -46,7 +46,7 @@ export function AppFooter({ version }: AppFooterProps) {
       <div className={cn(APP_SHELL_WIDTH_CLASS, APP_SHELL_PADDING_CLASS)}>
         <div className="border-t border-border/60 pt-4">
           <p className="text-center text-sm font-medium text-muted-foreground">
-            {version || "Unknown Version"}
+            {version || 'Unknown Version'}
           </p>
 
           <div className="mt-2.5">

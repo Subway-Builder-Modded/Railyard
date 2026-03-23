@@ -1,5 +1,5 @@
 import { Loader2, type LucideIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useMemo } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +17,15 @@ import {
 
 import type { types } from '../../../wailsjs/go/models';
 
+const ENTRIES_PREVIEW_LIMIT = 10;
+
+export interface UpdateConfirmEntry {
+  key: string;
+  name: string;
+  currentVersion: string;
+  latestVersion: string;
+}
+
 interface AssetActionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -31,6 +40,7 @@ interface AssetActionDialogProps {
   loading: boolean;
   onConfirm: () => void;
   conflict?: types.MapCodeConflict;
+  entries?: UpdateConfirmEntry[];
   children?: ReactNode;
 }
 
@@ -55,9 +65,20 @@ export function AssetActionDialog({
   loading,
   onConfirm,
   conflict,
+  entries,
   children,
 }: AssetActionDialogProps) {
   const toneStyles = tone ? getLocalAccentClasses(tone) : null;
+
+  const sortedEntries = useMemo(
+    () =>
+      entries
+        ? [...entries].sort((a, b) => a.name.localeCompare(b.name))
+        : [],
+    [entries],
+  );
+  const previewEntries = sortedEntries.slice(0, ENTRIES_PREVIEW_LIMIT);
+  const remainingCount = Math.max(0, sortedEntries.length - previewEntries.length);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -88,6 +109,27 @@ export function AssetActionDialog({
           ) : null}
           {children}
         </DialogHeader>
+
+        {previewEntries.length > 0 && (
+          <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <ul className="space-y-1">
+              {previewEntries.map((entry) => (
+                <li key={entry.key} className="flex gap-2">
+                  <span className="min-w-0 flex-1 truncate">{entry.name}</span>
+                  <span className="font-mono tabular-nums text-foreground">
+                    {entry.currentVersion} &rarr; {entry.latestVersion}
+                  </span>
+                </li>
+              ))}
+              {remainingCount > 0 && (
+                <li className="pt-1 text-right font-medium text-muted-foreground">
+                  +{remainingCount} more
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+
         <DialogFooter>
           <Button
             variant="outline"

@@ -52,21 +52,21 @@ describe('sort helpers', () => {
     expect(mapOptions).toEqual(SORT_OPTIONS);
   });
 
-  it('orders alphabetical sort labels as A-Z before Z-A', () => {
+  it('orders alphabetical sort keys as asc before desc', () => {
     const mapOptions = getSortOptionsForType('map');
-    const labels = mapOptions.map((option) => option.label);
+    const values = mapOptions.map((option) => option.value);
 
-    expect(labels.indexOf('Name (A-Z)')).toBeLessThan(
-      labels.indexOf('Name (Z-A)'),
+    expect(values.indexOf('name:asc')).toBeLessThan(
+      values.indexOf('name:desc'),
     );
-    expect(labels.indexOf('Author (A-Z)')).toBeLessThan(
-      labels.indexOf('Author (Z-A)'),
+    expect(values.indexOf('author:asc')).toBeLessThan(
+      values.indexOf('author:desc'),
     );
-    expect(labels.indexOf('Country (A-Z)')).toBeLessThan(
-      labels.indexOf('Country (Z-A)'),
+    expect(values.indexOf('country:asc')).toBeLessThan(
+      values.indexOf('country:desc'),
     );
-    expect(labels.indexOf('City Code (A-Z)')).toBeLessThan(
-      labels.indexOf('City Code (Z-A)'),
+    expect(values.indexOf('city_code:asc')).toBeLessThan(
+      values.indexOf('city_code:desc'),
     );
   });
 

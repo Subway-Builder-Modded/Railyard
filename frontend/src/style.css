@@ -258,6 +258,22 @@
     height: 0;
     display: none;
   }
+
+  html {
+    overscroll-behavior-y: none;
+  }
+}
+
+.sidebar-scroll {
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 @layer base {

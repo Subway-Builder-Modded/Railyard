@@ -21,15 +21,15 @@ import {
 } from '@/lib/map-filter-values';
 import { SEARCH_FILTER_EMPTY_LABELS } from '@/lib/search';
 import { cn } from '@/lib/utils';
-import type { SearchFilterState } from '@/stores/search-store';
+import type { AssetQueryFilters } from '@/stores/asset-query-filter-store';
 
 const FILTER_SECTION_TITLE_CLASS =
   'text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1';
 const FILTER_SECTION_CLEAR_CLASS = 'mt-2';
 
 interface LibrarySidebarProps {
-  filters: SearchFilterState;
-  onFiltersChange: Dispatch<SetStateAction<SearchFilterState>>;
+  filters: AssetQueryFilters;
+  onFiltersChange: Dispatch<SetStateAction<AssetQueryFilters>>;
   onTypeChange: (type: AssetType) => void;
   modCount: number;
   mapCount: number;

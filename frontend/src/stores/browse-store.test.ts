@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { useSearchStore } from '@/stores/search-store';
+import { useBrowseStore } from '@/stores/browse-store';
 
-describe('useSearchStore per-asset-type state', () => {
+describe('useBrowseStore per-asset-type state', () => {
   beforeEach(() => {
-    useSearchStore.setState({
+    useBrowseStore.setState({
       filters: {
         query: '',
         type: 'map',
@@ -50,7 +50,7 @@ describe('useSearchStore per-asset-type state', () => {
   });
 
   it('restores map/mod scoped sort, filters, random seed, and page when switching type', () => {
-    useSearchStore.setState((state) => ({
+    useBrowseStore.setState((state) => ({
       ...state,
       filters: {
         ...state.filters,
@@ -64,9 +64,9 @@ describe('useSearchStore per-asset-type state', () => {
       page: 3,
     }));
 
-    useSearchStore.getState().setType('mod');
+    useBrowseStore.getState().setType('mod');
 
-    useSearchStore.setState((state) => ({
+    useBrowseStore.setState((state) => ({
       ...state,
       filters: {
         ...state.filters,
@@ -80,8 +80,8 @@ describe('useSearchStore per-asset-type state', () => {
       page: 2,
     }));
 
-    useSearchStore.getState().setType('map');
-    let state = useSearchStore.getState();
+    useBrowseStore.getState().setType('map');
+    let state = useBrowseStore.getState();
     expect(state.filters.type).toBe('map');
     expect(state.filters.sort).toEqual({
       field: 'population',
@@ -91,8 +91,8 @@ describe('useSearchStore per-asset-type state', () => {
     expect(state.filters.map.locations).toEqual(['europe']);
     expect(state.page).toBe(3);
 
-    useSearchStore.getState().setType('mod');
-    state = useSearchStore.getState();
+    useBrowseStore.getState().setType('mod');
+    state = useBrowseStore.getState();
     expect(state.filters.type).toBe('mod');
     expect(state.filters.sort).toEqual({ field: 'author', direction: 'asc' });
     expect(state.filters.randomSeed).toBe(22);
@@ -101,19 +101,19 @@ describe('useSearchStore per-asset-type state', () => {
   });
 
   it('keeps query and perPage shared across type switches', () => {
-    useSearchStore.getState().setFilters((prev) => ({
+    useBrowseStore.getState().setFilters((prev) => ({
       ...prev,
       query: 'metro',
       perPage: 24,
     }));
 
-    useSearchStore.getState().setType('mod');
-    let state = useSearchStore.getState();
+    useBrowseStore.getState().setType('mod');
+    let state = useBrowseStore.getState();
     expect(state.filters.query).toBe('metro');
     expect(state.filters.perPage).toBe(24);
 
-    useSearchStore.getState().setType('map');
-    state = useSearchStore.getState();
+    useBrowseStore.getState().setType('map');
+    state = useBrowseStore.getState();
     expect(state.filters.query).toBe('metro');
     expect(state.filters.perPage).toBe(24);
   });

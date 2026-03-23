@@ -1,10 +1,13 @@
 import { Compass, SearchX } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import {
+  BrowseSidebar,
+  SIDEBAR_CONTENT_OFFSET,
+} from '@/components/browse/BrowseSidebar';
+import { SortSelect } from '@/components/browse/SortSelect';
+import { ViewModeToggle } from '@/components/browse/ViewModeToggle';
 import { SearchBar } from '@/components/search/SearchBar';
-import { SidebarFilters } from '@/components/search/SidebarFilters';
-import { SortSelect } from '@/components/search/SortSelect';
-import { ViewModeToggle } from '@/components/search/ViewModeToggle';
 import { CardSkeletonGrid } from '@/components/shared/CardSkeletonGrid';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
@@ -16,17 +19,18 @@ import { useFilteredItems } from '@/hooks/use-filtered-items';
 import type { AssetType } from '@/lib/asset-types';
 import { buildAssetListingCounts } from '@/lib/listing-counts';
 import { buildSpecialDemandValues } from '@/lib/map-filter-values';
+import { createRandomSeed, useBrowseStore } from '@/stores/browse-store';
 import { useInstalledStore } from '@/stores/installed-store';
 import { useProfileStore } from '@/stores/profile-store';
 import { useRegistryStore } from '@/stores/registry-store';
-import { createRandomSeed } from '@/stores/search-store';
-import { useSearchStore } from '@/stores/search-store';
 
-export function SearchPage() {
-  const viewMode = useSearchStore((s) => s.viewMode);
-  const setViewMode = useSearchStore((s) => s.setViewMode);
-  const initializeViewMode = useSearchStore((s) => s.initializeViewMode);
-  const defaultSearchViewMode = useProfileStore((s) => s.searchViewMode)();
+export function BrowsePage() {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const viewMode = useBrowseStore((s) => s.viewMode);
+  const setViewMode = useBrowseStore((s) => s.setViewMode);
+  const initializeViewMode = useBrowseStore((s) => s.initializeViewMode);
+  const defaultBrowseViewMode = useProfileStore((s) => s.searchViewMode)();
 
   const {
     mods,
@@ -38,6 +42,7 @@ export function SearchPage() {
     ensureDownloadTotals,
   } = useRegistryStore();
   const { installedMaps, installedMods } = useInstalledStore();
+
   const installedItems = useMemo(() => {
     const items: Array<{
       type: AssetType;
@@ -65,14 +70,16 @@ export function SearchPage() {
     return items;
   }, [mods, maps, installedMods, installedMaps]);
 
-  const installedVersionByItemKey = useMemo(() => {
-    return new Map(
-      installedItems.map((entry) => [
-        `${entry.type}-${entry.item.id}`,
-        entry.installedVersion,
-      ]),
-    );
-  }, [installedItems]);
+  const installedVersionByItemKey = useMemo(
+    () =>
+      new Map(
+        installedItems.map((e) => [
+          `${e.type}-${e.item.id}`,
+          e.installedVersion,
+        ]),
+      ),
+    [installedItems],
+  );
 
   const allTags = useMemo(() => {
     const modTags = mods.flatMap((m) => m.tags ?? []);
@@ -97,8 +104,8 @@ export function SearchPage() {
   }, [ensureDownloadTotals]);
 
   useEffect(() => {
-    initializeViewMode(defaultSearchViewMode);
-  }, [defaultSearchViewMode, initializeViewMode]);
+    initializeViewMode(defaultBrowseViewMode);
+  }, [defaultBrowseViewMode, initializeViewMode]);
 
   const {
     items,
@@ -109,15 +116,7 @@ export function SearchPage() {
     setFilters,
     setType,
     setPage,
-  } = useFilteredItems({
-    mods,
-    maps,
-    modDownloadTotals,
-    mapDownloadTotals,
-  });
-
-  const modCount = mods.length;
-  const mapCount = maps.length;
+  } = useFilteredItems({ mods, maps, modDownloadTotals, mapDownloadTotals });
 
   const cardGridPreset = useMemo(
     () => (viewMode === 'compact' ? 'compact' : 'default'),
@@ -125,50 +124,60 @@ export function SearchPage() {
   );
 
   return (
-    <div className="space-y-5">
-      <PageHeading
-        icon={Compass}
-        title="Browse"
-        description="Discover and install maps and mods for Subway Builder."
+    <div className="relative isolate">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0"
+      >
+        <div className="absolute -top-28 left-1/2 h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.16)_0%,rgba(56,189,248,0.06)_42%,transparent_72%)] blur-3xl" />
+        <div className="absolute top-32 right-[8%] h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.12)_0%,rgba(99,102,241,0.04)_45%,transparent_72%)] blur-3xl" />
+      </div>
+
+      <BrowseSidebar
+        open={sidebarOpen}
+        onToggle={() => setSidebarOpen((p) => !p)}
+        filters={filters}
+        onFiltersChange={setFilters}
+        onTypeChange={setType}
+        availableTags={allTags}
+        availableSpecialDemand={availableSpecialDemand}
+        modTagCounts={modTagCounts}
+        mapLocationCounts={mapLocationCounts}
+        mapSourceQualityCounts={mapSourceQualityCounts}
+        mapLevelOfDetailCounts={mapLevelOfDetailCounts}
+        mapSpecialDemandCounts={mapSpecialDemandCounts}
+        modCount={mods.length}
+        mapCount={maps.length}
       />
 
-      {error && <ErrorBanner message={error} />}
+      <div
+        className="relative z-10 space-y-5"
+        style={{
+          paddingLeft: sidebarOpen ? SIDEBAR_CONTENT_OFFSET : '0px',
+          transition: 'padding-left 200ms ease-out',
+          minHeight: 'calc(100vh - var(--app-navbar-offset))',
+        }}
+      >
+        <PageHeading
+          icon={Compass}
+          title="Browse"
+          description="Discover and install maps and mods for Subway Builder."
+        />
 
-      {/* Search bar - full width at top */}
-      <SearchBar
-        query={filters.query}
-        onQueryChange={(value) =>
-          setFilters((prev) => ({ ...prev, query: value }))
-        }
-      />
+        {error && <ErrorBanner message={error} />}
 
-      {/* Two-column layout: sidebar + results */}
-      <div className="flex gap-6 items-start">
-        {/* Sidebar */}
-        <aside className="w-52 shrink-0">
-          <SidebarFilters
-            filters={filters}
-            onFiltersChange={setFilters}
-            onTypeChange={setType}
-            availableTags={allTags}
-            availableSpecialDemand={availableSpecialDemand}
-            modTagCounts={modTagCounts}
-            mapLocationCounts={mapLocationCounts}
-            mapSourceQualityCounts={mapSourceQualityCounts}
-            mapLevelOfDetailCounts={mapLevelOfDetailCounts}
-            mapSpecialDemandCounts={mapSpecialDemandCounts}
-            modCount={modCount}
-            mapCount={mapCount}
-          />
-        </aside>
+        <SearchBar
+          query={filters.query}
+          onQueryChange={(value) =>
+            setFilters((prev) => ({ ...prev, query: value }))
+          }
+        />
 
-        {/* Main results area */}
-        <div className="flex-1 min-w-0 space-y-4">
-          {/* Results toolbar */}
+        <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
               {loading ? (
-                <span className="inline-block h-4 w-24 bg-muted rounded animate-pulse" />
+                <span className="inline-block h-4 w-24 animate-pulse rounded bg-muted" />
               ) : (
                 <>
                   <span className="font-medium text-foreground">
@@ -202,7 +211,6 @@ export function SearchPage() {
             </div>
           </div>
 
-          {/* Cards / empty / loading */}
           {loading ? (
             <CardSkeletonGrid count={filters.perPage} preset={cardGridPreset} />
           ) : items.length === 0 ? (

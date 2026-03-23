@@ -26,7 +26,10 @@ export function SectionHeader({
     >
       <div className="flex items-center gap-2.5">
         {Icon ? (
-          <Icon className="size-[1.05rem] shrink-0 text-foreground" aria-hidden />
+          <Icon
+            className="size-[1.05rem] shrink-0 text-foreground"
+            aria-hidden
+          />
         ) : null}
         <h2 className="text-[clamp(0.95rem,1.5vw,1.1rem)] font-bold tracking-tight text-foreground">
           {title}

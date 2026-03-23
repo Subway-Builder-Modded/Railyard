@@ -16,7 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'wouter';
 
-import { UpdateConfirmDialog } from '@/components/dialogs/UpdateConfirmDialog';
+import { AssetActionDialog } from '@/components/dialogs/AssetActionDialog';
 import { DiscoverSectionGrid } from '@/components/homepage/DiscoverSectionGrid';
 import { PendingUpdateRow } from '@/components/homepage/PendingUpdateRow';
 import { QuickNavCard } from '@/components/homepage/QuickNavCard';
@@ -78,7 +78,9 @@ export function HomePage() {
 
   const getTotalDownloads = useCallback(
     (type: AssetType, id: string) =>
-      type === 'mod' ? (modDownloadTotals[id] ?? 0) : (mapDownloadTotals[id] ?? 0),
+      type === 'mod'
+        ? (modDownloadTotals[id] ?? 0)
+        : (mapDownloadTotals[id] ?? 0),
     [modDownloadTotals, mapDownloadTotals],
   );
 
@@ -190,9 +192,7 @@ export function HomePage() {
   );
 
   const hasActiveUpdateOperation = useMemo(
-    () =>
-      updatingAll ||
-      pendingUpdateEntries.some(({ id }) => isOperating(id)),
+    () => updatingAll || pendingUpdateEntries.some(({ id }) => isOperating(id)),
     [isOperating, pendingUpdateEntries, updatingAll],
   );
 
@@ -230,7 +230,7 @@ export function HomePage() {
           <SectionHeader title="Jump Back In" icon={History} />
           <div className="flex flex-col gap-2">
             <QuickNavCard
-              href="/search"
+              href="/browse"
               icon={Compass}
               label="Browse"
               description="Discover community-made content"
@@ -276,7 +276,10 @@ export function HomePage() {
                   size="sm"
                   disabled={updatingAll}
                   onClick={() => setUpdateAllConfirmOpen(true)}
-                  className={cn('h-8 gap-1.5 text-xs', UPDATE_ACCENT.solidButton)}
+                  className={cn(
+                    'h-8 gap-1.5 text-xs',
+                    UPDATE_ACCENT.solidButton,
+                  )}
                 >
                   {updatingAll ? (
                     <RefreshCw className="h-3 w-3 animate-spin" aria-hidden />
@@ -296,7 +299,9 @@ export function HomePage() {
                   className="h-12 w-12 text-muted-foreground mb-2"
                   aria-hidden
                 />
-                <p className="text-sm text-muted-foreground">{emptyUpdatesMessage}</p>
+                <p className="text-sm text-muted-foreground">
+                  {emptyUpdatesMessage}
+                </p>
               </div>
             ) : updatesLoading && displayedPendingUpdateEntries.length === 0 ? (
               Array.from({ length: 3 }).map((_, i) => (
@@ -312,9 +317,7 @@ export function HomePage() {
                     currentVersion={currentVersion}
                     latestVersion={latestVersion}
                     isUpdating={isOperating(id)}
-                    onUpdate={() =>
-                      void runUpdateOperations([{ type, id }])
-                    }
+                    onUpdate={() => void runUpdateOperations([{ type, id }])}
                     updateButtonClassName={UPDATE_ACCENT.solidButton}
                   />
                 ),
@@ -324,11 +327,13 @@ export function HomePage() {
         </div>
       </div>
 
-      <UpdateConfirmDialog
+      <AssetActionDialog
         open={updateAllConfirmOpen}
         onOpenChange={setUpdateAllConfirmOpen}
         title="Update all?"
         description={`This will update ${pendingUpdateEntries.length} asset${pendingUpdateEntries.length === 1 ? '' : 's'}.`}
+        icon={CircleFadingArrowUp}
+        iconClassName="h-5 w-5 text-[var(--update-primary)]"
         entries={pendingUpdateEntries.map((entry) => ({
           key: entry.key,
           name: entry.name,
@@ -336,7 +341,9 @@ export function HomePage() {
           latestVersion: entry.latestVersion,
         }))}
         confirmLabel="Update All"
-        confirming={updatingAll}
+        tone="update"
+        confirmClassName={UPDATE_ACCENT.solidButton}
+        loading={updatingAll}
         onConfirm={() => void handleUpdateAll()}
       />
 
@@ -345,7 +352,7 @@ export function HomePage() {
           title="Discover Maps"
           icon={MapPin}
           action={
-            <Link href="/search">
+            <Link href="/browse">
               <Button
                 variant="ghost"
                 size="sm"
@@ -372,7 +379,7 @@ export function HomePage() {
           title="Discover Mods"
           icon={Package}
           action={
-            <Link href="/search">
+            <Link href="/browse">
               <Button
                 variant="ghost"
                 size="sm"

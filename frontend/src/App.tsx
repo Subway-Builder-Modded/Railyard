@@ -8,11 +8,11 @@ import { SetupScreen } from '@/components/setup/SetupScreen';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useTheme } from '@/hooks/use-theme';
+import { BrowsePage } from '@/pages/BrowsePage';
 import { HomePage } from '@/pages/HomePage';
 import { LibraryPage } from '@/pages/LibraryPage';
 import { LogsPage } from '@/pages/LogsPage';
 import { ProjectPage } from '@/pages/ProjectPage';
-import { SearchPage } from '@/pages/SearchPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { useConfigStore } from '@/stores/config-store';
 import { useGameStore } from '@/stores/game-store';
@@ -244,7 +244,8 @@ function App() {
           <Switch>
             <Route path="/" component={HomePage} />
             <Route path="/library" component={LibraryPage} />
-            <Route path="/search" component={SearchPage} />
+            <Route path="/browse" component={BrowsePage} />
+            <Route path="/search" component={BrowsePage} />
             <Route path="/project/:type/:id" component={ProjectPage} />
             <Route path="/logs" component={LogsPage} />
             <Route path="/settings" component={SettingsPage} />

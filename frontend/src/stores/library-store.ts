@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { type AssetQueryFilterStoreState } from '@/stores/asset-query-filter-store';
 import {
   cloneFilterState,
   createFilterByAssetType,
@@ -7,9 +8,8 @@ import {
   switchFilter,
   syncFilter,
 } from '@/stores/asset-type-filter-state';
-import { type SearchFilterStoreState } from '@/stores/search-store';
 
-interface LibraryState extends SearchFilterStoreState {
+interface LibraryState extends AssetQueryFilterStoreState {
   selectedIds: Set<string>;
   toggleSelected: (id: string) => void;
   selectAll: (ids: string[]) => void;

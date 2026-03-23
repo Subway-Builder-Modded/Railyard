@@ -269,7 +269,7 @@ export function LibraryPage() {
             }
           />
         </div>
-        <Link href="/search">
+        <Link href="/browse">
           <Button className={`gap-1.5 shrink-0 ${INSTALL_ACCENT.solidButton}`}>
             <Plus className="h-4 w-4" />
             Install Content
@@ -291,7 +291,7 @@ export function LibraryPage() {
           title="No content installed"
           description="Your library is empty. Browse the registry to discover and install community content."
         >
-          <Link href="/search">
+          <Link href="/browse">
             <Button className={`gap-1.5 ${INSTALL_ACCENT.solidButton}`}>
               <Plus className="h-4 w-4" />
               Install Content

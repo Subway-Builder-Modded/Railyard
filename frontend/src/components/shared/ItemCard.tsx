@@ -162,14 +162,17 @@ function ItemBadges({
   if (badges.length === 0) return null;
 
   const maxBadgeCount =
-    fixedVisibleCount === undefined ? badges.length : Math.max(1, fixedVisibleCount);
+    fixedVisibleCount === undefined
+      ? badges.length
+      : Math.max(1, fixedVisibleCount);
   const visibleBadges = badges.slice(0, maxBadgeCount);
 
   const justifyClass = align === 'left' ? 'justify-start' : 'justify-end';
   const badgeClassName = compact
     ? 'text-[11px] px-1.5 py-0 h-5'
     : 'text-xs px-1.5 py-0';
-  const clampedMaxWidthPercent = Math.min(1, Math.max(0, maxWidthPercentage)) * 100;
+  const clampedMaxWidthPercent =
+    Math.min(1, Math.max(0, maxWidthPercentage)) * 100;
   const maxWidthStyle =
     clampedMaxWidthPercent < 100
       ? { maxWidth: `${clampedMaxWidthPercent}%` }
@@ -178,7 +181,10 @@ function ItemBadges({
   if (wrap) {
     const overflowCount = Math.max(0, badges.length - visibleBadges.length);
     return (
-      <div className={cn('flex flex-wrap gap-1', justifyClass)} style={maxWidthStyle}>
+      <div
+        className={cn('flex flex-wrap gap-1', justifyClass)}
+        style={maxWidthStyle}
+      >
         {visibleBadges.map((badge) => (
           <Badge key={badge} variant="secondary" className={badgeClassName}>
             {badge}
@@ -570,7 +576,10 @@ export function ItemCard({
               showDownloads={presentation.showDownloads}
               totalDownloads={totalDownloads}
             />
-            <ItemBadges badges={presentation.badges} maxWidthPercentage={0.65} />
+            <ItemBadges
+              badges={presentation.badges}
+              maxWidthPercentage={0.65}
+            />
           </div>
         </div>
       </article>

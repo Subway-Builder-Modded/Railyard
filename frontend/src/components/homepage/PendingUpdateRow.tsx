@@ -44,10 +44,14 @@ export function PendingUpdateRow({
           )}
           {type}
         </Badge>
-        <span className="truncate text-sm font-medium text-foreground">{name}</span>
+        <span className="truncate text-sm font-medium text-foreground">
+          {name}
+        </span>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <span className="font-mono text-xs text-muted-foreground">{currentVersion}</span>
+        <span className="font-mono text-xs text-muted-foreground">
+          {currentVersion}
+        </span>
         <ArrowRight className="h-3 w-3 text-muted-foreground/40" aria-hidden />
         <span className="font-mono text-xs font-semibold text-[var(--update-primary)]">
           {latestVersion}
@@ -56,7 +60,10 @@ export function PendingUpdateRow({
           size="sm"
           disabled={isUpdating}
           onClick={onUpdate}
-          className={cn('h-7 min-w-[4.5rem] px-3 text-xs', updateButtonClassName)}
+          className={cn(
+            'h-7 min-w-[4.5rem] px-3 text-xs',
+            updateButtonClassName,
+          )}
         >
           {isUpdating ? (
             <RefreshCw className="h-3 w-3 animate-spin" aria-hidden />

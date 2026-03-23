@@ -1,44 +1,35 @@
 import { create } from 'zustand';
 
-import type { AssetType } from '@/lib/asset-types';
 import type { SearchViewMode } from '@/lib/search-view-mode';
+import type {
+  AssetQueryFilters,
+  AssetQueryFilterStoreState,
+  AssetQueryFilterUpdater,
+} from '@/stores/asset-query-filter-store';
 import {
-  type AssetQueryFilterState,
   cloneFilterState,
   createFilterByAssetType,
   createRandomSeed,
   defaultSearchFilters,
-  type FilterByAssetType,
   switchFilter,
   syncFilter,
 } from '@/stores/asset-type-filter-state';
 
 export { createRandomSeed };
 
-export type SearchFilterState = AssetQueryFilterState;
+export type BrowseFilterState = AssetQueryFilters;
+export type BrowseFilterUpdater = AssetQueryFilterUpdater;
+export type BrowseFilterStoreState = AssetQueryFilterStoreState;
 
-export type SearchFilterUpdater =
-  | SearchFilterState
-  | ((prev: SearchFilterState) => SearchFilterState);
-
-export interface SearchFilterStoreState {
-  filters: SearchFilterState;
-  page: number;
-  scopedByType: FilterByAssetType;
-  setFilters: (updater: SearchFilterUpdater) => void;
-  setType: (type: AssetType) => void;
-  setPage: (page: number) => void;
-}
-
-interface SearchViewModeStoreState {
+interface BrowseViewModeStoreState {
   viewMode: SearchViewMode;
   viewModeInitialized: boolean;
   setViewMode: (viewMode: SearchViewMode) => void;
   initializeViewMode: (viewMode: SearchViewMode) => void;
 }
 
-export const useSearchStore = create<
-  SearchFilterStoreState & SearchViewModeStoreState
+export const useBrowseStore = create<
+  BrowseFilterStoreState & BrowseViewModeStoreState
 >((set, get) => ({
   filters: cloneFilterState(defaultSearchFilters),
   page: 1,

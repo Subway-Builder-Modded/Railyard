@@ -7,13 +7,13 @@ import {
   compareItems,
   type TaggedItem,
 } from '@/lib/tagged-items';
+import { type BrowseFilterState, useBrowseStore } from '@/stores/browse-store';
 import { useProfileStore } from '@/stores/profile-store';
-import { type SearchFilterState, useSearchStore } from '@/stores/search-store';
 
 import type { types } from '../../wailsjs/go/models';
 import { type PerPage, type SortState } from '../lib/constants';
 
-export type { SearchFilterState } from '@/stores/search-store';
+export type { BrowseFilterState } from '@/stores/browse-store';
 
 interface UseFilteredItemsParams {
   mods: types.ModManifest[];
@@ -35,7 +35,7 @@ export interface TaggedItemFilterState {
   mod: {
     tags: string[];
   };
-  map: SearchFilterState['map'];
+  map: BrowseFilterState['map'];
 }
 
 export function buildSearchText(item: TaggedItem): string {
@@ -70,7 +70,7 @@ export function matchesZeroOrManyValuesFilter(
 
 export function matchesMapAttributeFilters(
   item: TaggedItem,
-  filters: SearchFilterState['map'],
+  filters: BrowseFilterState['map'],
 ): boolean {
   if (item.type !== 'map') return true;
 
@@ -155,11 +155,11 @@ export function useFilteredItems({
   mapDownloadTotals,
 }: UseFilteredItemsParams) {
   const defaultPerPage = useProfileStore((s) => s.defaultPerPage)() as PerPage;
-  const filters = useSearchStore((s) => s.filters);
-  const setFilters = useSearchStore((s) => s.setFilters);
-  const setType = useSearchStore((s) => s.setType);
-  const page = useSearchStore((s) => s.page);
-  const setPage = useSearchStore((s) => s.setPage);
+  const filters = useBrowseStore((s) => s.filters);
+  const setFilters = useBrowseStore((s) => s.setFilters);
+  const setType = useBrowseStore((s) => s.setType);
+  const page = useBrowseStore((s) => s.page);
+  const setPage = useBrowseStore((s) => s.setPage);
 
   useEffect(() => {
     setFilters((prev) =>
