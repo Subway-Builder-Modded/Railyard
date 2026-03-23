@@ -12,6 +12,12 @@ import { cn } from '@/lib/utils';
 import type { types } from '../../../wailsjs/go/models';
 import { GalleryImage } from './GalleryImage';
 
+const TYPE_PILL_CLASS = 'inline-flex items-center gap-1 bg-background/80 backdrop-blur-sm border border-border/50 text-foreground text-xs font-medium px-2 py-0.5 rounded-full';
+const CARD_IMAGE_CLASS = 'h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]';
+const CARD_TITLE_CLASS = 'font-semibold text-sm leading-snug text-foreground truncate';
+const CARD_AUTHOR_CLASS = 'text-xs text-muted-foreground mt-0.5 truncate';
+const CARD_ARTICLE_BASE = 'group relative bg-card border border-border rounded-lg overflow-hidden cursor-pointer transition-all duration-150 hover:border-foreground/20 hover:shadow-sm';
+
 interface ItemCardProps {
   type: AssetType;
   item: types.ModManifest | types.MapManifest;
@@ -333,7 +339,7 @@ export function ItemCard({
       >
         <article
           className={cn(
-            'group relative bg-card border border-border rounded-lg overflow-hidden cursor-pointer transition-all duration-150 hover:border-foreground/20 hover:shadow-sm',
+            CARD_ARTICLE_BASE,
             installedVersion && 'ring-1 ring-primary/40',
           )}
         >
@@ -348,7 +354,7 @@ export function ItemCard({
                 </div>
               )}
               <div className="absolute top-2 left-2 z-10">
-                <span className="inline-flex items-center gap-1 bg-background/80 backdrop-blur-sm border border-border/50 text-foreground text-xs font-medium px-2 py-0.5 rounded-full">
+                <span className={TYPE_PILL_CLASS}>
                   {presentation.isMap ? (
                     <MapPin className="h-2.5 w-2.5" />
                   ) : (
@@ -361,17 +367,17 @@ export function ItemCard({
                 type={type}
                 id={item.id}
                 imagePath={item.gallery?.[0]}
-                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                className={CARD_IMAGE_CLASS}
               />
             </div>
 
             <div className="flex flex-col flex-1 p-3 gap-2 min-w-0">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-sm leading-snug text-foreground truncate">
+                  <h3 className={CARD_TITLE_CLASS}>
                     {item.name}
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  <p className={CARD_AUTHOR_CLASS}>
                     by {item.author}
                   </p>
                 </div>
@@ -421,7 +427,8 @@ export function ItemCard({
       >
         <article
           className={cn(
-            'group relative bg-card border border-border rounded-lg overflow-hidden cursor-pointer transition-all duration-150 hover:border-foreground/20 hover:shadow-sm h-full flex flex-col',
+            CARD_ARTICLE_BASE,
+            'h-full flex flex-col',
             installedVersion && 'ring-1 ring-primary/40',
           )}
         >
@@ -438,7 +445,7 @@ export function ItemCard({
               </div>
             )}
             <div className="absolute top-2 left-2 z-10">
-              <span className="inline-flex items-center gap-1 bg-background/80 backdrop-blur-sm border border-border/50 text-foreground text-xs font-medium px-2 py-0.5 rounded-full">
+              <span className={TYPE_PILL_CLASS}>
                 {presentation.isMap ? (
                   <MapPin className="h-2.5 w-2.5" />
                 ) : (
@@ -451,14 +458,14 @@ export function ItemCard({
               type={type}
               id={item.id}
               imagePath={item.gallery?.[0]}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              className={CARD_IMAGE_CLASS}
             />
           </div>
 
           <div className="flex flex-col flex-1 p-3 gap-2.5">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-sm leading-snug text-foreground truncate">
+                <h3 className={CARD_TITLE_CLASS}>
                   {item.name}
                 </h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
@@ -513,7 +520,6 @@ export function ItemCard({
           installedVersion && 'ring-1 ring-primary/40',
         )}
       >
-        {/* Thumbnail */}
         <div className="relative aspect-video overflow-hidden bg-muted shrink-0">
           {installedVersion && (
             <div className="absolute top-2 right-2 z-10">
@@ -523,9 +529,8 @@ export function ItemCard({
               </Badge>
             </div>
           )}
-          {/* Type pill */}
           <div className="absolute top-2 left-2 z-10">
-            <span className="inline-flex items-center gap-1 bg-background/80 backdrop-blur-sm border border-border/50 text-foreground text-xs font-medium px-2 py-0.5 rounded-full">
+            <span className={TYPE_PILL_CLASS}>
               {presentation.isMap ? (
                 <MapPin className="h-2.5 w-2.5" />
               ) : (
@@ -538,19 +543,17 @@ export function ItemCard({
             type={type}
             id={item.id}
             imagePath={item.gallery?.[0]}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            className={CARD_IMAGE_CLASS}
           />
         </div>
 
-        {/* Card body */}
         <div className="flex flex-col flex-1 p-4 gap-3">
-          {/* Title row */}
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <h3 className="font-semibold text-sm leading-snug text-foreground truncate">
+              <h3 className={CARD_TITLE_CLASS}>
                 {item.name}
               </h3>
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+              <p className={CARD_AUTHOR_CLASS}>
                 by {item.author}
               </p>
             </div>
@@ -563,12 +566,10 @@ export function ItemCard({
             )}
           </div>
 
-          {/* Description */}
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 flex-1">
             {item.description}
           </p>
 
-          {/* Footer: population + tags */}
           <div className="flex items-end justify-between gap-2 mt-auto">
             <ItemStats
               isMap={presentation.isMap}

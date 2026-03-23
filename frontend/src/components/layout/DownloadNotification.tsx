@@ -5,6 +5,12 @@ import { toast } from 'sonner';
 import { useDownloadQueueStore } from '@/stores/download-queue-store';
 import { useInstalledStore } from '@/stores/installed-store';
 
+import {
+  TOAST_PROGRESS_FILL_CLASS,
+  TOAST_PROGRESS_TRACK_CLASS,
+  TOAST_QUEUE_LABEL_CLASS,
+} from './notification-classes';
+
 import { EventsOn } from '../../../wailsjs/runtime/runtime';
 
 interface DownloadProgress {
@@ -34,10 +40,8 @@ export function DownloadNotification() {
 
       if (cancelledItems.current.has(itemId)) {
         if (!isInstalling) {
-          // Ignore stale progress events from a canceled request so the toast does not reappear after cancellation.
           return;
         }
-        // A new install for this item started; allow progress notifications again.
         cancelledItems.current.delete(itemId);
       }
 
@@ -47,7 +51,6 @@ export function DownloadNotification() {
       if (isComplete) {
         const existingId = toastIds.current.get(itemId);
         if (existingId) {
-          // Show brief "Downloaded" state before dismissing
           const { completed, total: queueTotal } =
             useDownloadQueueStore.getState();
           const queueLabel =
@@ -63,7 +66,7 @@ export function DownloadNotification() {
                   </span>
                 </div>
                 {queueLabel && (
-                  <span className="text-xs font-medium text-muted-foreground shrink-0 tabular-nums">
+                  <span className={TOAST_QUEUE_LABEL_CLASS}>
                     {queueLabel}
                   </span>
                 )}
@@ -95,16 +98,16 @@ export function DownloadNotification() {
               </span>
             </div>
             {queueLabel && (
-              <span className="text-xs font-medium text-muted-foreground shrink-0 tabular-nums">
+              <span className={TOAST_QUEUE_LABEL_CLASS}>
                 {queueLabel}
               </span>
             )}
           </div>
           <div className="text-xs text-muted-foreground">{description}</div>
           {percent >= 0 && (
-            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+            <div className={TOAST_PROGRESS_TRACK_CLASS}>
               <div
-                className="h-full rounded-full bg-primary transition-all duration-200"
+                className={TOAST_PROGRESS_FILL_CLASS}
                 style={{ width: `${percent}%` }}
               />
             </div>
@@ -132,7 +135,6 @@ export function DownloadNotification() {
         if (!existingId) {
           return;
         }
-        // Dismiss the toast immediately on cancellation without showing an error
         toast.dismiss(existingId);
         toastIds.current.delete(data.itemId);
       },

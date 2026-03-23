@@ -1,11 +1,14 @@
-import { Inbox, Plus } from 'lucide-react';
+import { Inbox, Plus, SearchX } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'wouter';
+import { useLocation } from 'wouter';
 
 import { ImportAssetDialog } from '@/components/dialogs/ImportAssetDialog';
 import { LibraryActionBar } from '@/components/library/LibraryActionBar';
-import { LibrarySidebar } from '@/components/library/LibrarySidebar';
-import { LibraryTable } from '@/components/library/LibraryTable';
+import { LibraryList } from '@/components/library/LibraryList';
+import {
+  LIBRARY_SIDEBAR_CONTENT_OFFSET,
+  LibrarySidebarPanel,
+} from '@/components/library/LibrarySidebarPanel';
 import { SearchBar } from '@/components/search/SearchBar';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
@@ -21,6 +24,7 @@ import {
   type PendingUpdatesByKey,
   requestLatestSubscriptionUpdatesForActiveProfile,
 } from '@/lib/subscription-updates';
+import { useBrowseStore } from '@/stores/browse-store';
 import { useInstalledStore } from '@/stores/installed-store';
 import { useRegistryStore } from '@/stores/registry-store';
 
@@ -54,9 +58,7 @@ function localMapManifestFromInstalled(
     tags: [],
     gallery: [],
     source: '',
-    update: {
-      type: 'local',
-    },
+    update: { type: 'local' },
   });
 }
 
@@ -64,25 +66,19 @@ const INSTALL_ACCENT = getLocalAccentClasses('install');
 const IMPORT_ACCENT = getLocalAccentClasses('import');
 
 export function LibraryPage() {
-  const {
-    mods,
-    maps,
-    modDownloadTotals,
-    mapDownloadTotals,
-    ensureDownloadTotals,
-  } = useRegistryStore();
-  const { installedMods, installedMaps, updateInstalledLists } =
-    useInstalledStore();
+  const [, navigate] = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [pendingUpdatesByKey, setPendingUpdatesByKey] =
-    useState<PendingUpdatesByKey>({});
+  const [pendingUpdatesByKey, setPendingUpdatesByKey] = useState<PendingUpdatesByKey>({});
+
+  const { mods, maps, modDownloadTotals, mapDownloadTotals, ensureDownloadTotals } =
+    useRegistryStore();
+  const { installedMods, installedMaps, updateInstalledLists } = useInstalledStore();
 
   const refreshPendingSubscriptionUpdates = useCallback(async () => {
     let result;
     try {
-      result = await requestLatestSubscriptionUpdatesForActiveProfile({
-        apply: false,
-      });
+      result = await requestLatestSubscriptionUpdatesForActiveProfile({ apply: false });
     } catch (err) {
       setPendingUpdatesByKey({});
       console.warn(
@@ -99,13 +95,9 @@ export function LibraryPage() {
       return;
     }
 
-    setPendingUpdatesByKey(
-      indexPendingSubscriptionUpdates(result.pendingUpdates),
-    );
+    setPendingUpdatesByKey(indexPendingSubscriptionUpdates(result.pendingUpdates));
     if (result.status === 'warn') {
-      console.warn(
-        `[library:latest_check] Completed with warnings: ${result.message}`,
-      );
+      console.warn(`[library:latest_check] Completed with warnings: ${result.message}`);
     }
   }, []);
 
@@ -125,16 +117,11 @@ export function LibraryPage() {
 
   const missingInstalledItems = useMemo(() => {
     const missingMods = installedMods
-      .filter(
-        (installed) => !installed.isLocal && !modManifestById.has(installed.id),
-      )
+      .filter((installed) => !installed.isLocal && !modManifestById.has(installed.id))
       .map((installed) => `mod:${installed.id}`);
     const missingMaps = installedMaps
-      .filter(
-        (installed) => !installed.isLocal && !mapManifestById.has(installed.id),
-      )
+      .filter((installed) => !installed.isLocal && !mapManifestById.has(installed.id))
       .map((installed) => `map:${installed.id}`);
-
     return [...missingMods, ...missingMaps];
   }, [installedMaps, installedMods, mapManifestById, modManifestById]);
 
@@ -203,21 +190,20 @@ export function LibraryPage() {
     mapDownloadTotals,
   });
 
+  const handleInstallBrowse = useCallback(() => {
+    useBrowseStore.getState().setType(filters.type);
+    navigate('/browse');
+  }, [filters.type, navigate]);
+
   const modCount = installedItems.filter((i) => i.type === 'mod').length;
   const mapCount = installedItems.filter((i) => i.type === 'map').length;
 
   const installedModItems = useMemo(
-    () =>
-      installedItems
-        .filter((entry) => entry.type === 'mod')
-        .map((entry) => entry.item),
+    () => installedItems.filter((entry) => entry.type === 'mod').map((entry) => entry.item),
     [installedItems],
   );
   const installedMapItems = useMemo(
-    () =>
-      installedItems
-        .filter((entry) => entry.type === 'map')
-        .map((entry) => entry.item),
+    () => installedItems.filter((entry) => entry.type === 'map').map((entry) => entry.item),
     [installedItems],
   );
 
@@ -243,153 +229,144 @@ export function LibraryPage() {
   );
 
   return (
-    <div className="space-y-5">
-      <PageHeading
-        icon={Inbox}
-        title="Library"
-        description="Manage your installed maps and mods."
+    <>
+      <LibrarySidebarPanel
+        open={sidebarOpen}
+        onToggle={() => setSidebarOpen((p) => !p)}
+        filters={filters}
+        onFiltersChange={setFilters}
+        onTypeChange={setType}
+        availableTags={availableTags}
+        availableSpecialDemand={availableSpecialDemand}
+        modTagCounts={modTagCounts}
+        mapLocationCounts={mapLocationCounts}
+        mapSourceQualityCounts={mapSourceQualityCounts}
+        mapLevelOfDetailCounts={mapLevelOfDetailCounts}
+        mapSpecialDemandCounts={mapSpecialDemandCounts}
+        modCount={modCount}
+        mapCount={mapCount}
       />
 
-      {missingInstalledItems.length > 0 && (
-        <ErrorBanner
-          message={
-            missingInstalledItems.length === 1
-              ? `Installed content is missing from the registry: ${missingInstalledItems[0]}`
-              : `${missingInstalledItems.length} installed items are missing from the registry.`
-          }
+      <div
+        className="space-y-5"
+        style={{
+          paddingLeft: sidebarOpen ? LIBRARY_SIDEBAR_CONTENT_OFFSET : '0px',
+          transition: 'padding-left 200ms ease-out',
+          minHeight: 'calc(100vh - var(--app-navbar-offset))',
+        }}
+      >
+        <PageHeading
+          icon={Inbox}
+          title="Library"
+          description="Manage your installed maps and mods."
         />
-      )}
 
-      <div className="flex items-center gap-3">
-        <div className="flex-1">
-          <SearchBar
-            query={filters.query}
-            onQueryChange={(value) =>
-              setFilters((prev) => ({ ...prev, query: value }))
+        {missingInstalledItems.length > 0 && (
+          <ErrorBanner
+            message={
+              missingInstalledItems.length === 1
+                ? `Installed content is missing from the registry: ${missingInstalledItems[0]}`
+                : `${missingInstalledItems.length} installed items are missing from the registry.`
             }
           />
-        </div>
-        <Link href="/browse">
-          <Button className={`gap-1.5 shrink-0 ${INSTALL_ACCENT.solidButton}`}>
-            <Plus className="h-4 w-4" />
-            Install Content
-          </Button>
-        </Link>
-        <Button
-          variant="outline"
-          className={`gap-1.5 shrink-0 ${IMPORT_ACCENT.outlineButton}`}
-          onClick={() => setImportDialogOpen(true)}
-        >
-          <Inbox className="h-4 w-4" />
-          Import Asset
-        </Button>
-      </div>
+        )}
 
-      {installedItems.length === 0 ? (
-        <EmptyState
-          icon={Inbox}
-          title="No content installed"
-          description="Your library is empty. Browse the registry to discover and install community content."
-        >
-          <Link href="/browse">
-            <Button className={`gap-1.5 ${INSTALL_ACCENT.solidButton}`}>
-              <Plus className="h-4 w-4" />
-              Install Content
-            </Button>
-          </Link>
-        </EmptyState>
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>
-                <span className="font-medium text-foreground">
-                  {totalResults}
-                </span>{' '}
-                result{totalResults !== 1 ? 's' : ''}
-                {filters.query && (
-                  <span className="ml-1">
-                    for <span className="italic">"{filters.query}"</span>
-                  </span>
-                )}
-              </span>
-            </div>
+        {/* Search + actions */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <SearchBar
+              query={filters.query}
+              onQueryChange={(value) => setFilters((prev) => ({ ...prev, query: value }))}
+            />
           </div>
+          <Button
+            className={`shrink-0 gap-1.5 ${INSTALL_ACCENT.solidButton}`}
+            onClick={handleInstallBrowse}
+          >
+            <Plus className="h-4 w-4" />
+            {filters.type === 'map' ? 'Install Maps' : 'Install Mods'}
+          </Button>
+          <Button
+            variant="outline"
+            className={`shrink-0 gap-1.5 ${IMPORT_ACCENT.outlineButton}`}
+            onClick={() => setImportDialogOpen(true)}
+          >
+            <Inbox className="h-4 w-4" />
+            Import Asset
+          </Button>
+        </div>
 
-          <div className="flex gap-6 items-start">
-            <aside className="w-52 shrink-0">
-              <LibrarySidebar
-                filters={filters}
-                onFiltersChange={setFilters}
-                onTypeChange={setType}
-                modCount={modCount}
-                mapCount={mapCount}
-                availableTags={availableTags}
-                availableSpecialDemand={availableSpecialDemand}
-                modTagCounts={modTagCounts}
-                mapLocationCounts={mapLocationCounts}
-                mapSourceQualityCounts={mapSourceQualityCounts}
-                mapLevelOfDetailCounts={mapLevelOfDetailCounts}
-                mapSpecialDemandCounts={mapSpecialDemandCounts}
-              />
-            </aside>
-
-            <div className="flex-1 min-w-0 space-y-4">
-              {paginatedItems.length === 0 ? (
-                <EmptyState
-                  icon={Inbox}
-                  title={
-                    filters.type === 'map' ? 'No maps found' : 'No mods found'
-                  }
-                  description={
-                    filters.query
-                      ? `No installed ${filters.type} match "${filters.query}"`
-                      : `No installed ${filters.type} match the current filters`
-                  }
-                  className="py-16"
-                />
-              ) : (
-                <>
-                  <LibraryTable
-                    items={paginatedItems}
-                    activeType={filters.type}
-                    pendingUpdatesByKey={pendingUpdatesByKey}
-                    onRefreshPendingUpdates={refreshPendingSubscriptionUpdates}
-                    sort={filters.sort}
-                    onSortChange={(value) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        sort: value,
-                      }))
-                    }
-                  />
-                  <Pagination
-                    page={page}
-                    totalPages={totalPages}
-                    totalResults={totalResults}
-                    perPage={filters.perPage}
-                    onPageChange={setPage}
-                    onPerPageChange={(value) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        perPage: value,
-                      }))
-                    }
-                  />
-                </>
+        {installedItems.length === 0 ? (
+          <EmptyState
+            icon={Inbox}
+            title="No content installed"
+            description="Your library is empty. Browse the registry to discover and install community content."
+          >
+            <Button
+              className={`gap-1.5 ${INSTALL_ACCENT.solidButton}`}
+              onClick={handleInstallBrowse}
+            >
+              <Plus className="h-4 w-4" />
+              {filters.type === 'map' ? 'Install Maps' : 'Install Mods'}
+            </Button>
+          </EmptyState>
+        ) : (
+          <div className="space-y-4">
+            {/* Result count */}
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{totalResults}</span>{' '}
+              result{totalResults !== 1 ? 's' : ''}
+              {filters.query && (
+                <span className="ml-1">
+                  for <span className="italic">"{filters.query}"</span>
+                </span>
               )}
+            </p>
 
-              <div className="sticky bottom-4">
-                <LibraryActionBar
-                  allItems={allFilteredItems}
+            {/* List or empty state */}
+            {paginatedItems.length === 0 ? (
+              <EmptyState
+                icon={SearchX}
+                title={filters.type === 'map' ? 'No maps found' : 'No mods found'}
+                description={
+                  filters.query
+                    ? `No installed ${filters.type} match "${filters.query}"`
+                    : `No installed ${filters.type} match the current filters`
+                }
+              />
+            ) : (
+              <>
+                <LibraryList
+                  items={paginatedItems}
+                  activeType={filters.type}
                   pendingUpdatesByKey={pendingUpdatesByKey}
                   onRefreshPendingUpdates={refreshPendingSubscriptionUpdates}
+                  sort={filters.sort}
+                  onSortChange={(value) => setFilters((prev) => ({ ...prev, sort: value }))}
                 />
-              </div>
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  totalResults={totalResults}
+                  perPage={filters.perPage}
+                  onPageChange={setPage}
+                  onPerPageChange={(value) =>
+                    setFilters((prev) => ({ ...prev, perPage: value }))
+                  }
+                />
+              </>
+            )}
+
+            <div className="sticky bottom-4">
+              <LibraryActionBar
+                allItems={allFilteredItems}
+                pendingUpdatesByKey={pendingUpdatesByKey}
+                onRefreshPendingUpdates={refreshPendingSubscriptionUpdates}
+              />
             </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
 
       <ImportAssetDialog
         open={importDialogOpen}
@@ -399,6 +376,6 @@ export function LibraryPage() {
           void refreshPendingSubscriptionUpdates();
         }}
       />
-    </div>
+    </>
   );
 }

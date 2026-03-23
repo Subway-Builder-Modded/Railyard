@@ -1,6 +1,7 @@
 import Fuse from 'fuse.js';
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 
+import { usePaginationSync } from '@/hooks/use-pagination-sync';
 import { FUSE_SEARCH_OPTIONS } from '@/lib/search';
 import {
   buildTaggedItems,
@@ -83,7 +84,6 @@ export function matchesMapAttributeFilters(
   );
 }
 
-// Seeded hash function to provide consistent "random" sorting. Stable across renders, but different across sessions
 export function seededHash(value: string, seed: number): number {
   const FNV_OFFSET_BASIS_32 = 0x811c9dc5;
   const FNV_PRIME_32 = 0x01000193;
@@ -161,31 +161,7 @@ export function useFilteredItems({
   const page = useBrowseStore((s) => s.page);
   const setPage = useBrowseStore((s) => s.setPage);
 
-  useEffect(() => {
-    setFilters((prev) =>
-      prev.perPage === defaultPerPage
-        ? prev
-        : {
-            ...prev,
-            perPage: defaultPerPage,
-          },
-    );
-  }, [defaultPerPage, setFilters]);
-
-  const didMount = useRef(false);
-  const previousTypeRef = useRef(filters.type);
-  useEffect(() => {
-    if (!didMount.current) {
-      didMount.current = true;
-      previousTypeRef.current = filters.type;
-      return;
-    }
-    if (previousTypeRef.current !== filters.type) {
-      previousTypeRef.current = filters.type;
-      return;
-    }
-    setPage(1);
-  }, [filters, setPage]);
+  usePaginationSync({ defaultPerPage, filters, setFilters, setPage });
 
   const allItems = useMemo<TaggedItem[]>(
     () => buildTaggedItems(mods, maps),
