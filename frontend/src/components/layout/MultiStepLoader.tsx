@@ -18,7 +18,6 @@ export function MultiStepLoader({
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background text-foreground select-none">
       <div className="flex flex-col items-center gap-8 px-6">
-        {/* Branding */}
         <div className="flex flex-col items-center gap-1.5">
           <h1 className="text-xl font-semibold tracking-tight text-foreground">
             Railyard
@@ -28,7 +27,6 @@ export function MultiStepLoader({
           </p>
         </div>
 
-        {/* Steps */}
         <div className="flex flex-col gap-1 min-w-[300px] rounded-xl border border-border/60 bg-card/60 p-2 backdrop-blur-sm">
           {loadingStates.map((state, index) => {
             const isComplete = index < currentStep;
@@ -44,7 +42,6 @@ export function MultiStepLoader({
                   !isActive && !isComplete && 'opacity-40',
                 )}
               >
-                {/* Status icon */}
                 <div className="flex h-5 w-5 shrink-0 items-center justify-center">
                   {isComplete ? (
                     <div className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-chart-2/15 transition-all duration-300">
@@ -60,7 +57,6 @@ export function MultiStepLoader({
                   )}
                 </div>
 
-                {/* Label */}
                 <span
                   className={cn(
                     'text-sm leading-none transition-colors duration-300',

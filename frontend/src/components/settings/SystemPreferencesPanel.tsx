@@ -1,5 +1,5 @@
-import { Database, Shield, Terminal } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Shield, Terminal } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { SettingRow } from '@/components/settings/SettingRow';
@@ -13,19 +13,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { getLocalAccentClasses } from '@/lib/local-accent';
 import { useProfileStore } from '@/stores/profile-store';
 
 import {
   GetPlatform,
-  GetTotalMemory,
   InstallLinuxSandbox,
   SandboxIsInstalled,
 } from '../../../wailsjs/go/main/App';
-
-const UNINSTALL_ACCENT = getLocalAccentClasses('uninstall');
-const MIN_MEMORY_MB = 4096;
 
 export function SystemPreferencesPanel() {
   const profile = useProfileStore((s) => s.profile);
@@ -33,8 +27,6 @@ export function SystemPreferencesPanel() {
 
   const [platform, setPlatform] = useState<string>('unknown');
   const [sandboxInstalled, setSandboxInstalled] = useState(false);
-  const [extraMemoryDraft, setExtraMemoryDraft] = useState('');
-  const [MAX_MEMORY_MB, setMaxMemoryMB] = useState<number | null>(null);
 
   useMemo(() => {
     GetPlatform().then((response) => {
@@ -48,20 +40,6 @@ export function SystemPreferencesPanel() {
       if (response.status === 'success') setSandboxInstalled(response.installed);
     });
   }, [platform]);
-
-  useEffect(() => {
-    GetTotalMemory().then((totalMemoryMB) => {
-      setMaxMemoryMB(Math.floor(totalMemoryMB * (5 / 8)));
-    });
-  }, []);
-
-  useEffect(() => {
-    if (profile?.systemPreferences?.extraMemorySize !== -1) {
-      setExtraMemoryDraft(String(profile?.systemPreferences?.extraMemorySize ?? ''));
-    } else {
-      setExtraMemoryDraft('');
-    }
-  }, [profile?.systemPreferences?.extraMemorySize]);
 
   const handleToggleDevTools = async () => {
     if (!profile) return;
@@ -82,36 +60,6 @@ export function SystemPreferencesPanel() {
       toast.success('Linux sandbox installed successfully.');
     } catch {
       toast.error('Failed to install Linux sandbox. Check the logs for details.');
-    }
-  };
-
-  const handleSaveExtraMemory = async () => {
-    if (!profile) return;
-    const parsed = Number.parseInt(extraMemoryDraft, 10);
-    if (!Number.isFinite(parsed) || parsed < MIN_MEMORY_MB || parsed > MAX_MEMORY_MB!) {
-      toast.error(
-        'Extra memory size must be between 4096 MB and no more than about 60% of your system memory (' +
-          MAX_MEMORY_MB! +
-          ' MB).',
-      );
-      return;
-    }
-    try {
-      await updateCommandLineArgs({ extraMemorySize: parsed });
-      toast.success('Extra memory size updated.');
-    } catch {
-      toast.error('Failed to update extra memory size.');
-    }
-  };
-
-  const handleClearExtraMemory = async () => {
-    if (!profile) return;
-    try {
-      setExtraMemoryDraft('');
-      await updateCommandLineArgs({ extraMemorySize: -1 });
-      toast.success('Extra memory size cleared.');
-    } catch {
-      toast.error('Failed to clear extra memory size.');
     }
   };
 

@@ -1,33 +1,202 @@
+import type { LucideIcon } from 'lucide-react';
 import {
+  Check,
   CheckCircle,
   ChevronRight,
+  Eye,
+  EyeOff,
   FolderSearch,
   Gamepad2,
   Github,
   Loader2,
+  RefreshCw,
   TrainTrack,
+  X,
   XCircle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { type ChangeEvent, useState } from 'react';
 import { toast } from 'sonner';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { useConfigStore } from '@/stores/config-store';
+
+const STEPS: Array<{
+  num: number;
+  icon: LucideIcon;
+  title: string;
+  label: string;
+  description: string;
+}> = [
+  {
+    num: 1,
+    icon: TrainTrack,
+    title: 'Data Folder',
+    label: 'Data Folder',
+    description: 'Set the path to your metro-maker4 data folder.',
+  },
+  {
+    num: 2,
+    icon: Gamepad2,
+    title: 'Game Executable',
+    label: 'Executable',
+    description: 'Set the path to your game executable.',
+  },
+  {
+    num: 3,
+    icon: Github,
+    title: 'GitHub Token',
+    label: 'GitHub',
+    description: 'Enter a token for higher GitHub API rate limits. For more info, see the documentation.',
+  },
+  {
+    num: 4,
+    icon: RefreshCw,
+    title: 'Automatic Updates',
+    label: 'Updates',
+    description: 'Configure whether the app should check for updates automatically on launch.',
+  },
+];
+
+interface PathDisplayProps {
+  path: string;
+  valid: boolean;
+}
+
+function PathDisplay({ path, valid }: PathDisplayProps) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-3 rounded-lg border p-3 transition-colors duration-200',
+        valid
+          ? 'border-chart-2/30 bg-chart-2/5'
+          : 'border-destructive/30 bg-destructive/5',
+      )}
+    >
+      {valid ? (
+        <CheckCircle className="size-4 shrink-0 text-chart-2" />
+      ) : (
+        <XCircle className="size-4 shrink-0 text-destructive" />
+      )}
+      <code className="flex-1 truncate text-xs font-mono text-muted-foreground">
+        {path}
+      </code>
+    </div>
+  );
+}
+
+interface PasswordInputProps {
+  value: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  invalid?: boolean;
+  className?: string;
+}
+
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  invalid,
+  className,
+}: PasswordInputProps) {
+  const [show, setShow] = useState(false);
+
+  return (
+    <div className={cn('relative', className)}>
+      <Input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        aria-invalid={invalid || undefined}
+        className="font-mono pr-9 [&::-ms-reveal]:hidden focus-visible:ring-0 focus-visible:border-border"
+      />
+      {value.length > 0 && (
+        <button
+          type="button"
+          tabIndex={-1}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setShow((s) => !s)}
+          className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {show ? (
+            <EyeOff className="size-3.5" />
+          ) : (
+            <Eye className="size-3.5" />
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+interface StepIndicatorProps {
+  activeStep: number;
+}
+
+function StepIndicator({ activeStep }: StepIndicatorProps) {
+  return (
+    <div className="flex items-start justify-center">
+      {STEPS.map((s, i) => {
+        const isDone = s.num < activeStep;
+        const isActive = s.num === activeStep;
+
+        return (
+          <div key={s.num} className="flex items-start">
+            <div className="flex flex-col items-center gap-1.5">
+              <div
+                className={cn(
+                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-all duration-300',
+                  isDone && 'bg-chart-2/15 text-chart-2',
+                  isActive && 'bg-primary text-primary-foreground',
+                  !isDone && !isActive && 'bg-muted text-muted-foreground',
+                )}
+              >
+                {isDone ? (
+                  <Check className="size-3.5" strokeWidth={2.5} />
+                ) : (
+                  s.num
+                )}
+              </div>
+              <span
+                className={cn(
+                  'whitespace-nowrap text-[11px] transition-colors duration-300',
+                  isActive
+                    ? 'font-medium text-foreground'
+                    : 'text-muted-foreground',
+                )}
+              >
+                {s.label}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div
+                className={cn(
+                  'mx-1 h-px w-8 self-start transition-colors duration-300',
+                  isDone ? 'bg-chart-2/40' : 'bg-border',
+                )}
+                style={{ marginTop: '0.875rem' }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function SetupScreen() {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [checkForUpdates, setCheckForUpdates] = useState<boolean | null>(null);
   const [githubToken, setGithubToken] = useState('');
+  const [tokenState, setTokenState] = useState<'idle' | 'valid' | 'invalid'>(
+    'idle',
+  );
+
   const {
     config,
     validation,
@@ -39,16 +208,21 @@ export function SetupScreen() {
   } = useConfigStore();
 
   const handleCheckToken = async () => {
-    let req = await fetch('https://api.github.com/rate_limit', {
-      headers: {
-        Authorization: `token ${githubToken.trim()}`,
-      },
+    const req = await fetch('https://api.github.com/rate_limit', {
+      headers: { Authorization: `token ${githubToken.trim()}` },
     });
     if (req.status === 200) {
+      setTokenState('valid');
       toast.success('GitHub token is valid!');
     } else {
+      setTokenState('invalid');
       toast.error('GitHub token is invalid. Please check and try again.');
     }
+  };
+
+  const handleTokenChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setGithubToken(e.target.value);
+    if (tokenState !== 'idle') setTokenState('idle');
   };
 
   const handleDataFolder = async (autoDetect: boolean) => {
@@ -75,9 +249,9 @@ export function SetupScreen() {
       if (checkForUpdates !== null) {
         await updateCheckForUpdatesOnLaunch(checkForUpdates);
       }
-      const trimmedGithubToken = githubToken.trim();
-      if (trimmedGithubToken !== '') {
-        await updateGithubToken(trimmedGithubToken);
+      const trimmedToken = githubToken.trim();
+      if (trimmedToken !== '') {
+        await updateGithubToken(trimmedToken);
       }
       await completeSetup();
     } finally {
@@ -85,250 +259,223 @@ export function SetupScreen() {
     }
   };
 
+  const canProceed =
+    step === 1
+      ? !!validation?.metroMakerDataPathValid
+      : step === 2
+        ? !!validation?.executablePathValid
+        : step === 3
+          ? tokenState !== 'invalid'
+          : checkForUpdates !== null;
+
+  const stepData = STEPS[step - 1]!;
+  const StepIcon = stepData.icon;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
-      <Card className="w-full max-w-lg">
-        <CardHeader className="text-center">
-          {step === 1 ? (
-            <>
-              <div className="mx-auto mb-2">
-                <TrainTrack className="h-10 w-10 text-primary" />
-              </div>
-              <CardTitle className="text-2xl">Welcome to Railyard</CardTitle>
-              <CardDescription>
-                Set the path to your MetroMaker data folder.
-              </CardDescription>
-            </>
-          ) : step === 2 ? (
-            <>
-              <div className="mx-auto mb-2">
-                <Gamepad2 className="h-10 w-10 text-primary" />
-              </div>
-              <CardTitle className="text-2xl">Game Executable</CardTitle>
-              <CardDescription>
-                Set the path to your game executable.
-              </CardDescription>
-            </>
-          ) : step === 3 ? (
-            <>
-              <div className="mx-auto mb-2">
-                <Github className="h-10 w-10 text-primary" />
-              </div>
-              <CardTitle className="text-2xl">Optional GitHub Token</CardTitle>
-              <CardDescription>
-                Add a token for higher GitHub API limits, or skip and continue.
-              </CardDescription>
-            </>
-          ) : (
-            <>
-              <div className="mx-auto mb-2">
-                <CheckCircle className="h-10 w-10 text-green-600" />
-              </div>
-              <CardTitle className="text-2xl">
-                Automatically Check for Updates
-              </CardTitle>
-              <CardDescription>
-                Would you like Railyard to automatically check for updates when
-                it launches? You can change this later in settings.
-              </CardDescription>
-            </>
-          )}
-
-          {/* Step indicators */}
-          <div className="flex items-center justify-center gap-2 pt-2">
-            <span
-              className={`h-2 w-6 rounded-full ${
-                step === 1 ? 'bg-primary' : 'bg-muted'
-              }`}
-            />
-            <span
-              className={`h-2 w-6 rounded-full ${
-                step === 2 ? 'bg-primary' : 'bg-muted'
-              }`}
-            />
-            <span
-              className={`h-2 w-6 rounded-full ${
-                step === 3 ? 'bg-primary' : 'bg-muted'
-              }`}
-            />
-            <span
-              className={`h-2 w-6 rounded-full ${
-                step === 4 ? 'bg-primary' : 'bg-muted'
-              }`}
-            />
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background text-foreground">
+      <div className="flex w-full max-w-md flex-col items-center gap-8 px-6">
+        <div className="relative flex flex-col items-center gap-3 text-center">
+          <div className="pointer-events-none absolute -top-10 left-1/2 h-36 w-full -translate-x-1/2 rounded-full blur-3xl bg-gradient-to-r from-transparent via-primary/35 to-transparent dark:via-primary/22" />
+          <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+            <StepIcon className="size-7 text-primary" aria-hidden="true" />
           </div>
-        </CardHeader>
+          <h1 className="relative z-10 text-3xl font-black tracking-tight">
+            {stepData.title}
+          </h1>
+          <p className="relative z-10 max-w-xs text-sm text-muted-foreground">
+            {stepData.description}
+          </p>
+        </div>
 
-        <CardContent className="space-y-6">
-          {step === 1 ? (
-            <>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button
-                  className="flex-1"
-                  onClick={() => handleDataFolder(true)}
-                >
-                  <FolderSearch className="mr-2 h-4 w-4" />
-                  Auto-detect
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleDataFolder(false)}
-                >
-                  Browse...
-                </Button>
-              </div>
+        <StepIndicator activeStep={step} />
 
-              {config?.metroMakerDataPath && (
-                <div className="space-y-2">
-                  <code className="block rounded bg-muted px-3 py-2 text-sm font-mono break-all">
-                    {config.metroMakerDataPath}
-                  </code>
-                  {validation?.metroMakerDataPathValid ? (
-                    <Badge variant="success" className="gap-1">
-                      <CheckCircle className="h-3 w-3" />
-                      Valid
-                    </Badge>
-                  ) : (
-                    <Badge variant="destructive" className="gap-1">
-                      <XCircle className="h-3 w-3" />
-                      Invalid
-                    </Badge>
+        <Card className="w-full">
+          <div className="flex flex-col gap-5 p-6">
+            <div className="space-y-3">
+              {step === 1 && (
+                <>
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1"
+                      onClick={() => handleDataFolder(true)}
+                    >
+                      <FolderSearch />
+                      Auto-detect
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-primary text-primary hover:bg-primary/10"
+                      onClick={() => handleDataFolder(false)}
+                    >
+                      Browse...
+                    </Button>
+                  </div>
+                  {config?.metroMakerDataPath && (
+                    <PathDisplay
+                      path={config.metroMakerDataPath}
+                      valid={validation?.metroMakerDataPathValid ?? false}
+                    />
+                  )}
+                </>
+              )}
+
+              {step === 2 && (
+                <>
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1"
+                      onClick={() => handleExecutable(true)}
+                    >
+                      <FolderSearch />
+                      Auto-detect
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-primary text-primary hover:bg-primary/10"
+                      onClick={() => handleExecutable(false)}
+                    >
+                      Browse...
+                    </Button>
+                  </div>
+                  {config?.executablePath && (
+                    <PathDisplay
+                      path={config.executablePath}
+                      valid={validation?.executablePathValid ?? false}
+                    />
+                  )}
+                </>
+              )}
+
+              {step === 3 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <PasswordInput
+                      className="flex-1"
+                      value={githubToken}
+                      onChange={handleTokenChange}
+                      placeholder="github_pat_..."
+                      invalid={tokenState === 'invalid'}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 focus-visible:ring-0 focus-visible:outline-none"
+                      onClick={handleCheckToken}
+                      disabled={githubToken.trim() === ''}
+                    >
+                      Check
+                    </Button>
+                  </div>
+                  {tokenState !== 'idle' && (
+                    <div
+                      className={cn(
+                        'flex items-center gap-2 rounded-lg border px-3 py-2.5',
+                        tokenState === 'valid'
+                          ? 'border-chart-2/30 bg-chart-2/5 text-chart-2'
+                          : 'border-destructive/30 bg-destructive/5 text-destructive',
+                      )}
+                    >
+                      {tokenState === 'valid' ? (
+                        <CheckCircle className="size-3.5 shrink-0" />
+                      ) : (
+                        <XCircle className="size-3.5 shrink-0" />
+                      )}
+                      <p className="text-xs">
+                        {tokenState === 'valid'
+                          ? 'Token is valid.'
+                          : 'Invalid token. Clear the field to skip, or enter a valid token.'}
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
 
-              <div className="flex justify-end">
-                <Button
-                  onClick={() => setStep(2)}
-                  disabled={!validation?.metroMakerDataPathValid}
-                >
-                  Next
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </>
-          ) : step === 2 ? (
-            <>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button
-                  className="flex-1"
-                  onClick={() => handleExecutable(true)}
-                >
-                  <FolderSearch className="mr-2 h-4 w-4" />
-                  Auto-detect
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleExecutable(false)}
-                >
-                  Browse...
-                </Button>
-              </div>
-
-              {config?.executablePath && (
-                <div className="space-y-2">
-                  <code className="block rounded bg-muted px-3 py-2 text-sm font-mono break-all">
-                    {config.executablePath}
-                  </code>
-                  {validation?.executablePathValid ? (
-                    <Badge variant="success" className="gap-1">
-                      <CheckCircle className="h-3 w-3" />
-                      Valid
-                    </Badge>
-                  ) : (
-                    <Badge variant="destructive" className="gap-1">
-                      <XCircle className="h-3 w-3" />
-                      Invalid
-                    </Badge>
-                  )}
+              {step === 4 && (
+                <div className="grid grid-cols-2 gap-3">
+                  {(
+                    [
+                      {
+                        value: true,
+                        label: 'Yes',
+                        sub: 'Keep me updated',
+                        icon: RefreshCw,
+                      },
+                      {
+                        value: false,
+                        label: 'No',
+                        sub: "I'll check manually",
+                        icon: X,
+                      },
+                    ] as const
+                  ).map(({ value, label, sub, icon: Icon }) => (
+                    <button
+                      key={String(value)}
+                      type="button"
+                      onClick={() => setCheckForUpdates(value)}
+                      className={cn(
+                        'flex flex-col items-center gap-2.5 rounded-xl border p-5 text-center transition-all duration-150 ease-out',
+                        value === true
+                          ? checkForUpdates === true
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border text-foreground hover:border-primary/40 hover:bg-primary/5'
+                          : checkForUpdates === false
+                            ? 'border-destructive bg-destructive/10 text-destructive'
+                            : 'border-border text-foreground hover:border-destructive/40 hover:bg-destructive/5',
+                      )}
+                    >
+                      <Icon className="size-5" />
+                      <div>
+                        <p className="text-sm font-semibold">{label}</p>
+                        <p
+                          className={cn(
+                            'text-xs',
+                            value === true && checkForUpdates === true
+                              ? 'text-primary/70'
+                              : value === false && checkForUpdates === false
+                                ? 'text-destructive/70'
+                                : 'text-muted-foreground',
+                          )}
+                        >
+                          {sub}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               )}
+            </div>
 
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setStep(1)}>
-                  Back
-                </Button>
-                <Button
-                  onClick={() => setStep(3)}
-                  disabled={!validation?.executablePathValid}
-                >
-                  Next
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </>
-          ) : step === 3 ? (
-            <>
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Optional GitHub token</p>
-                <Input
-                  type="password"
-                  value={githubToken}
-                  onChange={(event) => setGithubToken(event.target.value)}
-                  placeholder="github_pat_..."
-                  className="font-mono whitespace-nowrap overflow-x-auto"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Leave blank to skip. You can add or change this later in
-                  Settings.
-                </p>
-              </div>
-
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setStep(2)}>
-                  Back
-                </Button>
+            <div className="flex items-center justify-between">
+              {step > 1 ? (
                 <Button
                   variant="outline"
-                  onClick={handleCheckToken}
-                  disabled={githubToken.trim() === ''}
+                  size="sm"
+                  onClick={() => setStep((s) => s - 1)}
+                  className="border-primary text-primary hover:bg-primary/10"
                 >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Check Token
-                </Button>
-                <Button onClick={() => setStep(4)}>
-                  Next
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="space-y-3">
-                <div className="flex items-center gap-4 w-full justify-center">
-                  <Button
-                    variant={checkForUpdates === true ? 'default' : 'outline'}
-                    onClick={() => setCheckForUpdates(true)}
-                  >
-                    Yes
-                  </Button>
-                  <Button
-                    variant={checkForUpdates === false ? 'default' : 'outline'}
-                    onClick={() => setCheckForUpdates(false)}
-                  >
-                    No
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setStep(3)}>
                   Back
                 </Button>
+              ) : (
+                <div />
+              )}
+              {step < 4 ? (
                 <Button
-                  onClick={handleFinish}
-                  disabled={checkForUpdates === null || saving}
+                  onClick={() => setStep((s) => s + 1)}
+                  disabled={!canProceed}
                 >
-                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {step === 3 && githubToken.trim() === '' ? 'Skip' : 'Next'}
+                  <ChevronRight className="ml-1 size-4" />
+                </Button>
+              ) : (
+                <Button onClick={handleFinish} disabled={!canProceed || saving}>
+                  {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
                   Finish Setup
                 </Button>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
