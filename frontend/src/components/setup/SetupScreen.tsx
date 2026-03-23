@@ -1,4 +1,3 @@
-import type { LucideIcon } from 'lucide-react';
 import {
   Check,
   CheckCircle,
@@ -6,11 +5,8 @@ import {
   Eye,
   EyeOff,
   FolderSearch,
-  Gamepad2,
-  Github,
   Loader2,
   RefreshCw,
-  TrainTrack,
   X,
   XCircle,
 } from 'lucide-react';
@@ -23,42 +19,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useConfigStore } from '@/stores/config-store';
 
-const STEPS: Array<{
-  num: number;
-  icon: LucideIcon;
-  title: string;
-  label: string;
-  description: string;
-}> = [
-  {
-    num: 1,
-    icon: TrainTrack,
-    title: 'Data Folder',
-    label: 'Data Folder',
-    description: 'Set the path to your metro-maker4 data folder.',
-  },
-  {
-    num: 2,
-    icon: Gamepad2,
-    title: 'Game Executable',
-    label: 'Executable',
-    description: 'Set the path to your game executable.',
-  },
-  {
-    num: 3,
-    icon: Github,
-    title: 'GitHub Token',
-    label: 'GitHub',
-    description: 'Enter a token for higher GitHub API rate limits. For more info, see the documentation.',
-  },
-  {
-    num: 4,
-    icon: RefreshCw,
-    title: 'Automatic Updates',
-    label: 'Updates',
-    description: 'Configure whether the app should check for updates automatically on launch.',
-  },
-];
+import { SETUP_STEPS, type SetupStepState } from './setup-steps';
 
 interface PathDisplayProps {
   path: string;
@@ -140,12 +101,12 @@ interface StepIndicatorProps {
 function StepIndicator({ activeStep }: StepIndicatorProps) {
   return (
     <div className="flex items-start justify-center">
-      {STEPS.map((s, i) => {
-        const isDone = s.num < activeStep;
-        const isActive = s.num === activeStep;
+      {SETUP_STEPS.map((s, i) => {
+        const isDone = i < activeStep;
+        const isActive = i === activeStep;
 
         return (
-          <div key={s.num} className="flex items-start">
+          <div key={s.title} className="flex items-start">
             <div className="flex flex-col items-center gap-1.5">
               <div
                 className={cn(
@@ -158,7 +119,7 @@ function StepIndicator({ activeStep }: StepIndicatorProps) {
                 {isDone ? (
                   <Check className="size-3.5" strokeWidth={2.5} />
                 ) : (
-                  s.num
+                  i + 1
                 )}
               </div>
               <span
@@ -172,7 +133,7 @@ function StepIndicator({ activeStep }: StepIndicatorProps) {
                 {s.label}
               </span>
             </div>
-            {i < STEPS.length - 1 && (
+            {i < SETUP_STEPS.length - 1 && (
               <div
                 className={cn(
                   'mx-1 h-px w-8 self-start transition-colors duration-300',
@@ -189,7 +150,7 @@ function StepIndicator({ activeStep }: StepIndicatorProps) {
 }
 
 export function SetupScreen() {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [checkForUpdates, setCheckForUpdates] = useState<boolean | null>(null);
   const [githubToken, setGithubToken] = useState('');
@@ -259,16 +220,10 @@ export function SetupScreen() {
     }
   };
 
-  const canProceed =
-    step === 1
-      ? !!validation?.metroMakerDataPathValid
-      : step === 2
-        ? !!validation?.executablePathValid
-        : step === 3
-          ? tokenState !== 'invalid'
-          : checkForUpdates !== null;
+  const stepState: SetupStepState = { validation, tokenState, checkForUpdates };
+  const canProceed = SETUP_STEPS[step]!.canProceed(stepState);
 
-  const stepData = STEPS[step - 1]!;
+  const stepData = SETUP_STEPS[step]!;
   const StepIcon = stepData.icon;
 
   return (
@@ -292,7 +247,7 @@ export function SetupScreen() {
         <Card className="w-full">
           <div className="flex flex-col gap-5 p-6">
             <div className="space-y-3">
-              {step === 1 && (
+              {step === 0 && (
                 <>
                   <div className="flex gap-2">
                     <Button
@@ -319,7 +274,7 @@ export function SetupScreen() {
                 </>
               )}
 
-              {step === 2 && (
+              {step === 1 && (
                 <>
                   <div className="flex gap-2">
                     <Button
@@ -346,7 +301,7 @@ export function SetupScreen() {
                 </>
               )}
 
-              {step === 3 && (
+              {step === 2 && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <PasswordInput
@@ -390,7 +345,7 @@ export function SetupScreen() {
                 </div>
               )}
 
-              {step === 4 && (
+              {step === 3 && (
                 <div className="grid grid-cols-2 gap-3">
                   {(
                     [
@@ -446,7 +401,7 @@ export function SetupScreen() {
             </div>
 
             <div className="flex items-center justify-between">
-              {step > 1 ? (
+              {step > 0 ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -458,12 +413,12 @@ export function SetupScreen() {
               ) : (
                 <div />
               )}
-              {step < 4 ? (
+              {step < SETUP_STEPS.length - 1 ? (
                 <Button
                   onClick={() => setStep((s) => s + 1)}
                   disabled={!canProceed}
                 >
-                  {step === 3 && githubToken.trim() === '' ? 'Skip' : 'Next'}
+                  {step === 2 && githubToken.trim() === '' ? 'Skip' : 'Next'}
                   <ChevronRight className="ml-1 size-4" />
                 </Button>
               ) : (
