@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'wouter';
 
+import { UpdateConfirmDialog } from '@/components/dialogs/UpdateConfirmDialog';
 import { DiscoverSectionGrid } from '@/components/homepage/DiscoverSectionGrid';
 import { PendingUpdateRow } from '@/components/homepage/PendingUpdateRow';
 import { QuickNavCard } from '@/components/homepage/QuickNavCard';
@@ -23,14 +24,6 @@ import { SectionHeader } from '@/components/homepage/SectionHeader';
 import { PageHeading } from '@/components/shared/PageHeading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AssetType } from '@/lib/asset-types';
 import { getLocalAccentClasses } from '@/lib/local-accent';
@@ -146,7 +139,6 @@ export function HomePage() {
       }),
     [mapManifestById, modManifestById, pendingUpdatesByKey],
   );
-
   const runUpdateOperations = useCallback(
     async (
       operations: Array<{ type: AssetType; id: string }>,
@@ -332,39 +324,21 @@ export function HomePage() {
         </div>
       </div>
 
-      <Dialog open={updateAllConfirmOpen} onOpenChange={setUpdateAllConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CircleFadingArrowUp
-                className="h-5 w-5 text-[var(--update-primary)]"
-                aria-hidden
-              />
-              Update all?
-            </DialogTitle>
-            <DialogDescription>
-              This will update {pendingUpdateEntries.length} asset{pendingUpdateEntries.length === 1 ? '' : 's'}.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setUpdateAllConfirmOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={updatingAll}
-              onClick={() => void handleUpdateAll()}
-              className={UPDATE_ACCENT.solidButton}
-            >
-              {updatingAll ? (
-                <RefreshCw className="h-3 w-3 animate-spin" aria-hidden />
-              ) : (
-                <Download className="h-3 w-3" aria-hidden />
-              )}
-              Update All
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <UpdateConfirmDialog
+        open={updateAllConfirmOpen}
+        onOpenChange={setUpdateAllConfirmOpen}
+        title="Update all?"
+        description={`This will update ${pendingUpdateEntries.length} asset${pendingUpdateEntries.length === 1 ? '' : 's'}.`}
+        entries={pendingUpdateEntries.map((entry) => ({
+          key: entry.key,
+          name: entry.name,
+          currentVersion: entry.currentVersion,
+          latestVersion: entry.latestVersion,
+        }))}
+        confirmLabel="Update All"
+        confirming={updatingAll}
+        onConfirm={() => void handleUpdateAll()}
+      />
 
       <section>
         <SectionHeader

@@ -1,9 +1,10 @@
-import { Info } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { AssetActionDialog } from '@/components/dialogs/AssetActionDialog';
-import { getLocalAccentClasses } from '@/lib/local-accent';
+import {
+  UpdateConfirmDialog,
+  type UpdateConfirmEntry,
+} from '@/components/dialogs/UpdateConfirmDialog';
 import type { PendingUpdateTarget } from '@/lib/subscription-updates';
 import { useInstalledStore } from '@/stores/installed-store';
 
@@ -13,8 +14,6 @@ interface UpdateSubscriptionsDialogProps {
   targets: PendingUpdateTarget[];
   onUpdateSuccess?: (targets: PendingUpdateTarget[]) => void;
 }
-
-const UPDATE_ACCENT = getLocalAccentClasses('update');
 
 export function UpdateSubscriptionsDialog({
   open,
@@ -32,6 +31,12 @@ export function UpdateSubscriptionsDialog({
   );
 
   const itemCount = sortedTargets.length;
+  const confirmEntries: UpdateConfirmEntry[] = sortedTargets.map((target) => ({
+    key: `${target.type}-${target.id}`,
+    name: target.name,
+    currentVersion: target.currentVersion,
+    latestVersion: target.latestVersion,
+  }));
   const firstTarget = sortedTargets[0];
   const titleName =
     itemCount === 1 ? (firstTarget?.name ?? 'item') : `${itemCount} items`;
@@ -74,35 +79,15 @@ export function UpdateSubscriptionsDialog({
   };
 
   return (
-    <AssetActionDialog
+    <UpdateConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
       title={title}
       description={description}
-      icon={Info}
-      iconClassName="h-5 w-5 text-[var(--update-primary)]"
+      entries={confirmEntries}
       confirmLabel="Update"
-      confirmClassName={UPDATE_ACCENT.solidButton}
-      tone="update"
-      loading={loading}
+      confirming={loading}
       onConfirm={handleUpdate}
-    >
-      {itemCount > 1 && (
-        <div
-          className={`mt-1 max-h-48 overflow-y-auto rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground ${UPDATE_ACCENT.dialogPanel}`}
-        >
-          <ul className="space-y-1">
-            {sortedTargets.map((target) => (
-              <li key={`${target.type}-${target.id}`} className="flex gap-2">
-                <span className="min-w-0 flex-1 truncate">{target.name}</span>
-                <span className="font-mono tabular-nums text-foreground">
-                  {target.currentVersion} -&gt; {target.latestVersion}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </AssetActionDialog>
+    />
   );
 }
