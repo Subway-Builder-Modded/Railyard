@@ -29,10 +29,8 @@ export interface SidebarPanelProps {
   open: boolean;
   onToggle: () => void;
   ariaLabel: string;
-  /** Watched as a dependency to trigger scroll-to-top and thumb recalculation on filter changes. */
   filters: AssetQueryFilters;
   children: ReactNode;
-  /** Extra content rendered inside the collapsed toggle (below the expand button + divider). */
   collapsedContent?: ReactNode;
 }
 
@@ -52,7 +50,6 @@ export function SidebarPanel({
   const [thumbHeight, setThumbHeight] = useState(0);
   const [thumbTop, setThumbTop] = useState(0);
 
-  // Positioning: direct DOM mutation for top/maxHeight to avoid re-renders on scroll
   useLayoutEffect(() => {
     const rootEl = document.getElementById('root');
     const mainEl = document.querySelector<HTMLElement>('main');
@@ -124,7 +121,6 @@ export function SidebarPanel({
     };
   }, []);
 
-  // Scroll to top when filters change
   const lastFiltersRef = useRef<AssetQueryFilters | null>(null);
   useEffect(() => {
     if (!open) return;
@@ -136,7 +132,6 @@ export function SidebarPanel({
     lastFiltersRef.current = filters;
   }, [filters, open]);
 
-  // Custom scroll thumb
   useLayoutEffect(() => {
     const scrollEl = scrollRef.current;
     if (!scrollEl || !open) {
@@ -231,7 +226,6 @@ export function SidebarPanel({
         </div>
       </aside>
 
-      {/* Collapsed toggle — shows expand button + optional type-switch shortcuts */}
       <div
         ref={toggleRef}
         className={cn(

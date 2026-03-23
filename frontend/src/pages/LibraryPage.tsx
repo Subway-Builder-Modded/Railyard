@@ -190,7 +190,6 @@ export function LibraryPage() {
     mapDownloadTotals,
   });
 
-  // Navigate to browse pre-set to the current type
   const handleInstallBrowse = useCallback(() => {
     useBrowseStore.getState().setType(filters.type);
     navigate('/browse');

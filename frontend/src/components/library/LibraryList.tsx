@@ -37,15 +37,10 @@ import { useLibraryStore } from '@/stores/library-store';
 
 import type { types } from '../../../wailsjs/go/models';
 
-// ─── Accent classes ────────────────────────────────────────────────────────────
-
 const UPDATE_ICON_ACCENT = LOCAL_ACCENTS.update.iconButton;
 const FILES_ICON_ACCENT = LOCAL_ACCENTS.files.iconButton;
 const UNINSTALL_ICON_ACCENT = LOCAL_ACCENTS.uninstall.iconButton;
 
-// ─── Shared sub-components ────────────────────────────────────────────────────
-
-/** Amber pill shown for locally-imported maps in place of registry badges. */
 export function LocalBadge({ className }: { className?: string }) {
   return (
     <span
@@ -59,8 +54,6 @@ export function LocalBadge({ className }: { className?: string }) {
     </span>
   );
 }
-
-// ─── Column-header sort button ─────────────────────────────────────────────────
 
 interface SortableHeaderCellProps {
   label: string;
@@ -97,9 +90,6 @@ function SortableHeaderCell({ label, field, icon: Icon, sort, onSort, className 
   );
 }
 
-// ─── Column layout constants ───────────────────────────────────────────────────
-// These must match between the header and every row.
-
 const COL = {
   gap: 'gap-3',
   city: 'w-[5.5rem]',
@@ -107,8 +97,6 @@ const COL = {
   version: 'w-[6rem]',
   actions: 'w-[5.5rem]',
 } as const;
-
-// ─── List container + header ───────────────────────────────────────────────────
 
 export interface LibraryListProps {
   items: InstalledTaggedItem[];
@@ -130,7 +118,6 @@ export function LibraryList({
   const { selectedIds, selectAll, clearSelection } = useLibraryStore();
   const showMapColumns = activeType === 'map';
 
-  // Per-column direction memory: restores last-used direction when revisiting a column.
   const [columnDirections, setColumnDirections] = useState<
     Partial<Record<Exclude<SortField, 'random'>, SortDirection>>
   >({});
@@ -155,7 +142,6 @@ export function LibraryList({
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
-      {/* ── Header ── */}
       <div
         className={cn(
           'flex items-center border-b border-border bg-muted/20 px-4 py-2',
@@ -168,9 +154,7 @@ export function LibraryList({
           aria-label="Select all"
           className="h-4 w-4 shrink-0"
         />
-        {/* thumbnail placeholder */}
         <div className="h-9 w-9 shrink-0" aria-hidden />
-        {/* Name — takes remaining space */}
         <div className="flex-1 min-w-0">
           <SortableHeaderCell
             label="Name"
@@ -180,7 +164,6 @@ export function LibraryList({
             onSort={handleColumnSort}
           />
         </div>
-        {/* Map-only columns */}
         {showMapColumns && (
           <>
             <div className={cn(COL.city, 'hidden shrink-0 lg:block')}>
@@ -203,17 +186,14 @@ export function LibraryList({
             </div>
           </>
         )}
-        {/* Version */}
         <div className={cn(COL.version, 'flex shrink-0 items-center')}>
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Version
           </span>
         </div>
-        {/* Actions placeholder */}
         <div className={cn(COL.actions, 'shrink-0')} aria-hidden />
       </div>
 
-      {/* ── Rows ── */}
       <div className="divide-y divide-border/50">
         {items.map((entry) => (
           <LibraryListRow
@@ -228,8 +208,6 @@ export function LibraryList({
     </div>
   );
 }
-
-// ─── Row ──────────────────────────────────────────────────────────────────────
 
 interface LibraryListRowProps {
   entry: InstalledTaggedItem;
@@ -273,10 +251,8 @@ function LibraryListRow({
     ? undefined
     : getPendingSubscriptionUpdate(pendingUpdatesByKey, entry.type, entry.item.id);
 
-
   const projectHref = `/project/${assetTypeToListingPath(entry.type)}/${entry.item.id}`;
 
-  // Show at most 2 badges inline in the name column
   const visibleBadges = badges.slice(0, 2);
   const overflowCount = badges.length - visibleBadges.length;
 
@@ -290,7 +266,6 @@ function LibraryListRow({
           isSelected && 'bg-primary/[0.04]',
         )}
       >
-        {/* ── Checkbox ── */}
         <Checkbox
           checked={isSelected}
           onCheckedChange={() => toggleSelected(key)}
@@ -298,7 +273,6 @@ function LibraryListRow({
           className="h-4 w-4 shrink-0"
         />
 
-        {/* ── Thumbnail ── */}
         <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-muted">
           <GalleryImage
             type={entry.type}
@@ -309,8 +283,6 @@ function LibraryListRow({
           />
         </div>
 
-        {/* ── Name column: [name+author stack] | [badges] ── */}
-        {/* Outer flex row so badges vertically center with the full 2-line stack */}
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <div className="flex-1 min-w-0">
             {isLocal ? (
@@ -330,7 +302,6 @@ function LibraryListRow({
             </p>
           </div>
 
-          {/* Badges — right-aligned, centered with full column height */}
           <div className="shrink-0 flex items-center gap-1">
             {isLocal ? (
               <LocalBadge />
@@ -351,7 +322,6 @@ function LibraryListRow({
           </div>
         </div>
 
-        {/* ── Map: city code ── */}
         {showMapColumns && (
           <div className={cn(COL.city, 'hidden shrink-0 lg:block')}>
             {mapCityCode && (
@@ -360,7 +330,6 @@ function LibraryListRow({
           </div>
         )}
 
-        {/* ── Map: country + flag ── */}
         {showMapColumns && (
           <div className={cn(COL.country, 'hidden shrink-0 lg:flex items-center gap-1.5')}>
             {CountryFlag && <CountryFlag className="h-3 w-4 shrink-0 rounded-[1px]" />}
@@ -370,14 +339,12 @@ function LibraryListRow({
           </div>
         )}
 
-        {/* ── Version ── */}
         <div className={cn(COL.version, 'shrink-0')}>
           <span className="text-sm font-semibold text-foreground">
             {entry.installedVersion}
           </span>
         </div>
 
-        {/* ── Actions (always visible) ── */}
         <div className={cn(COL.actions, 'shrink-0 flex items-center justify-end gap-0.5')}>
           {pendingUpdate && (
             <Button

@@ -10,11 +10,6 @@ interface UsePaginationSyncParams {
   setPage: (page: number) => void;
 }
 
-/**
- * Syncs the per-page setting from the user profile and resets to page 1 on
- * filter changes (but not when the type tab switches, since the store handles
- * that separately with scoped filter state).
- */
 export function usePaginationSync({
   defaultPerPage,
   filters,

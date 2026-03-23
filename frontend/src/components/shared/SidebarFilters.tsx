@@ -24,14 +24,10 @@ import { SEARCH_FILTER_EMPTY_LABELS } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import type { AssetQueryFilters } from '@/stores/asset-query-filter-store';
 
-// ─── Shared style constants ────────────────────────────────────────────────────
-
 export const FILTER_SECTION_TITLE_CLASS =
   'text-xs font-semibold uppercase tracking-widest text-muted-foreground';
 export const FILTER_COUNT_BADGE_CLASS =
   'inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-border/65 bg-muted/45 px-1.5 text-[0.65rem] font-semibold tabular-nums text-muted-foreground transition-colors';
-
-// ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface SidebarFiltersProps {
   filters: AssetQueryFilters;
@@ -48,14 +44,10 @@ export interface SidebarFiltersProps {
   mapCount: number;
 }
 
-// ─── Type selector ─────────────────────────────────────────────────────────────
-
 const typeOptions = [
   { value: 'map' as const, label: 'Maps', icon: MapPin },
   { value: 'mod' as const, label: 'Mods', icon: Package },
 ];
-
-// ─── Main component ────────────────────────────────────────────────────────────
 
 export function SidebarFilters({
   filters,
@@ -202,8 +194,6 @@ export function SidebarFilters({
   );
 }
 
-// ─── Collapsible section header ────────────────────────────────────────────────
-
 interface CollapsibleFilterHeaderProps {
   title: string;
   icon: ComponentType<{ className?: string }>;
@@ -241,8 +231,6 @@ function CollapsibleFilterHeader({
     </button>
   );
 }
-
-// ─── Checklist filter section ──────────────────────────────────────────────────
 
 interface FilterSectionProperties {
   title: string;
