@@ -335,10 +335,15 @@ export function HomePage() {
       <Dialog open={updateAllConfirmOpen} onOpenChange={setUpdateAllConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update all available content?</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <CircleFadingArrowUp
+                className="h-5 w-5 text-[var(--update-primary)]"
+                aria-hidden
+              />
+              Update all?
+            </DialogTitle>
             <DialogDescription>
-              This will send {pendingUpdateEntries.length} update operation
-              {pendingUpdateEntries.length === 1 ? '' : 's'}.
+              This will update {pendingUpdateEntries.length} asset{pendingUpdateEntries.length === 1 ? '' : 's'}.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
