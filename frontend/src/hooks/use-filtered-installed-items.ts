@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 
 import {
   filterAndSortTaggedItems,
   type TaggedItemFilterState,
 } from '@/hooks/use-filtered-items';
+import { usePaginationSync } from '@/hooks/use-pagination-sync';
 import { useLibraryStore } from '@/stores/library-store';
 import { useProfileStore } from '@/stores/profile-store';
 
@@ -42,28 +43,7 @@ export function useFilteredInstalledItems({
   const page = useLibraryStore((s) => s.page);
   const setPage = useLibraryStore((s) => s.setPage);
 
-  useEffect(() => {
-    setFilters((prev) =>
-      prev.perPage === defaultPerPage
-        ? prev
-        : { ...prev, perPage: defaultPerPage },
-    );
-  }, [defaultPerPage, setFilters]);
-
-  const didMount = useRef(false);
-  const previousTypeRef = useRef(filters.type);
-  useEffect(() => {
-    if (!didMount.current) {
-      didMount.current = true;
-      previousTypeRef.current = filters.type;
-      return;
-    }
-    if (previousTypeRef.current !== filters.type) {
-      previousTypeRef.current = filters.type;
-      return;
-    }
-    setPage(1);
-  }, [filters, setPage]);
+  usePaginationSync({ defaultPerPage, filters, setFilters, setPage });
 
   const filtered = useMemo(() => {
     return filterAndSortTaggedItems(

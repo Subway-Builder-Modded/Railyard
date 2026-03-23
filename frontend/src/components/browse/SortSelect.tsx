@@ -24,10 +24,9 @@ import {
   getSortOptionsForType,
   type SortField,
   type SortState,
+  TEXT_SORT_FIELDS,
 } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-
-const TEXT_FIELDS = new Set(['name', 'city_code', 'country', 'author']);
 
 const FIELD_ICONS: Record<SortField, ComponentType<{ className?: string }>> = {
   name: Type,
@@ -41,7 +40,7 @@ const FIELD_ICONS: Record<SortField, ComponentType<{ className?: string }>> = {
 };
 
 function directionArrow(field: SortField, direction: 'asc' | 'desc') {
-  const invert = TEXT_FIELDS.has(field);
+  const invert = TEXT_SORT_FIELDS.has(field);
   const showUp = invert ? direction === 'desc' : direction === 'asc';
   return showUp
     ? <ArrowUp className="h-3.5 w-3.5" aria-hidden />
