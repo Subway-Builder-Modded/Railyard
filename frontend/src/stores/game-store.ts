@@ -227,9 +227,13 @@ export const useGameStore = create<GameState>((set) => ({
 
   clearLogs: () =>
     set((state) => {
-      if (!state.selectedSessionId) {
-        return {};
-      }
+      if (!state.selectedSessionId) return {};
+
+      // Never delete the currently active session
+      const selected = state.sessions.find(
+        (s) => s.id === state.selectedSessionId,
+      );
+      if (selected?.endedAt === null) return {};
 
       const nextSessions = state.sessions.filter(
         (session) => session.id !== state.selectedSessionId,
@@ -243,4 +247,5 @@ export const useGameStore = create<GameState>((set) => ({
             : null,
       };
     }),
+
 }));

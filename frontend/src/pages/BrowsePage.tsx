@@ -125,14 +125,6 @@ export function BrowsePage() {
 
   return (
     <div className="relative isolate">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-0"
-      >
-        <div className="absolute -top-28 left-1/2 h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.16)_0%,rgba(56,189,248,0.06)_42%,transparent_72%)] blur-3xl" />
-        <div className="absolute top-32 right-[8%] h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.12)_0%,rgba(99,102,241,0.04)_45%,transparent_72%)] blur-3xl" />
-      </div>
-
       <BrowseSidebar
         open={sidebarOpen}
         onToggle={() => setSidebarOpen((p) => !p)}
