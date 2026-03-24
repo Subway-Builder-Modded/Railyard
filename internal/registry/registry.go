@@ -108,7 +108,7 @@ func (r *Registry) GetMods() []types.ModManifest {
 func (r *Registry) GetModsResponse() types.ModsResponse {
 	return types.ModsResponse{
 		GenericResponse: types.SuccessResponse("Mods loaded"),
-		Mods:            r.mods,
+		Mods:            r.GetMods(),
 	}
 }
 
@@ -128,7 +128,7 @@ func (r *Registry) GetMaps() []types.MapManifest {
 func (r *Registry) GetMapsResponse() types.MapsResponse {
 	return types.MapsResponse{
 		GenericResponse: types.SuccessResponse("Maps loaded"),
-		Maps:            r.maps,
+		Maps:            r.GetMaps(),
 	}
 }
 
