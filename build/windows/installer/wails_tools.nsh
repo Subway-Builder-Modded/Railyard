@@ -5,19 +5,19 @@
 !include "FileFunc.nsh"
 
 !ifndef INFO_PROJECTNAME
-    !define INFO_PROJECTNAME "railyard"
+    !define INFO_PROJECTNAME "{{.Info.Name}}"
 !endif
 !ifndef INFO_COMPANYNAME
-    !define INFO_COMPANYNAME "Subway Builder Modded"
+    !define INFO_COMPANYNAME "{{.Info.CompanyName}}"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "Railyard"
+    !define INFO_PRODUCTNAME "{{.Info.ProductName}}"
 !endif
 !ifndef INFO_PRODUCTVERSION
-    !define INFO_PRODUCTVERSION "v0.2.0"
+    !define INFO_PRODUCTVERSION "{{.Info.ProductVersion}}"
 !endif
 !ifndef INFO_COPYRIGHT
-    !define INFO_COPYRIGHT "Copyright (c) 2026 Subway Builder Modded"
+    !define INFO_COPYRIGHT "{{.Info.Copyright}}"
 !endif
 !ifndef PRODUCT_EXECUTABLE
     !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"
