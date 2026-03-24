@@ -778,7 +778,7 @@ func (d *Downloader) InstallAsset(req types.InstallAssetRequest) types.AssetInst
 		defer cancel()
 		switch req.AssetType {
 		case types.AssetTypeDepMod:
-			return operationResult{assetInstallResponse: d.installModNow(opCtx, req.AssetID, req.Version)}
+			return operationResult{assetInstallResponse: d.installModNow(opCtx, req.AssetID, req.Version, true)}
 		case types.AssetTypeMap:
 			return operationResult{assetInstallResponse: d.installMapNow(opCtx, req.AssetID, req.Version, replaceOnConflict)}
 		case types.AssetTypeMod:
@@ -818,12 +818,9 @@ func (d *Downloader) InstallAsset(req types.InstallAssetRequest) types.AssetInst
 						AssetID:   key,
 						Version:   dep.InstallCandidate.Version,
 					})
-
-					// Deps need to be subscribed to avoid them being uninstalled, but ForceSyncing will trigger an unecessary deps check
-					wailsruntime.EventsEmit(opCtx, "downloader:subscribeDependency", key, types.AssetTypeMod, dep.InstallCandidate.Version)
 				}
 			}
-			return operationResult{assetInstallResponse: d.installModNow(opCtx, req.AssetID, req.Version)}
+			return operationResult{assetInstallResponse: d.installModNow(opCtx, req.AssetID, req.Version, false)}
 		default:
 			return operationResult{assetInstallResponse: d.installError(
 				req.AssetType,
@@ -841,7 +838,7 @@ func (d *Downloader) InstallAsset(req types.InstallAssetRequest) types.AssetInst
 }
 
 // installModNow handles the installation of a mod given its ID and version, including downloading, extracting, and updating the registry.
-func (d *Downloader) installModNow(ctx context.Context, modId string, version string) types.AssetInstallResponse {
+func (d *Downloader) installModNow(ctx context.Context, modId string, version string, isDep bool) types.AssetInstallResponse {
 	d.Logger.Info("InstallMod started", "mod_id", modId, "version", version)
 	if state, installed := d.getInstalledState(types.AssetTypeMod, modId); installed && state.version == version {
 		return d.installWarn(
@@ -920,6 +917,10 @@ func (d *Downloader) installModNow(ctx context.Context, modId string, version st
 		d.Logger.Warn("Failed to persist installed state after installing mod", "error", err)
 	}
 	d.Logger.Info("InstallMod completed", "mod_id", modId, "version", version)
+	if isDep {
+		// Deps need to be subscribed to avoid them being uninstalled, but ForceSyncing will trigger an unecessary deps check
+		wailsruntime.EventsEmit(ctx, "downloader:subscribeDependency", modId, types.AssetTypeMod, version)
+	}
 	return d.installSuccess(types.AssetTypeMod, modId, version, types.ConfigData{}, "Mod installed successfully", "mod_id", modId, "version", version)
 }
 

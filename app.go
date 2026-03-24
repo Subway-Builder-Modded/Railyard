@@ -233,7 +233,18 @@ func runNonBlockingStartupRoutines(a *App, activeProfile types.UserProfile) {
 			return
 		}
 
-		a.Profiles.AddSubscriptionNoSync(a.Profiles.GetActiveProfile().Profile.ID, itemId, itemType, itemVersion, false)
+		a.Profiles.UpdateSubscriptions(types.UpdateSubscriptionsRequest{
+			ProfileID: a.Profiles.GetActiveProfile().Profile.ID,
+			Action:    types.SubscriptionActionSubscribe,
+			ForceSync: true,
+			Assets: map[string]types.SubscriptionUpdateItem{
+				itemId: {
+					Version: itemVersion,
+					Type:    itemType,
+					IsLocal: false,
+				},
+			},
+		})
 	})
 	// Sync subscriptions for active profile on startup
 	// TODO: Make this configurable within the profile itself
