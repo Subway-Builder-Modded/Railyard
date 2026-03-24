@@ -19,7 +19,7 @@ interface PrereleaseConfirmDialogProps {
   onConfirm: () => void;
 }
 
-const INSTALL_ACCENT = getLocalAccentClasses('install');
+const ACCENT = getLocalAccentClasses('files');
 
 export function PrereleaseConfirmDialog({
   open,
@@ -45,13 +45,13 @@ export function PrereleaseConfirmDialog({
         <DialogFooter>
           <Button
             variant="outline"
-            className={INSTALL_ACCENT.outlineButton}
+            className={ACCENT.outlineButton}
             onClick={() => onOpenChange(false)}
           >
             Cancel
           </Button>
           <Button
-            className={INSTALL_ACCENT.solidButton}
+            className={ACCENT.solidButton}
             onClick={() => {
               onOpenChange(false);
               onConfirm();

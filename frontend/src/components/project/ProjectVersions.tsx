@@ -28,6 +28,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import semver from 'semver';
+
 import type { AssetType } from '@/lib/asset-types';
 import { assetTypeToListingPath } from '@/lib/asset-types';
 import { getLocalAccentClasses } from '@/lib/local-accent';
@@ -68,7 +70,12 @@ function sortVersions(
     } else if (sort.field === 'downloads') {
       cmp = a.downloads - b.downloads;
     } else {
-      cmp = a.version.localeCompare(b.version, undefined, { numeric: true });
+      const av = semver.coerce(a.version);
+      const bv = semver.coerce(b.version);
+      cmp =
+        av && bv
+          ? semver.compare(av, bv)
+          : a.version.localeCompare(b.version, undefined, { numeric: true });
     }
     return sort.direction === 'asc' ? cmp : -cmp;
   });
