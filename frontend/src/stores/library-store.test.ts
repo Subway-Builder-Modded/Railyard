@@ -128,3 +128,48 @@ describe('useLibraryStore per-asset-type state', () => {
     expect(Array.from(state.selectedIds).sort()).toEqual(['mod-a', 'mod-c']);
   });
 });
+
+describe('useLibraryStore selection', () => {
+  beforeEach(() => {
+    useLibraryStore.setState({ selectedIds: new Set<string>() });
+  });
+
+  it('toggleSelected adds an unselected id', () => {
+    useLibraryStore.getState().toggleSelected('mod-a');
+    expect(useLibraryStore.getState().selectedIds.has('mod-a')).toBe(true);
+  });
+
+  it('toggleSelected removes an already-selected id', () => {
+    useLibraryStore.setState({ selectedIds: new Set(['mod-a', 'mod-b']) });
+    useLibraryStore.getState().toggleSelected('mod-a');
+    expect(useLibraryStore.getState().selectedIds.has('mod-a')).toBe(false);
+    expect(useLibraryStore.getState().selectedIds.has('mod-b')).toBe(true);
+  });
+
+  it('selectAll replaces the entire selection', () => {
+    useLibraryStore.setState({ selectedIds: new Set(['old-id']) });
+    useLibraryStore.getState().selectAll(['new-a', 'new-b']);
+    expect(Array.from(useLibraryStore.getState().selectedIds).sort()).toEqual([
+      'new-a',
+      'new-b',
+    ]);
+  });
+
+  it('clearSelection empties the set', () => {
+    useLibraryStore.setState({ selectedIds: new Set(['mod-a', 'map-b']) });
+    useLibraryStore.getState().clearSelection();
+    expect(useLibraryStore.getState().selectedIds.size).toBe(0);
+  });
+
+  it('isSelected returns true for selected ids and false otherwise', () => {
+    useLibraryStore.setState({ selectedIds: new Set(['mod-a']) });
+    expect(useLibraryStore.getState().isSelected('mod-a')).toBe(true);
+    expect(useLibraryStore.getState().isSelected('mod-b')).toBe(false);
+  });
+
+  it('removeSelected is a no-op for an empty list', () => {
+    useLibraryStore.setState({ selectedIds: new Set(['mod-a']) });
+    useLibraryStore.getState().removeSelected([]);
+    expect(useLibraryStore.getState().selectedIds.has('mod-a')).toBe(true);
+  });
+});

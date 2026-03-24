@@ -46,6 +46,8 @@ describe('useBrowseStore per-asset-type state', () => {
           page: 1,
         },
       },
+      viewMode: 'full',
+      viewModeInitialized: false,
     });
   });
 
@@ -116,5 +118,38 @@ describe('useBrowseStore per-asset-type state', () => {
     state = useBrowseStore.getState();
     expect(state.filters.query).toBe('metro');
     expect(state.filters.perPage).toBe(24);
+  });
+});
+
+describe('useBrowseStore view mode', () => {
+  beforeEach(() => {
+    useBrowseStore.setState({
+      viewMode: 'full',
+      viewModeInitialized: false,
+    });
+  });
+
+  it('setViewMode updates viewMode and marks initialized', () => {
+    useBrowseStore.getState().setViewMode('compact');
+    expect(useBrowseStore.getState().viewMode).toBe('compact');
+    expect(useBrowseStore.getState().viewModeInitialized).toBe(true);
+  });
+
+  it('initializeViewMode sets mode when not yet initialized', () => {
+    useBrowseStore.getState().initializeViewMode('list');
+    expect(useBrowseStore.getState().viewMode).toBe('list');
+    expect(useBrowseStore.getState().viewModeInitialized).toBe(true);
+  });
+
+  it('initializeViewMode is a no-op after already initialized', () => {
+    useBrowseStore.setState({ viewMode: 'compact', viewModeInitialized: true });
+    useBrowseStore.getState().initializeViewMode('list');
+    expect(useBrowseStore.getState().viewMode).toBe('compact');
+  });
+
+  it('setViewMode always overrides even when already initialized', () => {
+    useBrowseStore.setState({ viewMode: 'compact', viewModeInitialized: true });
+    useBrowseStore.getState().setViewMode('list');
+    expect(useBrowseStore.getState().viewMode).toBe('list');
   });
 });

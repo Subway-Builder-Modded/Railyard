@@ -31,6 +31,8 @@ describe('useRegistryStore download totals', () => {
     useRegistryStore.setState({
       mods: [],
       maps: [],
+      mapIntegrity: null,
+      modIntegrity: null,
       modDownloadTotals: {},
       mapDownloadTotals: {},
       downloadTotalsLoaded: false,
@@ -118,6 +120,12 @@ describe('useRegistryStore download totals', () => {
 
     expect(mockGetDownloadCountsByAssetType).toHaveBeenCalledTimes(2);
     expect(useRegistryStore.getState().downloadTotalsLoaded).toBe(true);
+  });
+
+  it('skips re-fetching when totals are already loaded', async () => {
+    useRegistryStore.setState({ downloadTotalsLoaded: true });
+    await useRegistryStore.getState().ensureDownloadTotals();
+    expect(mockGetDownloadCountsByAssetType).not.toHaveBeenCalled();
   });
 
   it('recomputes totals during refresh', async () => {

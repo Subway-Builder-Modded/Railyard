@@ -75,6 +75,7 @@ export function updateSubscriptionsSuccess(
     persisted: true,
     operations: [],
     errors: [],
+    conflicts: [],
   });
 }
 
@@ -93,6 +94,7 @@ export function updateSubscriptionsError(
     persisted: false,
     operations: [],
     errors: [],
+    conflicts: [],
   });
 }
 
@@ -111,5 +113,26 @@ export function updateSubscriptionsWarn(
     persisted: true,
     operations: [],
     errors: [],
+    conflicts: [],
+  });
+}
+
+export function updateSubscriptionsWithConflicts(
+  message: string,
+  conflicts: types.MapCodeConflict[],
+): types.UpdateSubscriptionsResult {
+  return new types.UpdateSubscriptionsResult({
+    status: 'warn',
+    message,
+    requestType: UPDATE_SUBSCRIPTIONS,
+    hasUpdates: false,
+    pendingCount: 0,
+    pendingUpdates: [],
+    applied: false,
+    profile: activeProfileFixture(),
+    persisted: false,
+    operations: [],
+    errors: [],
+    conflicts,
   });
 }

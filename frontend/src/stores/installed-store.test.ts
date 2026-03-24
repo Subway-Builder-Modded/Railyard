@@ -6,9 +6,16 @@ import {
   updateSubscriptionsError,
   updateSubscriptionsSuccess,
   updateSubscriptionsWarn,
+  updateSubscriptionsWithConflicts,
 } from '@/test/helpers/profileMutationFixtures';
 
-import { useInstalledStore } from './installed-store';
+import { useDownloadQueueStore } from './download-queue-store';
+import {
+  AssetConflictError,
+  InvalidMapCodeError,
+  SubscriptionSyncError,
+  useInstalledStore,
+} from './installed-store';
 
 const {
   mockGetInstalledModsResponse,
@@ -17,10 +24,6 @@ const {
   mockUpdateSubscriptions,
   mockImportAsset,
   mockUpdateSubscriptionsToLatest,
-  mockInstallMapFiles,
-  mockInstallModFiles,
-  mockUninstallMapFiles,
-  mockUninstallModFiles,
 } = vi.hoisted(() => ({
   mockGetInstalledModsResponse: vi.fn(),
   mockGetInstalledMapsResponse: vi.fn(),
@@ -28,10 +31,6 @@ const {
   mockUpdateSubscriptions: vi.fn(),
   mockImportAsset: vi.fn(),
   mockUpdateSubscriptionsToLatest: vi.fn(),
-  mockInstallMapFiles: vi.fn(),
-  mockInstallModFiles: vi.fn(),
-  mockUninstallMapFiles: vi.fn(),
-  mockUninstallModFiles: vi.fn(),
 }));
 
 vi.mock('../../wailsjs/go/registry/Registry', () => ({
@@ -44,13 +43,6 @@ vi.mock('../../wailsjs/go/profiles/UserProfiles', () => ({
   UpdateSubscriptions: mockUpdateSubscriptions,
   ImportAsset: mockImportAsset,
   UpdateSubscriptionsToLatest: mockUpdateSubscriptionsToLatest,
-}));
-
-vi.mock('../../wailsjs/go/downloader/Downloader', () => ({
-  InstallMap: mockInstallMapFiles,
-  InstallMod: mockInstallModFiles,
-  UninstallMap: mockUninstallMapFiles,
-  UninstallMod: mockUninstallModFiles,
 }));
 
 type ProfilesRequest = {
@@ -90,6 +82,19 @@ function validateFinalState(
   }
 }
 
+const installedListsSuccess = () => {
+  mockGetInstalledModsResponse.mockResolvedValue({
+    status: 'success',
+    message: 'ok',
+    mods: [{ id: 'mod-1', version: '1.0.0' }],
+  });
+  mockGetInstalledMapsResponse.mockResolvedValue({
+    status: 'success',
+    message: 'ok',
+    maps: [{ id: 'map-1', version: '2.0.0', config: { code: 'AAA' } }],
+  });
+};
+
 describe('useInstalledStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -103,10 +108,7 @@ describe('useInstalledStore', () => {
       error: null,
       initialized: false,
     });
-    mockInstallMapFiles.mockResolvedValue({ status: 'success', message: '' });
-    mockInstallModFiles.mockResolvedValue({ status: 'success', message: '' });
-    mockUninstallMapFiles.mockResolvedValue({ status: 'success', message: '' });
-    mockUninstallModFiles.mockResolvedValue({ status: 'success', message: '' });
+    useDownloadQueueStore.setState({ total: 0, completed: 0 });
     mockUpdateSubscriptionsToLatest.mockResolvedValue(
       updateSubscriptionsSuccess('latest apply ok'),
     );
@@ -119,16 +121,7 @@ describe('useInstalledStore', () => {
     mockUpdateSubscriptions.mockResolvedValue(
       updateSubscriptionsSuccess('subscriptions updated'),
     );
-    mockGetInstalledModsResponse.mockResolvedValue({
-      status: 'success',
-      message: 'ok',
-      mods: [{ id: 'mod-1', version: '1.0.0' }],
-    });
-    mockGetInstalledMapsResponse.mockResolvedValue({
-      status: 'success',
-      message: 'ok',
-      maps: [{ id: 'map-1', version: '2.0.0', config: { code: 'AAA' } }],
-    });
+    installedListsSuccess();
 
     await useInstalledStore.getState().installMap('map-1', '2.0.0');
 
@@ -174,7 +167,7 @@ describe('useInstalledStore', () => {
     validateFinalState('uninstalling', 'map-7', null);
   });
 
-  it('installMod errors when profile mutation fails', async () => {
+  it('installMod throws SubscriptionSyncError when profile mutation fails', async () => {
     mockGetActiveProfile.mockResolvedValue(
       activeProfileResultSuccess('profile-a'),
     );
@@ -197,6 +190,19 @@ describe('useInstalledStore', () => {
     validateFinalState('installing', 'mod-2', 'Install failed');
   });
 
+  it('installMod throws SubscriptionSyncError instance on error', async () => {
+    mockGetActiveProfile.mockResolvedValue(
+      activeProfileResultSuccess('profile-a'),
+    );
+    mockUpdateSubscriptions.mockResolvedValue(
+      updateSubscriptionsError('Sync error'),
+    );
+
+    await expect(
+      useInstalledStore.getState().installMod('mod-3', '1.0.0'),
+    ).rejects.toBeInstanceOf(SubscriptionSyncError);
+  });
+
   it('installMap resolves when profile mutation returns warn', async () => {
     mockGetActiveProfile.mockResolvedValue(
       activeProfileResultSuccess('profile-a'),
@@ -204,16 +210,7 @@ describe('useInstalledStore', () => {
     mockUpdateSubscriptions.mockResolvedValue(
       updateSubscriptionsWarn('sync completed with warnings'),
     );
-    mockGetInstalledModsResponse.mockResolvedValue({
-      status: 'success',
-      message: 'ok',
-      mods: [{ id: 'mod-1', version: '1.0.0' }],
-    });
-    mockGetInstalledMapsResponse.mockResolvedValue({
-      status: 'success',
-      message: 'ok',
-      maps: [{ id: 'map-1', version: '2.0.0', config: { code: 'AAA' } }],
-    });
+    installedListsSuccess();
 
     const result = await useInstalledStore
       .getState()
@@ -232,7 +229,24 @@ describe('useInstalledStore', () => {
     expect(result.message).toContain('sync completed with warnings');
   });
 
-  it('uninstallMod errors when profile mutation fails', async () => {
+  it('installMap throws AssetConflictError when warn has conflicts', async () => {
+    mockGetActiveProfile.mockResolvedValue(
+      activeProfileResultSuccess('profile-a'),
+    );
+    mockUpdateSubscriptions.mockResolvedValue(
+      updateSubscriptionsWithConflicts('Map code conflict', [
+        { existingMapId: 'map-other', incomingMapId: 'map-1', code: 'ABC' },
+      ]),
+    );
+
+    await expect(
+      useInstalledStore.getState().installMap('map-1', '2.0.0'),
+    ).rejects.toBeInstanceOf(AssetConflictError);
+
+    validateFinalState('installing', 'map-1', 'Map code conflict');
+  });
+
+  it('uninstallMod throws SubscriptionSyncError when profile mutation fails', async () => {
     mockGetActiveProfile.mockResolvedValue(
       activeProfileResultSuccess('profile-a'),
     );
@@ -310,20 +324,45 @@ describe('useInstalledStore', () => {
     expect(useInstalledStore.getState().installing.has('map-2')).toBe(true);
   });
 
-  it('updateAssetsToLatest invokes latest_apply with scoped targets and refreshes lists', async () => {
+  it('uninstallAssets removes multiple assets in one request', async () => {
     mockGetActiveProfile.mockResolvedValue(
       activeProfileResultSuccess('profile-a'),
+    );
+    mockUpdateSubscriptions.mockResolvedValue(
+      updateSubscriptionsSuccess('batch uninstall ok'),
     );
     mockGetInstalledModsResponse.mockResolvedValue({
       status: 'success',
       message: 'ok',
-      mods: [{ id: 'mod-1', version: '1.0.0' }],
+      mods: [],
     });
     mockGetInstalledMapsResponse.mockResolvedValue({
       status: 'success',
       message: 'ok',
-      maps: [{ id: 'map-1', version: '2.0.0', config: { code: 'AAA' } }],
+      maps: [],
     });
+
+    const result = await useInstalledStore.getState().uninstallAssets([
+      { id: 'mod-1', type: 'mod' },
+      { id: 'map-1', type: 'map' },
+    ]);
+
+    expect(mockUpdateSubscriptions).toHaveBeenCalledTimes(1);
+    const request = mockUpdateSubscriptions.mock.calls[0][0];
+    expect(request.action).toBe('unsubscribe');
+    expect(request.assets['mod-1'].type).toBe('mod');
+    expect(request.assets['map-1'].type).toBe('map');
+    validateInstallationRefreshes(1);
+    expect(result.status).toBe('success');
+    expect(useInstalledStore.getState().uninstalling.has('mod-1')).toBe(false);
+    expect(useInstalledStore.getState().uninstalling.has('map-1')).toBe(false);
+  });
+
+  it('updateAssetsToLatest invokes latest_apply with scoped targets and refreshes lists', async () => {
+    mockGetActiveProfile.mockResolvedValue(
+      activeProfileResultSuccess('profile-a'),
+    );
+    installedListsSuccess();
 
     const result = await useInstalledStore.getState().updateAssetsToLatest([
       { id: 'map-1', type: 'map' },
@@ -358,5 +397,129 @@ describe('useInstalledStore', () => {
         .updateAssetsToLatest([{ id: 'map-1', type: 'map' }]),
     ).rejects.toThrow('Failed to apply latest updates');
     expect(useInstalledStore.getState().installing.has('map-1')).toBe(false);
+  });
+
+  it('importMapFromZip succeeds and refreshes installed lists', async () => {
+    mockGetActiveProfile.mockResolvedValue(
+      activeProfileResultSuccess('profile-a'),
+    );
+    mockImportAsset.mockResolvedValue({
+      status: 'success',
+      message: 'imported ok',
+      conflicts: [],
+      errors: [],
+    });
+    installedListsSuccess();
+
+    const result = await useInstalledStore
+      .getState()
+      .importMapFromZip('/path/to/map.zip');
+
+    expect(mockImportAsset).toHaveBeenCalledTimes(1);
+    const request = mockImportAsset.mock.calls[0][0];
+    expect(request.profileId).toBe('profile-a');
+    expect(request.assetType).toBe('map');
+    expect(request.zipPath).toBe('/path/to/map.zip');
+    expect(request.replaceOnConflict).toBe(false);
+    validateInstallationRefreshes(1);
+    expect(result.status).toBe('success');
+    expect(useInstalledStore.getState().error).toBeNull();
+  });
+
+  it('importMapFromZip throws AssetConflictError on warn with conflicts', async () => {
+    mockGetActiveProfile.mockResolvedValue(
+      activeProfileResultSuccess('profile-a'),
+    );
+    mockImportAsset.mockResolvedValue({
+      status: 'warn',
+      message: 'conflict detected',
+      conflicts: [{ existingMapId: 'map-other', incomingMapId: 'map-1', code: 'ABC' }],
+      errors: [],
+    });
+
+    await expect(
+      useInstalledStore.getState().importMapFromZip('/path/to/map.zip'),
+    ).rejects.toBeInstanceOf(AssetConflictError);
+  });
+
+  it('importMapFromZip throws InvalidMapCodeError on invalid map code error', async () => {
+    mockGetActiveProfile.mockResolvedValue(
+      activeProfileResultSuccess('profile-a'),
+    );
+    mockImportAsset.mockResolvedValue({
+      status: 'error',
+      message: 'Invalid map code',
+      conflicts: [],
+      errors: [{ downloaderErrorType: 'install_invalid_map_code', message: 'bad code' }],
+    });
+
+    await expect(
+      useInstalledStore.getState().importMapFromZip('/path/to/map.zip'),
+    ).rejects.toBeInstanceOf(InvalidMapCodeError);
+  });
+
+  it('importMapFromZip throws SubscriptionSyncError on generic error', async () => {
+    mockGetActiveProfile.mockResolvedValue(
+      activeProfileResultSuccess('profile-a'),
+    );
+    mockImportAsset.mockResolvedValue({
+      status: 'error',
+      message: 'Import failed',
+      conflicts: [],
+      errors: [],
+    });
+
+    await expect(
+      useInstalledStore.getState().importMapFromZip('/path/to/map.zip'),
+    ).rejects.toBeInstanceOf(SubscriptionSyncError);
+  });
+
+  it('importMapFromZip passes replaceOnConflict flag to the request', async () => {
+    mockGetActiveProfile.mockResolvedValue(
+      activeProfileResultSuccess('profile-a'),
+    );
+    mockImportAsset.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      conflicts: [],
+      errors: [],
+    });
+    installedListsSuccess();
+
+    await useInstalledStore
+      .getState()
+      .importMapFromZip('/path/to/map.zip', true);
+
+    const request = mockImportAsset.mock.calls[0][0];
+    expect(request.replaceOnConflict).toBe(true);
+  });
+
+  it('tracks installingVersion for the duration of an install', async () => {
+    mockGetActiveProfile.mockResolvedValue(
+      activeProfileResultSuccess('profile-a'),
+    );
+
+    let versionDuringInstall: string | null = null;
+
+    mockUpdateSubscriptions.mockImplementation(async () => {
+      versionDuringInstall =
+        useInstalledStore.getState().getInstallingVersion('mod-5');
+      return updateSubscriptionsSuccess('ok');
+    });
+    mockGetInstalledModsResponse.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      mods: [{ id: 'mod-5', version: '3.0.0' }],
+    });
+    mockGetInstalledMapsResponse.mockResolvedValue({
+      status: 'success',
+      message: 'ok',
+      maps: [],
+    });
+
+    await useInstalledStore.getState().installMod('mod-5', '3.0.0');
+
+    expect(versionDuringInstall).toBe('3.0.0');
+    expect(useInstalledStore.getState().getInstallingVersion('mod-5')).toBeNull();
   });
 });
