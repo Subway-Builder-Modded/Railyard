@@ -16,7 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'wouter';
 
-import { AssetActionDialog } from '@/components/dialogs/AssetActionDialog';
+import { AppDialog } from '@/components/dialogs/AppDialog';
 import { DiscoverSectionGrid } from '@/components/homepage/DiscoverSectionGrid';
 import { PendingUpdateRow } from '@/components/homepage/PendingUpdateRow';
 import { QuickNavCard } from '@/components/homepage/QuickNavCard';
@@ -327,25 +327,39 @@ export function HomePage() {
         </div>
       </div>
 
-      <AssetActionDialog
+      <AppDialog
         open={updateAllConfirmOpen}
         onOpenChange={setUpdateAllConfirmOpen}
         title="Update all?"
         description={`This will update ${pendingUpdateEntries.length} asset${pendingUpdateEntries.length === 1 ? '' : 's'}.`}
         icon={CircleFadingArrowUp}
-        iconClassName="h-5 w-5 text-[var(--update-primary)]"
-        entries={pendingUpdateEntries.map((entry) => ({
-          key: entry.key,
-          name: entry.name,
-          currentVersion: entry.currentVersion,
-          latestVersion: entry.latestVersion,
-        }))}
-        confirmLabel="Update All"
         tone="update"
-        confirmClassName={UPDATE_ACCENT.solidButton}
-        loading={updatingAll}
-        onConfirm={() => void handleUpdateAll()}
-      />
+        confirm={{
+          label: 'Update All',
+          onConfirm: () => void handleUpdateAll(),
+          loading: updatingAll,
+        }}
+      >
+        {pendingUpdateEntries.length > 0 && (
+          <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <ul className="space-y-1">
+              {pendingUpdateEntries.slice(0, 10).map((entry) => (
+                <li key={entry.key} className="flex gap-2">
+                  <span className="min-w-0 flex-1 truncate">{entry.name}</span>
+                  <span className="font-mono tabular-nums text-foreground">
+                    {entry.currentVersion} &rarr; {entry.latestVersion}
+                  </span>
+                </li>
+              ))}
+              {pendingUpdateEntries.length > 10 && (
+                <li className="pt-1 text-right font-medium text-muted-foreground">
+                  +{pendingUpdateEntries.length - 10} more
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+      </AppDialog>
 
       <section>
         <SectionHeader

@@ -1,8 +1,9 @@
-import { Inbox, Plus, SearchX } from 'lucide-react';
+import { AlertTriangle, FileArchive, Inbox, Plus, SearchX } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { useLocation } from 'wouter';
 
-import { ImportAssetDialog } from '@/components/dialogs/ImportAssetDialog';
+import { AppDialog } from '@/components/dialogs/AppDialog';
 import { LibraryActionBar } from '@/components/library/LibraryActionBar';
 import { LibraryList } from '@/components/library/LibraryList';
 import {
@@ -25,9 +26,14 @@ import {
   requestLatestSubscriptionUpdatesForActiveProfile,
 } from '@/lib/subscription-updates';
 import { useBrowseStore } from '@/stores/browse-store';
-import { useInstalledStore } from '@/stores/installed-store';
+import {
+  AssetConflictError,
+  InvalidMapCodeError,
+  useInstalledStore,
+} from '@/stores/installed-store';
 import { useRegistryStore } from '@/stores/registry-store';
 
+import { OpenImportAssetDialog } from '../../wailsjs/go/main/App';
 import { types } from '../../wailsjs/go/models';
 
 function localMapManifestFromInstalled(
@@ -62,13 +68,26 @@ function localMapManifestFromInstalled(
   });
 }
 
+function conflictSourceLabel(conflict: types.MapCodeConflict): string {
+  if (conflict.existingAssetId?.startsWith('vanilla:')) return 'Vanilla';
+  return conflict.existingIsLocal ? 'Local' : 'Registry';
+}
+
 const INSTALL_ACCENT = getLocalAccentClasses('install');
 const IMPORT_ACCENT = getLocalAccentClasses('import');
+const FILES_ACCENT = getLocalAccentClasses('files');
 
 export function LibraryPage() {
   const [, navigate] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importSelectedPath, setImportSelectedPath] = useState('');
+  const [importConflict, setImportConflict] =
+    useState<types.MapCodeConflict | null>(null);
+  const [importInvalidCode, setImportInvalidCode] = useState<string | null>(
+    null,
+  );
   const [pendingUpdatesByKey, setPendingUpdatesByKey] =
     useState<PendingUpdatesByKey>({});
 
@@ -79,7 +98,7 @@ export function LibraryPage() {
     mapDownloadTotals,
     ensureDownloadTotals,
   } = useRegistryStore();
-  const { installedMods, installedMaps, updateInstalledLists } =
+  const { installedMods, installedMaps, updateInstalledLists, importMapFromZip } =
     useInstalledStore();
 
   const refreshPendingSubscriptionUpdates = useCallback(async () => {
@@ -251,6 +270,55 @@ export function LibraryPage() {
     [installedMapItems, installedModItems],
   );
 
+  const runImport = async (zipPath: string, replaceOnConflict: boolean) => {
+    setImportLoading(true);
+    try {
+      const result = await importMapFromZip(zipPath, replaceOnConflict);
+      if (result.status === 'warn') {
+        toast.warning(result.message || 'Map imported with warnings.');
+      } else {
+        toast.success(result.message || 'Map imported successfully.');
+      }
+      void updateInstalledLists();
+      void refreshPendingSubscriptionUpdates();
+      setImportConflict(null);
+      setImportSelectedPath('');
+      setImportDialogOpen(false);
+    } catch (err) {
+      if (err instanceof AssetConflictError && err.conflicts.length > 0) {
+        setImportConflict(err.conflicts[0]);
+        return;
+      }
+      if (err instanceof InvalidMapCodeError) {
+        setImportInvalidCode(err.message);
+        return;
+      }
+      setImportSelectedPath('');
+      toast.error('Failed to import map.');
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handlePickArchive = async () => {
+    if (importLoading) return;
+    setImportLoading(true);
+    try {
+      const selection = await OpenImportAssetDialog('map');
+      if (selection.status === 'error') {
+        toast.error('Failed to import map.');
+        return;
+      }
+      if (selection.status === 'warn' || !selection.path?.trim()) {
+        return;
+      }
+      setImportSelectedPath(selection.path);
+      await runImport(selection.path, false);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   return (
     <>
       <LibrarySidebarPanel
@@ -294,7 +362,6 @@ export function LibraryPage() {
           />
         )}
 
-        {/* Search + actions */}
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <SearchBar
@@ -337,7 +404,6 @@ export function LibraryPage() {
           </EmptyState>
         ) : (
           <div className="space-y-4">
-            {/* Result count */}
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">
                 {totalResults}
@@ -350,7 +416,6 @@ export function LibraryPage() {
               )}
             </p>
 
-            {/* List or empty state */}
             {paginatedItems.length === 0 ? (
               <EmptyState
                 icon={SearchX}
@@ -399,14 +464,83 @@ export function LibraryPage() {
         )}
       </div>
 
-      <ImportAssetDialog
+      <AppDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
-        onImportSuccess={() => {
-          void updateInstalledLists();
-          void refreshPendingSubscriptionUpdates();
+        title="Import"
+        icon={FileArchive}
+        description="Import a local map ZIP into your Library. Local assets are tracked separately from registry assets."
+        tone="import"
+        confirm={{
+          label: 'Choose ZIP',
+          cancelLabel: 'Close',
+          onConfirm: handlePickArchive,
+          loading: importLoading,
         }}
-      />
+      >
+        <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          Asset Type:{' '}
+          <span className="font-medium text-foreground">Map</span>
+          {importSelectedPath ? (
+            <p className="mt-1 truncate">
+              Selected Archive:{' '}
+              <span className="text-foreground">{importSelectedPath}</span>
+            </p>
+          ) : null}
+        </div>
+      </AppDialog>
+
+      {importConflict && (
+        <AppDialog
+          open={!!importConflict}
+          onOpenChange={(value) => {
+            if (!value) setImportConflict(null);
+          }}
+          title="Replace Conflicting Map"
+          icon={AlertTriangle}
+          description="This local import conflicts with an existing map. Replace the existing map to continue."
+          tone="files"
+          confirm={{
+            label: 'Replace',
+            onConfirm: () => {
+              if (!importSelectedPath) return;
+              void runImport(importSelectedPath, true);
+            },
+            loading: importLoading,
+          }}
+        >
+          <div
+            className={`rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground ${FILES_ACCENT.dialogPanel}`}
+          >
+            <p className="font-medium text-foreground">
+              Conflicting City Code: {importConflict.cityCode}
+            </p>
+            <p className="mt-1">
+              Existing Asset: {importConflict.existingAssetId} (
+              {conflictSourceLabel(importConflict)})
+            </p>
+            {importConflict.existingVersion ? (
+              <p className="mt-1">
+                Existing Version: {importConflict.existingVersion}
+              </p>
+            ) : null}
+          </div>
+        </AppDialog>
+      )}
+
+      {importInvalidCode && (
+        <AppDialog
+          open={!!importInvalidCode}
+          onOpenChange={(value) => {
+            if (!value) setImportInvalidCode(null);
+          }}
+          title="Invalid Local Map Code"
+          icon={AlertTriangle}
+          description={`${importInvalidCode} Local map codes must be 2-4 uppercase letters (e.g. "AAA").`}
+          tone="files"
+          confirm={{ label: 'OK', onConfirm: () => setImportInvalidCode(null) }}
+        />
+      )}
     </>
   );
 }

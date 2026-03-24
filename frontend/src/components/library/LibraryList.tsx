@@ -4,14 +4,15 @@ import {
   Globe,
   HardDrive,
   Hash,
+  OctagonX,
   Trash2,
   Type,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 import { Link } from 'wouter';
 
-import { UninstallDialog } from '@/components/dialogs/UninstallDialog';
-import { UpdateSubscriptionsDialog } from '@/components/dialogs/UpdateSubscriptionsDialog';
+import { AppDialog } from '@/components/dialogs/AppDialog';
 import { GalleryImage } from '@/components/shared/GalleryImage';
 import { SortableHeaderCell } from '@/components/shared/SortableHeaderCell';
 import { Badge } from '@/components/ui/badge';
@@ -34,9 +35,11 @@ import {
   composeAssetKey,
   getPendingSubscriptionUpdate,
   type PendingUpdatesByKey,
+  type PendingUpdateTarget,
 } from '@/lib/subscription-updates';
 import { cn } from '@/lib/utils';
 import { useConfigStore } from '@/stores/config-store';
+import { useInstalledStore } from '@/stores/installed-store';
 import { useLibraryStore } from '@/stores/library-store';
 
 import type { types } from '../../../wailsjs/go/models';
@@ -44,6 +47,8 @@ import type { types } from '../../../wailsjs/go/models';
 const UPDATE_ICON_ACCENT = LOCAL_ACCENTS.update.iconButton;
 const FILES_ICON_ACCENT = LOCAL_ACCENTS.files.iconButton;
 const UNINSTALL_ICON_ACCENT = LOCAL_ACCENTS.uninstall.iconButton;
+
+const ENTRIES_PREVIEW_LIMIT = 10;
 
 export function LocalBadge({ className }: { className?: string }) {
   return (
@@ -198,9 +203,12 @@ function LibraryListRow({
   onRefreshPendingUpdates,
 }: LibraryListRowProps) {
   const [uninstallOpen, setUninstallOpen] = useState(false);
+  const [uninstallLoading, setUninstallLoading] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
 
   const { selectedIds, toggleSelected, removeSelected } = useLibraryStore();
+  const { uninstallAssets, updateAssetsToLatest } = useInstalledStore();
   const metroMakerDataPath = useConfigStore(
     (s) => s.config?.metroMakerDataPath,
   );
@@ -236,6 +244,58 @@ function LibraryListRow({
 
   const visibleBadges = badges.slice(0, 2);
   const overflowCount = badges.length - visibleBadges.length;
+
+  const handleUninstall = async () => {
+    setUninstallLoading(true);
+    try {
+      await uninstallAssets([{ id: entry.item.id, type: entry.type }]);
+      toast.success(`${entry.item.name} has been uninstalled.`);
+      removeSelected([key]);
+      void onRefreshPendingUpdates();
+      setUninstallOpen(false);
+    } catch {
+      toast.error(`Failed to uninstall ${entry.item.name}.`);
+    } finally {
+      setUninstallLoading(false);
+    }
+  };
+
+  const updateTarget: PendingUpdateTarget | null = pendingUpdate
+    ? {
+        id: entry.item.id,
+        type: entry.type,
+        name: entry.item.name,
+        currentVersion: pendingUpdate.currentVersion,
+        latestVersion: pendingUpdate.latestVersion,
+      }
+    : null;
+
+  const handleUpdate = async () => {
+    if (!updateTarget) return;
+    setUpdateLoading(true);
+    try {
+      await updateAssetsToLatest([{ id: updateTarget.id, type: updateTarget.type }]);
+      toast.success(`${updateTarget.name} has been updated.`);
+      void onRefreshPendingUpdates();
+      setUpdateOpen(false);
+    } catch {
+      toast.error(`Failed to update ${updateTarget.name}.`);
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  const updateEntries = updateTarget
+    ? [
+        {
+          key: `${updateTarget.type}-${updateTarget.id}`,
+          name: updateTarget.name,
+          currentVersion: updateTarget.currentVersion,
+          latestVersion: updateTarget.latestVersion,
+        },
+      ]
+    : [];
+  const previewEntries = updateEntries.slice(0, ENTRIES_PREVIEW_LIMIT);
 
   return (
     <>
@@ -380,35 +440,49 @@ function LibraryListRow({
         </div>
       </article>
 
-      {uninstallOpen && (
-        <UninstallDialog
-          open={uninstallOpen}
-          onOpenChange={setUninstallOpen}
-          onUninstallSuccess={() => {
-            removeSelected([key]);
-            void onRefreshPendingUpdates();
-          }}
-          type={entry.type}
-          id={entry.item.id}
-          name={entry.item.name}
-        />
-      )}
+      <AppDialog
+        open={uninstallOpen}
+        onOpenChange={setUninstallOpen}
+        title={`Uninstall`}
+        description={`This will remove all installed files for the selected ${entry.type === 'mod' ? 'mod' : 'map'}. You can reinstall it later from the Browse page.`}
+        icon={OctagonX}
+        tone="uninstall"
+        confirm={{
+          label: 'Uninstall',
+          onConfirm: handleUninstall,
+          loading: uninstallLoading,
+        }}
+      />
 
-      {updateOpen && pendingUpdate && (
-        <UpdateSubscriptionsDialog
+      {updateOpen && updateTarget && (
+        <AppDialog
           open={updateOpen}
           onOpenChange={setUpdateOpen}
-          onUpdateSuccess={() => void onRefreshPendingUpdates()}
-          targets={[
-            {
-              id: entry.item.id,
-              type: entry.type,
-              name: entry.item.name,
-              currentVersion: pendingUpdate.currentVersion,
-              latestVersion: pendingUpdate.latestVersion,
-            },
-          ]}
-        />
+          title={`Update`}
+          description={`This will update the selected ${updateTarget.type === 'mod' ? 'mod' : 'map'} to its latest available version.`}
+          icon={CircleFadingArrowUp}
+          tone="update"
+          confirm={{
+            label: 'Update',
+            onConfirm: handleUpdate,
+            loading: updateLoading,
+          }}
+        >
+          {previewEntries.length > 0 && (
+            <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              <ul className="space-y-1">
+                {previewEntries.map((e) => (
+                  <li key={e.key} className="flex gap-2">
+                    <span className="min-w-0 flex-1 truncate">{e.name}</span>
+                    <span className="font-mono tabular-nums text-foreground">
+                      {e.currentVersion} &rarr; {e.latestVersion}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </AppDialog>
       )}
     </>
   );

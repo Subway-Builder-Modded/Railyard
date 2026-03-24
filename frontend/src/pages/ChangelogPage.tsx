@@ -3,13 +3,18 @@ import {
   ArrowDownToLine,
   ArrowLeft,
   Calendar,
+  Check,
   CheckCircle,
   CircleAlert,
+  CircleX,
+  Copy,
   Download,
   FileText,
   Gamepad2,
   Loader2,
+  OctagonX,
   Tag,
+  TriangleAlert,
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -18,11 +23,7 @@ import rehypeRaw from 'rehype-raw';
 import { toast } from 'sonner';
 import { Link, useRoute } from 'wouter';
 
-import { AssetActionDialog } from '@/components/dialogs/AssetActionDialog';
-import { InstallErrorDialog } from '@/components/dialogs/InstallErrorDialog';
-import { PrereleaseConfirmDialog } from '@/components/dialogs/PrereleaseConfirmDialog';
-import { SubscriptionSyncErrorDialog } from '@/components/dialogs/SubscriptionSyncErrorDialog';
-import { UninstallDialog } from '@/components/dialogs/UninstallDialog';
+import { AppDialog } from '@/components/dialogs/AppDialog';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { Badge } from '@/components/ui/badge';
@@ -63,6 +64,11 @@ import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
 
 const INSTALL_ACCENT = getLocalAccentClasses('install');
 const FILES_ACCENT = getLocalAccentClasses('files');
+
+function conflictSourceLabel(conflict: types.MapCodeConflict): string {
+  if (conflict.existingAssetId?.startsWith('vanilla:')) return 'Vanilla';
+  return conflict.existingIsLocal ? 'Local' : 'Registry';
+}
 
 function MetaRow({
   icon: Icon,
@@ -114,10 +120,12 @@ export function ChangelogPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [uninstallOpen, setUninstallOpen] = useState(false);
+  const [uninstallLoading, setUninstallLoading] = useState(false);
   const [installError, setInstallError] = useState<{
     version: string;
     message: string;
   } | null>(null);
+  const [errorCopied, setErrorCopied] = useState(false);
   const [prereleasePrompt, setPrereleasePrompt] = useState(false);
   const [subscriptionSyncError, setSubscriptionSyncError] = useState<{
     version: string;
@@ -136,6 +144,7 @@ export function ChangelogPage() {
     getInstalledVersion,
     isInstalling,
     isUninstalling,
+    uninstallAssets,
   } = useInstalledStore();
 
   const installedVersion = item ? getInstalledVersion(item.id) : undefined;
@@ -265,6 +274,27 @@ export function ChangelogPage() {
         });
       }
     }
+  };
+
+  const handleUninstall = async () => {
+    if (!item || !type) return;
+    setUninstallLoading(true);
+    try {
+      await uninstallAssets([{ id: item.id, type }]);
+      toast.success(`${item.name} has been uninstalled.`);
+      setUninstallOpen(false);
+    } catch {
+      toast.error(`Failed to uninstall ${item.name}.`);
+    } finally {
+      setUninstallLoading(false);
+    }
+  };
+
+  const handleCopyError = async () => {
+    if (!installError) return;
+    await navigator.clipboard.writeText(installError.message);
+    setErrorCopied(true);
+    setTimeout(() => setErrorCopied(false), 2000);
   };
 
   const formattedDate = useMemo(() => {
@@ -544,76 +574,170 @@ export function ChangelogPage() {
         )}
       </div>
 
-      {item && (
-        <>
-          <UninstallDialog
-            open={uninstallOpen}
-            onOpenChange={setUninstallOpen}
-            type={type}
-            id={item.id}
-            name={item.name}
-          />
+      <AppDialog
+        open={uninstallOpen}
+        onOpenChange={setUninstallOpen}
+        title={`Uninstall`}
+        description={`This will remove all installed files for the selected ${type === 'mod' ? 'mod' : 'map'}. You can reinstall it later from the Browse page.`}
+        icon={OctagonX}
+        tone="uninstall"
+        confirm={{
+          label: 'Uninstall',
+          onConfirm: handleUninstall,
+          loading: uninstallLoading,
+        }}
+      />
 
-          {prereleasePrompt && versionInfo && (
-            <PrereleaseConfirmDialog
-              open={prereleasePrompt}
-              onOpenChange={(open) => {
-                if (!open) setPrereleasePrompt(false);
-              }}
-              itemName={item.name}
-              version={versionInfo.version}
-              onConfirm={() => doInstall(versionInfo.version)}
-            />
-          )}
+      {prereleasePrompt && versionInfo && (
+        <AppDialog
+          open={prereleasePrompt}
+          onOpenChange={(open) => {
+            if (!open) setPrereleasePrompt(false);
+          }}
+          title="Install Beta Release"
+          icon={AlertTriangle}
+          description={
+            <>
+              <span className="font-semibold text-foreground">{item.name}</span>{' '}
+              {versionInfo.version} is a pre-release version and may be unstable
+              or contain bugs.
+            </>
+          }
+          tone="files"
+          confirm={{
+            label: 'Install Anyway',
+            onConfirm: () => {
+              setPrereleasePrompt(false);
+              doInstall(versionInfo.version);
+            },
+          }}
+        />
+      )}
 
-          {installError && (
-            <InstallErrorDialog
-              open={!!installError}
-              onOpenChange={(open) => {
-                if (!open) setInstallError(null);
-              }}
-              itemName={item.name}
-              version={installError.version}
-              error={installError.message}
-            />
-          )}
+      {installError && (
+        <AppDialog
+          open={!!installError}
+          onOpenChange={(open) => {
+            if (!open) setInstallError(null);
+          }}
+          title="Installation Failed"
+          icon={CircleX}
+          description={
+            <>
+              Failed to install{' '}
+              <span className="font-semibold text-foreground">{item.name}</span>{' '}
+              {installError.version}
+            </>
+          }
+          tone="uninstall"
+        >
+          <div className="space-y-0">
+            <div className="flex items-center justify-between rounded-t-md border border-b-0 border-border bg-muted px-3 py-1.5">
+              <span className="text-xs font-medium text-muted-foreground">
+                Error Details
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={handleCopyError}
+              >
+                {errorCopied ? (
+                  <Check className="h-3 w-3" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )}
+                {errorCopied ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+            <pre className="max-h-60 overflow-y-auto whitespace-pre-wrap break-all rounded-b-md border border-t-0 border-border bg-muted/50 p-4 font-mono text-xs">
+              {installError.message}
+            </pre>
+          </div>
+        </AppDialog>
+      )}
 
-          {subscriptionSyncError && (
-            <SubscriptionSyncErrorDialog
-              open={!!subscriptionSyncError}
-              onOpenChange={(open) => {
-                if (!open) setSubscriptionSyncError(null);
-              }}
-              itemName={item.name}
-              version={subscriptionSyncError.version}
-              message={subscriptionSyncError.message}
-              errors={subscriptionSyncError.errors}
-            />
-          )}
+      {subscriptionSyncError && (
+        <AppDialog
+          open={!!subscriptionSyncError}
+          onOpenChange={(open) => {
+            if (!open) setSubscriptionSyncError(null);
+          }}
+          title="Subscription Sync Failed"
+          icon={TriangleAlert}
+          description={
+            <>
+              Could not finish updating subscriptions for{' '}
+              <span className="font-semibold text-foreground">{item.name}</span>{' '}
+              {subscriptionSyncError.version}.
+            </>
+          }
+          tone="files"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-foreground">
+              {subscriptionSyncError.message}
+            </p>
+            {subscriptionSyncError.errors.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Details
+                </p>
+                <div className="divide-y overflow-hidden rounded-lg border text-sm">
+                  {subscriptionSyncError.errors.map((error, index) => (
+                    <div
+                      key={`${error.assetType}:${error.assetId}:${index}`}
+                      className="space-y-0.5 px-3 py-2.5"
+                    >
+                      <p className="font-mono text-xs text-muted-foreground">
+                        {error.assetType}:{error.assetId}
+                      </p>
+                      <p className="text-foreground">{error.message}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </AppDialog>
+      )}
 
-          {conflictState && (
-            <AssetActionDialog
-              open={!!conflictState}
-              onOpenChange={(open) => {
-                if (!open) setConflictState(null);
-              }}
-              loading={false}
-              icon={AlertTriangle}
-              iconClassName="h-5 w-5 text-[var(--files-primary)]"
-              title={`Replace conflicting map for ${item.name}?`}
-              description={`Installing ${item.name} ${conflictState.version} conflicts with an existing map. Replace the existing map to continue.`}
-              conflict={conflictState.conflict}
-              confirmLabel="Replace"
-              confirmClassName={FILES_ACCENT.solidButton}
-              tone="files"
-              onConfirm={() => {
-                const version = conflictState.version;
-                setConflictState(null);
-                void doInstall(version, true);
-              }}
-            />
-          )}
-        </>
+      {conflictState && (
+        <AppDialog
+          open={!!conflictState}
+          onOpenChange={(open) => {
+            if (!open) setConflictState(null);
+          }}
+          title={`Replace conflicting map for ${item.name}?`}
+          description={`Installing ${item.name} ${conflictState.version} conflicts with an existing map. Replace the existing map to continue.`}
+          icon={AlertTriangle}
+          tone="files"
+          confirm={{
+            label: 'Replace',
+            onConfirm: () => {
+              const version = conflictState.version;
+              setConflictState(null);
+              void doInstall(version, true);
+            },
+          }}
+        >
+          <div
+            className={`rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground ${FILES_ACCENT.dialogPanel}`}
+          >
+            <p className="font-medium text-foreground">
+              Conflicting City Code: {conflictState.conflict.cityCode}
+            </p>
+            <p className="mt-1">
+              Existing Asset: {conflictState.conflict.existingAssetId} (
+              {conflictSourceLabel(conflictState.conflict)})
+            </p>
+            {conflictState.conflict.existingVersion ? (
+              <p className="mt-1">
+                Existing Version: {conflictState.conflict.existingVersion}
+              </p>
+            ) : null}
+          </div>
+        </AppDialog>
       )}
     </>
   );

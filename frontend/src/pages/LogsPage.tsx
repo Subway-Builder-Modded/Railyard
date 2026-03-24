@@ -10,7 +10,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { DeleteLogSessionDialog } from '@/components/dialogs/DeleteLogSessionDialog';
+import { AppDialog } from '@/components/dialogs/AppDialog';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeading } from '@/components/shared/PageHeading';
 import { Badge } from '@/components/ui/badge';
@@ -324,10 +324,20 @@ export function LogsPage() {
         </div>
       )}
 
-      <DeleteLogSessionDialog
+      <AppDialog
         open={deleteSessionOpen}
         onOpenChange={setDeleteSessionOpen}
-        onConfirm={handleDeleteSessionConfirm}
+        title="Delete Session"
+        description="This will permanently remove the selected session log."
+        icon={Trash2}
+        tone="uninstall"
+        confirm={{
+          label: 'Delete',
+          onConfirm: () => {
+            handleDeleteSessionConfirm();
+            setDeleteSessionOpen(false);
+          },
+        }}
       />
     </div>
   );

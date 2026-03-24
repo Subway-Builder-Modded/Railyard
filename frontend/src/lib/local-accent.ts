@@ -74,4 +74,8 @@ export function getLocalAccentClasses(tone: LocalAccentTone) {
   return LOCAL_ACCENT_TONE_CLASSES[tone];
 }
 
+export function getToneVarsClass(tone: LocalAccentTone): string {
+  return LOCAL_ACCENT_TONE_VARS[tone];
+}
+
 export const LOCAL_ACCENTS = LOCAL_ACCENT_TONE_CLASSES;
