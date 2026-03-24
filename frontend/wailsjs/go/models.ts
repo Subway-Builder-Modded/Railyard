@@ -26,6 +26,7 @@ export namespace types {
 	    checkForUpdatesOnLaunch: boolean;
 	    setupCompleted: boolean;
 	    chromeSandboxPath?: string;
+	    viewTestAssets?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -39,6 +40,7 @@ export namespace types {
 	        this.checkForUpdatesOnLaunch = source["checkForUpdatesOnLaunch"];
 	        this.setupCompleted = source["setupCompleted"];
 	        this.chromeSandboxPath = source["chromeSandboxPath"];
+	        this.viewTestAssets = source["viewTestAssets"];
 	    }
 	}
 	export class AppVersionResponse {
@@ -276,6 +278,104 @@ export namespace types {
 		}
 	}
 	
+	export class VersionInfo {
+	    version: string;
+	    name: string;
+	    changelog: string;
+	    date: string;
+	    download_url: string;
+	    game_version: string;
+	    sha256: string;
+	    downloads: number;
+	    manifest?: string;
+	    prerelease: boolean;
+	    dependencies?: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new VersionInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.name = source["name"];
+	        this.changelog = source["changelog"];
+	        this.date = source["date"];
+	        this.download_url = source["download_url"];
+	        this.game_version = source["game_version"];
+	        this.sha256 = source["sha256"];
+	        this.downloads = source["downloads"];
+	        this.manifest = source["manifest"];
+	        this.prerelease = source["prerelease"];
+	        this.dependencies = source["dependencies"];
+	    }
+	}
+	export class DependencyListEntry {
+	    ranges: string[];
+	    installCandidate: VersionInfo;
+	
+	    static createFrom(source: any = {}) {
+	        return new DependencyListEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ranges = source["ranges"];
+	        this.installCandidate = this.convertValues(source["installCandidate"], VersionInfo);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class DependencyListResponse {
+	    status: string;
+	    message: string;
+	    installList: Record<string, DependencyListEntry>;
+	
+	    static createFrom(source: any = {}) {
+	        return new DependencyListResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.installList = this.convertValues(source["installList"], DependencyListEntry, true);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class DownloadCountsByAssetTypeResponse {
 	    status: string;
 	    message: string;
@@ -423,7 +523,7 @@ export namespace types {
 	    }
 	}
 	export class ModInstallOptions {
-	
+	    skipDependencies?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ModInstallOptions(source);
@@ -431,7 +531,7 @@ export namespace types {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	
+	        this.skipDependencies = source["skipDependencies"];
 	    }
 	}
 	export class MapInstallOptions {
@@ -451,8 +551,7 @@ export namespace types {
 	    assetId: string;
 	    version: string;
 	    map?: MapInstallOptions;
-	    // Go type: ModInstallOptions
-	    mod?: any;
+	    mod?: ModInstallOptions;
 	
 	    static createFrom(source: any = {}) {
 	        return new InstallAssetRequest(source);
@@ -464,7 +563,7 @@ export namespace types {
 	        this.assetId = source["assetId"];
 	        this.version = source["version"];
 	        this.map = this.convertValues(source["map"], MapInstallOptions);
-	        this.mod = this.convertValues(source["mod"], null);
+	        this.mod = this.convertValues(source["mod"], ModInstallOptions);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -749,6 +848,7 @@ export namespace types {
 	    gallery: string[];
 	    source: string;
 	    update: UpdateConfig;
+	    is_test?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new MapManifest(source);
@@ -776,6 +876,7 @@ export namespace types {
 	        this.gallery = source["gallery"];
 	        this.source = source["source"];
 	        this.update = this.convertValues(source["update"], UpdateConfig);
+	        this.is_test = source["is_test"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -830,6 +931,7 @@ export namespace types {
 		    return a;
 		}
 	}
+	
 	export class ModManifest {
 	    schema_version: number;
 	    id: string;
@@ -842,6 +944,7 @@ export namespace types {
 	    gallery: string[];
 	    source: string;
 	    update: UpdateConfig;
+	    is_test?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ModManifest(source);
@@ -860,6 +963,7 @@ export namespace types {
 	        this.gallery = source["gallery"];
 	        this.source = source["source"];
 	        this.update = this.convertValues(source["update"], UpdateConfig);
+	        this.is_test = source["is_test"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1364,6 +1468,7 @@ export namespace types {
 	    action: string;
 	    forceSync: boolean;
 	    replaceOnConflict: boolean;
+	    skipDependencyInstall?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateSubscriptionsRequest(source);
@@ -1376,6 +1481,7 @@ export namespace types {
 	        this.action = source["action"];
 	        this.forceSync = source["forceSync"];
 	        this.replaceOnConflict = source["replaceOnConflict"];
+	        this.skipDependencyInstall = source["skipDependencyInstall"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1562,36 +1668,7 @@ export namespace types {
 		}
 	}
 	
-	export class VersionInfo {
-	    version: string;
-	    name: string;
-	    changelog: string;
-	    date: string;
-	    download_url: string;
-	    game_version: string;
-	    sha256: string;
-	    downloads: number;
-	    manifest?: string;
-	    prerelease: boolean;
 	
-	    static createFrom(source: any = {}) {
-	        return new VersionInfo(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.version = source["version"];
-	        this.name = source["name"];
-	        this.changelog = source["changelog"];
-	        this.date = source["date"];
-	        this.download_url = source["download_url"];
-	        this.game_version = source["game_version"];
-	        this.sha256 = source["sha256"];
-	        this.downloads = source["downloads"];
-	        this.manifest = source["manifest"];
-	        this.prerelease = source["prerelease"];
-	    }
-	}
 	export class VersionsResponse {
 	    status: string;
 	    message: string;

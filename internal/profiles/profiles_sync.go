@@ -9,7 +9,7 @@ import (
 )
 
 // SyncSubscriptions iterates through a profile's subscriptions and attempts to reconcile the state of asset installation on disk to the desired state in the profile by installing/uninstalling maps and mods as needed.
-func (s *UserProfiles) SyncSubscriptions(profileID string, replaceOnConflict bool) types.SyncSubscriptionsResult {
+func (s *UserProfiles) SyncSubscriptions(profileID string, replaceOnConflict bool, skipDependencyInstall bool) types.SyncSubscriptionsResult {
 	s.logRequest("SyncSubscriptions", "profile_id", profileID)
 
 	profile, snapshotVersion, profileErr := s.profileSnapshot(profileID)
@@ -21,7 +21,7 @@ func (s *UserProfiles) SyncSubscriptions(profileID string, replaceOnConflict boo
 	}
 
 	mapArgs := s.buildMapSyncArgs(profile, func() bool { return s.isSnapshotStale(snapshotVersion) }, replaceOnConflict)
-	modArgs := s.buildModSyncArgs(profile, func() bool { return s.isSnapshotStale(snapshotVersion) })
+	modArgs := s.buildModSyncArgs(profile, func() bool { return s.isSnapshotStale(snapshotVersion) }, skipDependencyInstall)
 
 	syncErrors := make([]types.UserProfilesError, 0)
 	operations := make([]types.SubscriptionOperation, 0)
@@ -152,7 +152,7 @@ func (s *UserProfiles) buildMapSyncArgs(profile types.UserProfile, isStale func(
 	}
 }
 
-func (s *UserProfiles) buildModSyncArgs(profile types.UserProfile, isStale func() bool) assetSyncArgs[types.InstalledModInfo, types.ModManifest] {
+func (s *UserProfiles) buildModSyncArgs(profile types.UserProfile, isStale func() bool, skipDependencyInstall bool) assetSyncArgs[types.InstalledModInfo, types.ModManifest] {
 	return assetSyncArgs[types.InstalledModInfo, types.ModManifest]{
 		assetType:     types.AssetTypeMod,
 		subscriptions: profile.Subscriptions.Mods,
@@ -174,6 +174,9 @@ func (s *UserProfiles) buildModSyncArgs(profile types.UserProfile, isStale func(
 				AssetType: types.AssetTypeMod,
 				AssetID:   assetID,
 				Version:   version,
+				Mod: &types.ModInstallOptions{
+					SkipDependencies: skipDependencyInstall,
+				},
 			})
 		},
 		uninstall: func(assetID string) types.AssetUninstallResponse {
@@ -191,8 +194,9 @@ func syncAssetSubscriptions[T any, U any](log logger.Logger, profileID string, a
 		// If the snapshot is stale, we should stop processing immediately to avoid making unwanted changes based on an outdated profile state.
 		return args.isStale != nil && args.isStale()
 	}
+	assetType := args.assetType
 	installedVersion := buildVersionIndexFromItems(args.installedArgs)
-	availableVersions := buildAvailableVersionIndex(args.availableArgs, profileID, args.subscriptions, args.assetType, &errs)
+	availableVersions := buildAvailableVersionIndex(args.availableArgs, profileID, args.subscriptions, assetType, &errs)
 
 	log.Info("Built version indices for sync",
 		"asset_type", args.assetType,

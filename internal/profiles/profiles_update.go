@@ -8,7 +8,7 @@ import (
 	"railyard/internal/types"
 	"railyard/internal/utils"
 
-	"golang.org/x/mod/semver"
+	semver "github.com/Masterminds/semver/v3"
 )
 
 // ===== Profile Mutations ===== //
@@ -80,7 +80,7 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 
 		// TODO: Implement per-profile request coalescing so burst frontend updates reconcile once
 		// against the latest desired subscriptions state instead of running multiple stale snapshots.
-		syncResult := s.SyncSubscriptions(req.ProfileID, req.ReplaceOnConflict)
+		syncResult := s.SyncSubscriptions(req.ProfileID, req.ReplaceOnConflict, req.SkipDependencyInstall)
 		if syncResult.Status == types.ResponseError {
 			result.Status = types.ResponseError
 			result.Message = "Failed to sync subscriptions"
@@ -358,10 +358,16 @@ func resolveLatestVersionForManifest(
 	}
 
 	best := versions[0].Version
-	current := normalize(best)
+	current, err := semver.NewVersion(strings.TrimPrefix(normalize(best), "v"))
+	if err != nil {
+		return "", fmt.Errorf("failed to parse initial semver version %q: %w", best, err)
+	}
 	for _, version := range versions[1:] {
-		other := normalize(version.Version)
-		if semver.Compare(other, current) > 0 {
+		other, parseErr := semver.NewVersion(strings.TrimPrefix(normalize(version.Version), "v"))
+		if parseErr != nil {
+			return "", fmt.Errorf("failed to parse semver version %q: %w", version.Version, parseErr)
+		}
+		if other.GreaterThan(current) {
 			current = other
 			best = version.Version
 		}

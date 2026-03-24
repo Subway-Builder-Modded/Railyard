@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -24,6 +25,54 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+type dependencyVersionFixture struct {
+	Version      string
+	Dependencies map[string]string
+}
+
+func setupDependencyResolverServer(t *testing.T, reg *registry.Registry, fixtures map[string][]dependencyVersionFixture) func() {
+	t.Helper()
+
+	handler := http.NewServeMux()
+	mods := make([]types.ModManifest, 0, len(fixtures))
+
+	for modID, versions := range fixtures {
+		currentModID := modID
+		currentVersions := versions
+		updatePath := "/updates/" + currentModID + ".json"
+
+		mods = append(mods, types.ModManifest{
+			ID:     currentModID,
+			Update: types.UpdateConfig{Type: "custom", URL: "{{BASE_URL}}" + updatePath},
+		})
+
+		handler.HandleFunc(updatePath, func(w http.ResponseWriter, r *http.Request) {
+			payload := types.CustomUpdateFile{
+				SchemaVersion: 1,
+				Versions:      make([]types.CustomUpdateVersion, 0, len(currentVersions)),
+			}
+
+			for _, version := range currentVersions {
+				payload.Versions = append(payload.Versions, types.CustomUpdateVersion{
+					Version:      version.Version,
+					Dependencies: version.Dependencies,
+				})
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(payload))
+		})
+	}
+
+	server := testutil.NewLocalhostServer(t, handler)
+	for i := range mods {
+		mods[i].Update.URL = strings.ReplaceAll(mods[i].Update.URL, "{{BASE_URL}}", server.URL)
+	}
+	registrytest.SetManifestsForTest(t, reg, mods, []types.MapManifest{})
+
+	return server.Close
+}
 
 func TestMain(m *testing.M) {
 	root, err := os.MkdirTemp("", "railyard-downloader-test-*")
@@ -1015,4 +1064,105 @@ func TestDownloadTempZipGithubAuthFallback(t *testing.T) {
 	require.Equal(t, types.ResponseSuccess, resp.Status)
 	require.NotEmpty(t, resp.Path)
 	require.Equal(t, 2, requestCount)
+}
+
+func TestComputeDependencyListResolvesTransitiveDependencies(t *testing.T) {
+	cfg := config.NewConfig(testutil.TestLogSink{})
+	reg := registry.NewRegistry(testutil.TestLogSink{}, cfg)
+	d := &Downloader{Registry: reg}
+
+	cleanup := setupDependencyResolverServer(t, reg, map[string][]dependencyVersionFixture{
+		"dep-a": {
+			{Version: "1.0.0", Dependencies: map[string]string{"dep-c": ">=1.0.0 <2.0.0"}},
+		},
+		"dep-b": {
+			{Version: "1.0.0", Dependencies: map[string]string{"dep-c": ">=1.5.0 <2.0.0"}},
+		},
+		"dep-c": {
+			{Version: "1.4.0", Dependencies: map[string]string{}},
+			{Version: "1.6.0", Dependencies: map[string]string{}},
+		},
+	})
+	defer cleanup()
+
+	depAMod, err := reg.GetMod("dep-a")
+	require.NoError(t, err)
+	depAVersions, err := reg.GetVersions(depAMod.Update.Type, depAMod.Update.Source())
+	require.NoError(t, err)
+	require.NotEmpty(t, depAVersions)
+	require.NotEmpty(t, depAVersions[0].Dependencies)
+
+	result := d.ComputeDependencyList("root", types.VersionInfo{
+		Version:      "1.0.0",
+		Dependencies: map[string]string{"dep-a": "1.0.0", "dep-b": "1.0.0"},
+	})
+
+	require.Equal(t, types.ResponseSuccess, result.Status, result.Message)
+	require.Len(t, result.InstallList, 4)
+	require.Equal(t, "1.0.0", result.InstallList["root"].InstallCandidate.Version)
+	require.Equal(t, "1.0.0", result.InstallList["dep-a"].InstallCandidate.Version)
+	require.Equal(t, "1.0.0", result.InstallList["dep-b"].InstallCandidate.Version)
+	require.Equal(t, "1.6.0", result.InstallList["dep-c"].InstallCandidate.Version)
+	require.ElementsMatch(t, []string{">=1.0.0 <2.0.0", ">=1.5.0 <2.0.0"}, result.InstallList["dep-c"].Ranges)
+}
+
+func TestComputeDependencyListFailsOnConflictingRanges(t *testing.T) {
+	cfg := config.NewConfig(testutil.TestLogSink{})
+	reg := registry.NewRegistry(testutil.TestLogSink{}, cfg)
+	d := &Downloader{Registry: reg}
+
+	cleanup := setupDependencyResolverServer(t, reg, map[string][]dependencyVersionFixture{
+		"dep-a": {
+			{Version: "1.0.0", Dependencies: map[string]string{"dep-c": ">=1.0.0 <1.5.0"}},
+		},
+		"dep-b": {
+			{Version: "1.0.0", Dependencies: map[string]string{"dep-c": ">=1.5.0 <2.0.0"}},
+		},
+		"dep-c": {
+			{Version: "1.4.0", Dependencies: map[string]string{}},
+			{Version: "1.6.0", Dependencies: map[string]string{}},
+		},
+	})
+	defer cleanup()
+
+	depAMod, err := reg.GetMod("dep-a")
+	require.NoError(t, err)
+	depAVersions, err := reg.GetVersions(depAMod.Update.Type, depAMod.Update.Source())
+	require.NoError(t, err)
+	require.NotEmpty(t, depAVersions)
+	require.NotEmpty(t, depAVersions[0].Dependencies)
+
+	result := d.ComputeDependencyList("root", types.VersionInfo{
+		Version:      "1.0.0",
+		Dependencies: map[string]string{"dep-a": "1.0.0", "dep-b": "1.0.0"},
+	})
+
+	require.Equal(t, types.ResponseError, result.Status)
+	require.Contains(t, result.Message, "conflicting version requirements")
+	require.Nil(t, result.InstallList)
+}
+
+func TestComputeDependencyListFailsOnCycle(t *testing.T) {
+	cfg := config.NewConfig(testutil.TestLogSink{})
+	reg := registry.NewRegistry(testutil.TestLogSink{}, cfg)
+	d := &Downloader{Registry: reg}
+
+	cleanup := setupDependencyResolverServer(t, reg, map[string][]dependencyVersionFixture{
+		"dep-a": {
+			{Version: "1.0.0", Dependencies: map[string]string{"dep-b": "1.0.0"}},
+		},
+		"dep-b": {
+			{Version: "1.0.0", Dependencies: map[string]string{"dep-a": "1.0.0"}},
+		},
+	})
+	defer cleanup()
+
+	result := d.ComputeDependencyList("root", types.VersionInfo{
+		Version:      "1.0.0",
+		Dependencies: map[string]string{"dep-a": "1.0.0"},
+	})
+
+	require.Equal(t, types.ResponseError, result.Status)
+	require.Contains(t, result.Message, "circular dependency detected")
+	require.Nil(t, result.InstallList)
 }

@@ -3,6 +3,7 @@ module railyard
 go 1.25.0
 
 require (
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
 	github.com/go-git/go-git/v5 v5.17.0
 	github.com/gofrs/flock v0.13.0
@@ -12,7 +13,6 @@ require (
 	github.com/shirou/gopsutil/v4 v4.26.2
 	github.com/stretchr/testify v1.11.1
 	github.com/wailsapp/wails/v2 v2.11.0
-	golang.org/x/mod v0.33.0
 )
 
 require (

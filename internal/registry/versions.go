@@ -136,14 +136,14 @@ func (r *Registry) getGitHubVersions(repo string) ([]types.VersionInfo, error) {
 
 	versions = r.filterSemverVersions(versions, "github:"+repo)
 	// Fetch manifest.json assets in parallel to extract game_version
-	r.enrichGameVersions(versions)
+	r.enrichVersions(versions)
 
 	return versions, nil
 }
 
-// enrichGameVersions fetches manifest.json URLs in parallel and populates GameVersion
+// enrichVersions fetches manifest.json URLs in parallel and populates GameVersion and dependencies
 // from the game dependency key in the manifest. Errors are silently ignored per-version.
-func (r *Registry) enrichGameVersions(versions []types.VersionInfo) {
+func (r *Registry) enrichVersions(versions []types.VersionInfo) {
 	var wg sync.WaitGroup
 	for i := range versions {
 		if versions[i].Manifest == "" {
@@ -176,6 +176,14 @@ func (r *Registry) enrichGameVersions(versions []types.VersionInfo) {
 			if sbRange, ok := manifest.Dependencies[constants.GameDependencyKey]; ok {
 				v.GameVersion = sbRange
 			}
+			newDeps := make(map[string]string)
+			for depID, depRange := range manifest.Dependencies {
+				if depID == constants.GameDependencyKey {
+					continue
+				}
+				newDeps[depID] = depRange
+			}
+			v.Dependencies = newDeps
 		}(&versions[i])
 	}
 	wg.Wait()

@@ -92,11 +92,12 @@ type SubscriptionUpdateItem struct {
 }
 
 type UpdateSubscriptionsRequest struct {
-	ProfileID         string                            `json:"profileId"`
-	Assets            map[string]SubscriptionUpdateItem `json:"assets"`
-	Action            SubscriptionAction                `json:"action"`
-	ForceSync         bool                              `json:"forceSync"`
-	ReplaceOnConflict bool                              `json:"replaceOnConflict"`
+	ProfileID             string                            `json:"profileId"`
+	Assets                map[string]SubscriptionUpdateItem `json:"assets"`
+	Action                SubscriptionAction                `json:"action"`
+	ForceSync             bool                              `json:"forceSync"`
+	ReplaceOnConflict     bool                              `json:"replaceOnConflict"`
+	SkipDependencyInstall bool                              `json:"skipDependencyInstall,omitempty"`
 }
 
 type ImportAssetRequest struct {

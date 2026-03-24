@@ -30,8 +30,8 @@ export function RestoreProfileArchive(arg1) {
   return window['go']['profiles']['UserProfiles']['RestoreProfileArchive'](arg1);
 }
 
-export function SyncSubscriptions(arg1, arg2) {
-  return window['go']['profiles']['UserProfiles']['SyncSubscriptions'](arg1, arg2);
+export function SyncSubscriptions(arg1, arg2, arg3) {
+  return window['go']['profiles']['UserProfiles']['SyncSubscriptions'](arg1, arg2, arg3);
 }
 
 export function UpdateSubscriptions(arg1) {
