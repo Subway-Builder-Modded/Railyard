@@ -321,7 +321,7 @@ export function ProjectHeader({
   return (
     <>
       <div className="flex gap-7">
-        <div className="relative h-[10.5rem] w-[10.5rem] shrink-0 overflow-hidden rounded-xl bg-muted border border-border/50">
+        <div className="relative h-[10rem] w-[10rem] shrink-0 overflow-hidden rounded-xl bg-muted border border-border/50">
           <GalleryImage
             type={type}
             id={item.id}
@@ -331,29 +331,30 @@ export function ProjectHeader({
           />
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-3 pt-1">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-<div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl font-bold leading-tight text-foreground">
-                  {item.name}
-                </h1>
-                {mapItem?.city_code && (
-                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <span className="font-mono font-bold text-foreground">
-                      {mapItem.city_code}
-                    </span>
-                    {mapItem.country && (
-                      <>
+        <div className="flex min-w-0 flex-1 items-start justify-between gap-4 pt-1">
+          <div className="flex min-w-0 flex-col gap-2.5">
+            <div>
+              <h1 className="text-4xl font-bold leading-tight text-foreground">
+                {item.name}
+              </h1>
+              {mapItem?.city_code && (
+                <div className="mt-1 flex items-center gap-2.5 text-sm">
+                  <span className="font-bold text-foreground">
+                    {mapItem.city_code}
+                  </span>
+                  {mapItem.country && (
+                    <>
+                      <div className="h-4 w-0.5 shrink-0 rounded-full bg-border" />
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
                         {CountryFlag && (
                           <CountryFlag className="h-3.5 w-5 rounded-[1px]" />
                         )}
                         <span>{mapItem.country.trim().toUpperCase()}</span>
-                      </>
-                    )}
-                  </span>
-                )}
-              </div>
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
               <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                 by{' '}
                 <button
@@ -368,44 +369,45 @@ export function ProjectHeader({
                 </button>
               </p>
             </div>
-            <div className="shrink-0 pt-6">{renderActionButtons()}</div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            {typeof totalDownloads === 'number' && (
-              <span className="flex items-center gap-1.5">
-                <Download className="h-3.5 w-3.5" />
-                {totalDownloads.toLocaleString()}
-              </span>
-            )}
-            {mapItem && (mapItem.population ?? 0) > 0 && (
-              <span className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5" />
-                {mapItem.population.toLocaleString()}
-              </span>
-            )}
-            {item.source && (
-              <button
-                type="button"
-                onClick={() => BrowserOpenURL(item.source!)}
-                className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
-              >
-                <Globe className="h-3.5 w-3.5" />
-                Source
-                <ExternalLink className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-
-          {badges.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {badges.map((badge) => (
-                <Badge key={badge} variant="secondary" size="sm">
-                  {badge}
-                </Badge>
-              ))}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              {typeof totalDownloads === 'number' && (
+                <span className="flex items-center gap-1.5">
+                  <Download className="h-3.5 w-3.5" />
+                  {totalDownloads.toLocaleString()}
+                </span>
+              )}
+              {mapItem && (mapItem.population ?? 0) > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  {mapItem.population.toLocaleString()}
+                </span>
+              )}
+              {item.source && (
+                <button
+                  type="button"
+                  onClick={() => BrowserOpenURL(item.source!)}
+                  className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  Source
+                  <ExternalLink className="h-3 w-3" />
+                </button>
+              )}
             </div>
-          )}
+
+            {badges.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 -ml-1.5">
+                {badges.map((badge) => (
+                  <Badge key={badge} variant="secondary" size="sm">
+                    {badge}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="shrink-0 pt-6">{renderActionButtons()}</div>
         </div>
       </div>
 
