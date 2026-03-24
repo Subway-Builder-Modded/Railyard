@@ -54,7 +54,9 @@ describe('buildSpecialDemandValues', () => {
   });
 
   it('returns empty array when no maps have special demand', () => {
-    expect(buildSpecialDemandValues([{}, { special_demand: null }])).toEqual([]);
+    expect(buildSpecialDemandValues([{}, { special_demand: null }])).toEqual(
+      [],
+    );
   });
 
   it('returns empty array for empty input', () => {

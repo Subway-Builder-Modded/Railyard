@@ -138,7 +138,13 @@ describe('compareItems', () => {
     const older = makeMod({ last_updated: 100 });
     const newer = makeMod({ last_updated: 999 });
     expect(
-      compareItems(older, newer, { field: 'last_updated', direction: 'desc' }, {}, {}),
+      compareItems(
+        older,
+        newer,
+        { field: 'last_updated', direction: 'desc' },
+        {},
+        {},
+      ),
     ).toBeGreaterThan(0); // newer should come first
   });
 
@@ -146,7 +152,13 @@ describe('compareItems', () => {
     const small = makeMap({ population: 10_000 });
     const large = makeMap({ population: 1_000_000 });
     expect(
-      compareItems(small, large, { field: 'population', direction: 'desc' }, {}, {}),
+      compareItems(
+        small,
+        large,
+        { field: 'population', direction: 'desc' },
+        {},
+        {},
+      ),
     ).toBeGreaterThan(0);
   });
 

@@ -52,24 +52,41 @@ describe('buildAssetListingCounts', () => {
   });
 
   it('counts map location, source quality, and level of detail', () => {
-    const { mapLocationCounts, mapSourceQualityCounts, mapLevelOfDetailCounts } =
-      buildAssetListingCounts([], [
-        { location: 'europe', source_quality: 'high-quality', level_of_detail: 'high-detail' },
-        { location: 'europe', source_quality: 'low-quality', level_of_detail: 'low-detail' },
-      ]);
+    const {
+      mapLocationCounts,
+      mapSourceQualityCounts,
+      mapLevelOfDetailCounts,
+    } = buildAssetListingCounts(
+      [],
+      [
+        {
+          location: 'europe',
+          source_quality: 'high-quality',
+          level_of_detail: 'high-detail',
+        },
+        {
+          location: 'europe',
+          source_quality: 'low-quality',
+          level_of_detail: 'low-detail',
+        },
+      ],
+    );
     expect(mapLocationCounts).toEqual({ europe: 2 });
     expect(mapSourceQualityCounts).toEqual({
       'high-quality': 1,
       'low-quality': 1,
     });
-    expect(mapLevelOfDetailCounts).toEqual({ 'high-detail': 1, 'low-detail': 1 });
+    expect(mapLevelOfDetailCounts).toEqual({
+      'high-detail': 1,
+      'low-detail': 1,
+    });
   });
 
   it('counts map special demand values across maps', () => {
-    const { mapSpecialDemandCounts } = buildAssetListingCounts([], [
-      { special_demand: ['tram', 'metro'] },
-      { special_demand: ['tram'] },
-    ]);
+    const { mapSpecialDemandCounts } = buildAssetListingCounts(
+      [],
+      [{ special_demand: ['tram', 'metro'] }, { special_demand: ['tram'] }],
+    );
     expect(mapSpecialDemandCounts).toEqual({ tram: 2, metro: 1 });
   });
 
@@ -100,11 +117,7 @@ describe('filterVisibleListingValues', () => {
   });
 
   it('excludes values with zero count that are not selected', () => {
-    const visible = filterVisibleListingValues(
-      ['africa'],
-      { africa: 0 },
-      [],
-    );
+    const visible = filterVisibleListingValues(['africa'], { africa: 0 }, []);
     expect(visible).toEqual([]);
   });
 });

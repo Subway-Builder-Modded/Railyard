@@ -59,7 +59,9 @@ describe('sort helpers', () => {
     const mapOptions = getSortOptionsForType('map');
     const values = mapOptions.map((option) => option.value);
 
-    expect(values.indexOf('name:asc')).toBeLessThan(values.indexOf('name:desc'));
+    expect(values.indexOf('name:asc')).toBeLessThan(
+      values.indexOf('name:desc'),
+    );
     expect(values.indexOf('author:asc')).toBeLessThan(
       values.indexOf('author:desc'),
     );
@@ -81,9 +83,9 @@ describe('sort helpers', () => {
 
 describe('toggleSortField', () => {
   it('inverts direction when the same field is toggled', () => {
-    expect(toggleSortField({ field: 'name', direction: 'asc' }, 'name')).toEqual(
-      { field: 'name', direction: 'desc' },
-    );
+    expect(
+      toggleSortField({ field: 'name', direction: 'asc' }, 'name'),
+    ).toEqual({ field: 'name', direction: 'desc' });
     expect(
       toggleSortField({ field: 'downloads', direction: 'desc' }, 'downloads'),
     ).toEqual({ field: 'downloads', direction: 'asc' });
@@ -120,10 +122,16 @@ describe('normalizeSortStateForType', () => {
 
   it('allows map-only fields for map type', () => {
     expect(
-      normalizeSortStateForType({ field: 'population', direction: 'asc' }, 'map'),
+      normalizeSortStateForType(
+        { field: 'population', direction: 'asc' },
+        'map',
+      ),
     ).toEqual({ field: 'population', direction: 'asc' });
     expect(
-      normalizeSortStateForType({ field: 'city_code', direction: 'desc' }, 'map'),
+      normalizeSortStateForType(
+        { field: 'city_code', direction: 'desc' },
+        'map',
+      ),
     ).toEqual({ field: 'city_code', direction: 'desc' });
   });
 

@@ -153,13 +153,23 @@ describe('switchFilter', () => {
     const mapFilters = {
       ...defaultSearchFilters,
       type: 'map' as const,
-      map: { locations: ['europe'], sourceQuality: [], levelOfDetail: [], specialDemand: [] },
+      map: {
+        locations: ['europe'],
+        sourceQuality: [],
+        levelOfDetail: [],
+        specialDemand: [],
+      },
     };
     const afterMapEdit = switchFilter(mapFilters, 2, initial, 'mod');
     expect(afterMapEdit.filters.type).toBe('mod');
 
     // Now switch back to map
-    const afterSwitchBack = switchFilter(afterMapEdit.filters, afterMapEdit.page, afterMapEdit.scopedByType, 'map');
+    const afterSwitchBack = switchFilter(
+      afterMapEdit.filters,
+      afterMapEdit.page,
+      afterMapEdit.scopedByType,
+      'map',
+    );
     expect(afterSwitchBack.filters.type).toBe('map');
     expect(afterSwitchBack.filters.map.locations).toEqual(['europe']);
     expect(afterSwitchBack.page).toBe(2);

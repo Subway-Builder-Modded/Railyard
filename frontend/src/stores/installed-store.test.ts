@@ -433,7 +433,9 @@ describe('useInstalledStore', () => {
     mockImportAsset.mockResolvedValue({
       status: 'warn',
       message: 'conflict detected',
-      conflicts: [{ existingMapId: 'map-other', incomingMapId: 'map-1', code: 'ABC' }],
+      conflicts: [
+        { existingMapId: 'map-other', incomingMapId: 'map-1', code: 'ABC' },
+      ],
       errors: [],
     });
 
@@ -450,7 +452,12 @@ describe('useInstalledStore', () => {
       status: 'error',
       message: 'Invalid map code',
       conflicts: [],
-      errors: [{ downloaderErrorType: 'install_invalid_map_code', message: 'bad code' }],
+      errors: [
+        {
+          downloaderErrorType: 'install_invalid_map_code',
+          message: 'bad code',
+        },
+      ],
     });
 
     await expect(
@@ -502,8 +509,9 @@ describe('useInstalledStore', () => {
     let versionDuringInstall: string | null = null;
 
     mockUpdateSubscriptions.mockImplementation(async () => {
-      versionDuringInstall =
-        useInstalledStore.getState().getInstallingVersion('mod-5');
+      versionDuringInstall = useInstalledStore
+        .getState()
+        .getInstallingVersion('mod-5');
       return updateSubscriptionsSuccess('ok');
     });
     mockGetInstalledModsResponse.mockResolvedValue({
@@ -520,6 +528,8 @@ describe('useInstalledStore', () => {
     await useInstalledStore.getState().installMod('mod-5', '3.0.0');
 
     expect(versionDuringInstall).toBe('3.0.0');
-    expect(useInstalledStore.getState().getInstallingVersion('mod-5')).toBeNull();
+    expect(
+      useInstalledStore.getState().getInstallingVersion('mod-5'),
+    ).toBeNull();
   });
 });
