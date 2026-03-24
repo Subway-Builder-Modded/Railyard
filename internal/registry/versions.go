@@ -231,6 +231,8 @@ func (r *Registry) getCustomVersions(updateURL string) ([]types.VersionInfo, err
 		})
 	}
 
+	r.enrichVersions(versions)
+
 	return r.filterSemverVersions(versions, "custom:"+updateURL), nil
 }
 
