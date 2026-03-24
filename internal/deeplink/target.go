@@ -14,7 +14,7 @@ func (t Target) Valid() bool {
 	if t.ID == "" {
 		return false
 	}
-	return t.Type == "mods" || t.Type == "maps"
+	return t.Type == "mods" || t.Type == "maps" || t.Type == "GameStart"
 }
 
 func ParseURL(raw string) (Target, bool) {
@@ -28,7 +28,14 @@ func ParseURL(raw string) (Target, bool) {
 
 	isOpenAction := strings.EqualFold(parsed.Host, "open") || strings.EqualFold(strings.Trim(parsed.Path, "/"), "open")
 	if !isOpenAction {
-		return Target{}, false
+		isStartGameAction := strings.EqualFold(parsed.Host, "start-game") || strings.EqualFold(strings.Trim(parsed.Path, "/"), "start-game")
+		if !isStartGameAction {
+			return Target{}, false
+		} else {
+			return Target{
+				Type: "GameStart",
+			}, true // Start game action doesn't require a valid target, return empty target with true to indicate the action is recognized
+		}
 	}
 
 	target := Target{

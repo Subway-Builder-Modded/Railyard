@@ -2,7 +2,9 @@ package registry
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"railyard/internal/files"
@@ -43,7 +45,7 @@ func (r *Registry) WriteInstalledToDisk() error {
 }
 
 func (r *Registry) getInstalledModsFromDisk() ([]types.InstalledModInfo, error) {
-	if _, err := os.Stat(paths.InstalledModsPath()); os.IsNotExist(err) {
+	if _, err := os.Stat(paths.InstalledModsPath()); errors.Is(err, fs.ErrNotExist) {
 		return []types.InstalledModInfo{}, nil
 	}
 
@@ -51,7 +53,7 @@ func (r *Registry) getInstalledModsFromDisk() ([]types.InstalledModInfo, error) 
 }
 
 func (r *Registry) getInstalledMapsFromDisk() ([]types.InstalledMapInfo, error) {
-	if _, err := os.Stat(paths.InstalledMapsPath()); os.IsNotExist(err) {
+	if _, err := os.Stat(paths.InstalledMapsPath()); errors.Is(err, fs.ErrNotExist) {
 		return []types.InstalledMapInfo{}, nil
 	}
 

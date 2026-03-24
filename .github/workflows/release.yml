@@ -43,6 +43,9 @@ jobs:
       - name: Install frontend dependencies
         run: cd frontend && pnpm install
 
+      - name: Update version in wails.json
+        run: node scripts/update_wails_json.js
+
       - name: Build macOS (universal)
         run: |
           echo -e $VERSION > internal/constants/version.txt
@@ -105,6 +108,9 @@ jobs:
 
       - name: Install frontend dependencies
         run: cd frontend && pnpm install
+      
+      - name: Update version in wails.json
+        run: node scripts/update_wails_json.js
 
       - name: Build Linux (amd64 current)
         run: |
@@ -157,6 +163,9 @@ jobs:
 
       - name: Install frontend dependencies
         run: cd frontend && pnpm install
+
+      - name: Update version in wails.json
+        run: node scripts/update_wails_json.js
 
       - name: Build Windows (${{ matrix.arch }}) with NSIS installer
         run: |

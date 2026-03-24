@@ -1,6 +1,8 @@
 package paths
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -83,7 +85,7 @@ func TestQuarantineFile(t *testing.T) {
 		require.True(t, logger.warned)
 		require.False(t, logger.errored)
 		_, err := os.Stat(src)
-		require.True(t, os.IsNotExist(err))
+		require.True(t, errors.Is(err, fs.ErrNotExist))
 		_, err = os.Stat(backupPath)
 		require.NoError(t, err)
 	})
@@ -102,7 +104,7 @@ func TestMoveLogFile(t *testing.T) {
 		require.NoError(t, MoveLogFile())
 
 		_, err := os.Stat(LogFilePath())
-		require.True(t, os.IsNotExist(err))
+		require.True(t, errors.Is(err, fs.ErrNotExist))
 
 		data, err := os.ReadFile(PrevLogFilePath())
 		require.NoError(t, err)

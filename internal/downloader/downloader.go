@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -690,7 +691,7 @@ func (d *Downloader) uninstallModNow(modId string) types.AssetUninstallResponse 
 		)
 	}
 	modPath := paths.JoinLocalPath(d.getModPath(), modId)
-	if _, err := os.Stat(paths.JoinLocalPath(modPath, constants.RailyardAssetMarker)); errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(paths.JoinLocalPath(modPath, constants.RailyardAssetMarker)); errors.Is(err, fs.ErrNotExist) {
 		return d.uninstallWarn(
 			types.AssetTypeMod,
 			modId,
@@ -700,7 +701,7 @@ func (d *Downloader) uninstallModNow(modId string) types.AssetUninstallResponse 
 			"asset_id", modId,
 		)
 	}
-	if err := os.RemoveAll(modPath); err != nil {
+	if err := os.RemoveAll(modPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return d.uninstallError(types.AssetTypeMod, modId, types.UninstallErrorFilesystem, "Failed to remove mod files", err, "mod_id", modId)
 	}
 	d.Registry.RemoveInstalledMod(modId)
@@ -724,7 +725,7 @@ func (d *Downloader) uninstallMapNow(mapId string) types.AssetUninstallResponse 
 	}
 	mapConfig := installedMap.mapConfig
 
-	if _, err := os.Stat(paths.JoinLocalPath(d.getMapDataPath(), mapConfig.Code, constants.RailyardAssetMarker)); errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(paths.JoinLocalPath(d.getMapDataPath(), mapConfig.Code, constants.RailyardAssetMarker)); errors.Is(err, fs.ErrNotExist) {
 		return d.uninstallWarn(
 			types.AssetTypeMap,
 			mapId,
@@ -736,11 +737,11 @@ func (d *Downloader) uninstallMapNow(mapId string) types.AssetUninstallResponse 
 	}
 
 	mapDataPath := paths.JoinLocalPath(d.getMapDataPath(), mapConfig.Code)
-	if err := os.RemoveAll(mapDataPath); err != nil {
+	if err := os.RemoveAll(mapDataPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return d.uninstallError(types.AssetTypeMap, mapId, types.UninstallErrorFilesystem, "Failed to remove map data files", err, "map_id", mapId)
 	}
 	tilePath := paths.JoinLocalPath(d.getMapTilePath(), mapConfig.Code+".pmtiles")
-	if err := os.Remove(tilePath); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := os.Remove(tilePath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return d.uninstallError(types.AssetTypeMap, mapId, types.UninstallErrorFilesystem, "Failed to remove map tile files", err, "map_id", mapId)
 	}
 	os.Remove(paths.JoinLocalPath(d.getMapThumbnailPath(), mapConfig.Code+".svg")) // Doesn't matter if this fails, thumbnail is optional and may not exist

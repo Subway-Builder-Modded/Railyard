@@ -1,6 +1,8 @@
 package files
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -81,7 +83,7 @@ func TestRecoverAtomicBackupRestoresMissingTarget(t *testing.T) {
 	require.JSONEq(t, `{"state":"backup"}`, string(recovered))
 
 	_, backupErr := os.Stat(backupPath)
-	require.True(t, os.IsNotExist(backupErr))
+	require.True(t, errors.Is(backupErr, fs.ErrNotExist))
 }
 
 func TestRecoverAtomicBackupRemovesStaleBackupWhenTargetExists(t *testing.T) {
@@ -94,5 +96,5 @@ func TestRecoverAtomicBackupRemovesStaleBackupWhenTargetExists(t *testing.T) {
 	require.NoError(t, recoverAtomicBackup(targetPath, "state"))
 
 	_, backupErr := os.Stat(backupPath)
-	require.True(t, os.IsNotExist(backupErr))
+	require.True(t, errors.Is(backupErr, fs.ErrNotExist))
 }

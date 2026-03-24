@@ -1,7 +1,9 @@
 package files
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -121,7 +123,7 @@ func recoverAtomicBackup(path string, label string) error {
 	_, backupPathErr := os.Stat(backupPath)
 
 	// If the target file is missing but a backup exists, attempt to recover by restoring the backup.
-	if os.IsNotExist(targetPathErr) && backupPathErr == nil {
+	if errors.Is(targetPathErr, fs.ErrNotExist) && backupPathErr == nil {
 		if err := os.Rename(backupPath, path); err != nil {
 			return fmt.Errorf("failed to recover backup for %s %q: %w", label, path, err)
 		}
@@ -133,10 +135,10 @@ func recoverAtomicBackup(path string, label string) error {
 		_ = os.Remove(backupPath)
 	}
 
-	if targetPathErr != nil && !os.IsNotExist(targetPathErr) {
+	if targetPathErr != nil && !errors.Is(targetPathErr, fs.ErrNotExist) {
 		return fmt.Errorf("failed to inspect %s %q for backup recovery: %w", label, path, targetPathErr)
 	}
-	if backupPathErr != nil && !os.IsNotExist(backupPathErr) {
+	if backupPathErr != nil && !errors.Is(backupPathErr, fs.ErrNotExist) {
 		return fmt.Errorf("failed to inspect backup for %s %q: %w", label, path, backupPathErr)
 	}
 	return nil
@@ -155,7 +157,7 @@ func commitPreparedWrite(write *atomicWriteArgs) error {
 			return fmt.Errorf("failed to backup %s %q: %w", write.spec.Label, write.spec.Path, err)
 		}
 		write.backupExists = true
-	} else if !os.IsNotExist(err) {
+	} else if !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("failed to inspect %s %q before commit: %w", write.spec.Label, write.spec.Path, err)
 	}
 

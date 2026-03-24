@@ -2,8 +2,10 @@ package files
 
 import (
 	"archive/zip"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 
@@ -139,7 +141,7 @@ func ValidateInstalledMapData(mapInstallRoot string, cityCode string, isLocal bo
 	if isLocal {
 		configPath := paths.JoinLocalPath(mapInstallRoot, cityCode, MapConfigFileName)
 		if _, err := os.Stat(configPath); err != nil {
-			if os.IsNotExist(err) {
+			if errors.Is(err, fs.ErrNotExist) {
 				return types.ConfigData{}, types.InstallErrorInvalidArchive, &types.MissingFilesError{Files: []string{fmt.Sprintf("missing installed map file: %s", configPath)}}
 			}
 			return types.ConfigData{}, types.InstallErrorFilesystem, fmt.Errorf("failed to stat installed map file %q: %w", configPath, err)
@@ -176,7 +178,7 @@ func validateRequiredInstalledMapFiles(mapInstallRoot string, cityCode string) (
 
 	for _, filePath := range requiredPaths {
 		if _, err := os.Stat(filePath); err != nil {
-			if os.IsNotExist(err) {
+			if errors.Is(err, fs.ErrNotExist) {
 				return types.InstallErrorInvalidArchive, &types.MissingFilesError{Files: []string{fmt.Sprintf("missing installed map file: %s", filePath)}}
 			}
 			return types.InstallErrorFilesystem, fmt.Errorf("failed to stat installed map file %q: %w", filePath, err)

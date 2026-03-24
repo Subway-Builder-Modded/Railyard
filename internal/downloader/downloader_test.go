@@ -2,7 +2,9 @@ package downloader
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -527,11 +529,11 @@ func TestCancelDuringExtractRemovesInstalledFiles(t *testing.T) {
 	tilePath := filepath.Join(d.getMapTilePath(), "QAZ.pmtiles")
 	thumbnailPath := filepath.Join(d.getMapThumbnailPath(), "QAZ.svg")
 	_, err := os.Stat(mapDataPath)
-	require.True(t, os.IsNotExist(err), "expected map data path removed: %s", mapDataPath)
+	require.True(t, errors.Is(err, fs.ErrNotExist), "expected map data path removed: %s", mapDataPath)
 	_, err = os.Stat(tilePath)
-	require.True(t, os.IsNotExist(err), "expected tile path removed: %s", tilePath)
+	require.True(t, errors.Is(err, fs.ErrNotExist), "expected tile path removed: %s", tilePath)
 	_, err = os.Stat(thumbnailPath)
-	require.True(t, os.IsNotExist(err), "expected thumbnail path removed: %s", thumbnailPath)
+	require.True(t, errors.Is(err, fs.ErrNotExist), "expected thumbnail path removed: %s", thumbnailPath)
 }
 
 func TestDownloadTempZipCancelledCleansUpArtifact(t *testing.T) {
@@ -868,7 +870,7 @@ func TestInstallMapWritesDownloadedContractFiles(t *testing.T) {
 	}
 
 	_, err := os.Stat(filepath.Join(mapDir, "config.json.gz"))
-	require.True(t, os.IsNotExist(err), "downloaded map should not write config.json.gz")
+	require.True(t, errors.Is(err, fs.ErrNotExist), "downloaded map should not write config.json.gz")
 	_, err = os.Stat(filepath.Join(d.getMapTilePath(), "AAA.pmtiles"))
 	require.NoError(t, err, "downloaded map should write pmtiles")
 	_, err = os.Stat(filepath.Join(d.getMapThumbnailPath(), "AAA.svg"))

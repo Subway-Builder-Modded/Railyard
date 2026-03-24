@@ -2,7 +2,9 @@ package profiles
 
 import (
 	"archive/tar"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"railyard/internal/files"
@@ -95,7 +97,7 @@ func (s *UserProfiles) copyMapsToArchive(tempDir, profileID string) (types.Gener
 
 		// Copy thumbnail if exists
 		thumbnailPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "public", "data", "city-maps", fmt.Sprintf("%s.svg", code))
-		if _, err := os.Stat(thumbnailPath); !os.IsNotExist(err) {
+		if _, err := os.Stat(thumbnailPath); !errors.Is(err, fs.ErrNotExist) {
 			if errResp, ok := files.CopyFile(thumbnailPath, paths.JoinLocalPath(mapDir, "thumbnail.svg"), profileID, code, s.Logger); !ok {
 				return errResp, false
 			}
@@ -103,7 +105,7 @@ func (s *UserProfiles) copyMapsToArchive(tempDir, profileID string) (types.Gener
 
 		// Copy tiles if exists
 		tilePath := paths.JoinLocalPath(paths.TilesPath(), fmt.Sprintf("%s.pmtiles", code))
-		if _, err := os.Stat(tilePath); !os.IsNotExist(err) {
+		if _, err := os.Stat(tilePath); !errors.Is(err, fs.ErrNotExist) {
 			if errResp, ok := files.CopyFile(tilePath, paths.JoinLocalPath(mapDir, "tiles.pmtiles"), profileID, code, s.Logger); !ok {
 				return errResp, false
 			}
@@ -151,7 +153,7 @@ func (s *UserProfiles) RestoreProfileArchive(profileID string) types.GenericResp
 	}
 
 	archivePath := paths.JoinLocalPath(paths.ProfileArchivesPath(), fmt.Sprintf("%s.tar", profile.UUID))
-	if _, err := os.Stat(archivePath); os.IsNotExist(err) {
+	if _, err := os.Stat(archivePath); errors.Is(err, fs.ErrNotExist) {
 		profileErr := userProfilesError(profileID, "", "", types.ErrorProfileNotFound, "", fmt.Sprintf("Archive file not found for profile restoration: %q", profileID))
 		s.Logger.Warn("Profile archive not found for restoration", profileErr, "profile_id", profileID)
 		return types.WarnResponse(profileErr.Error())
@@ -229,7 +231,7 @@ func (s *UserProfiles) restoreMapsFromArchive(tempDir, profileID string) (types.
 
 		// Restore thumbnail if exists
 		archiveThumbnailPath := paths.JoinLocalPath(tempDir, "maps", code, "thumbnail.svg")
-		if _, err := os.Stat(archiveThumbnailPath); !os.IsNotExist(err) {
+		if _, err := os.Stat(archiveThumbnailPath); !errors.Is(err, fs.ErrNotExist) {
 			destThumbnailPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "public", "data", "city-maps", fmt.Sprintf("%s.svg", code))
 			if errResp, ok := files.CopyFileWithDest(archiveThumbnailPath, destThumbnailPath, profileID, code, "thumbnail", s.Logger); !ok {
 				return errResp, false
@@ -238,7 +240,7 @@ func (s *UserProfiles) restoreMapsFromArchive(tempDir, profileID string) (types.
 
 		// Restore tiles if exists
 		archiveTilePath := paths.JoinLocalPath(tempDir, "maps", code, "tiles.pmtiles")
-		if _, err := os.Stat(archiveTilePath); !os.IsNotExist(err) {
+		if _, err := os.Stat(archiveTilePath); !errors.Is(err, fs.ErrNotExist) {
 			destTilePath := paths.JoinLocalPath(paths.TilesPath(), fmt.Sprintf("%s.pmtiles", code))
 			if errResp, ok := files.CopyFileWithDest(archiveTilePath, destTilePath, profileID, code, "tiles", s.Logger); !ok {
 				return errResp, false

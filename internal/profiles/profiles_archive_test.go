@@ -1,6 +1,8 @@
 package profiles
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,5 +28,5 @@ func TestQuarantineUserProfilesFileMovesSourceToBackup(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = os.Stat(paths.UserProfilesPath())
-	require.True(t, os.IsNotExist(err))
+	require.True(t, errors.Is(err, fs.ErrNotExist))
 }

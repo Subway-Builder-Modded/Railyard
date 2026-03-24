@@ -1,7 +1,9 @@
 package registry
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"railyard/internal/constants"
@@ -210,7 +212,7 @@ func modManifestVersionMatches(modPath string, expectedVersion string) (bool, er
 func (r *Registry) hasAssetMarker(assetType types.AssetType, assetID string, installRoot string, markerPathPart string) bool {
 	markerPath := paths.JoinLocalPath(installRoot, markerPathPart, constants.RailyardAssetMarker)
 	_, err := os.Stat(markerPath)
-	if !os.IsNotExist(err) {
+	if !errors.Is(err, fs.ErrNotExist) {
 		return true
 	}
 	attrs := []any{

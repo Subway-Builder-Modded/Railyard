@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -170,6 +172,10 @@ func (a *App) shutdown(ctx context.Context) {
 		log.Printf("Warning: failed to persist installed registry state on shutdown: %v", err)
 	}
 
+	res := a.StopGame()
+	if res.Status == types.ResponseError {
+		log.Printf("Warning: failed to stop game on shutdown: %s", res.Message)
+	}
 }
 
 func resolveStartupProfile(a *App) types.UserProfile {
@@ -201,6 +207,12 @@ func (a *App) recoverProfiles(cause types.UserProfileResult) types.UserProfile {
 }
 
 func runNonBlockingStartupRoutines(a *App, activeProfile types.UserProfile) {
+	wailsruntime.EventsOn(a.ctx, "deeplink:start-game", func(optionalData ...interface{}) {
+		if a.gameCmd != nil && a.gameCmd.ProcessState == nil {
+			return
+		}
+		a.LaunchGame()
+	})
 	wailsruntime.WindowMaximise(a.ctx)
 	if activeProfile.SystemPreferences.RefreshRegistryOnStartup {
 		if err := a.Registry.Refresh(); err != nil {
@@ -472,6 +484,7 @@ func (a *App) StopGame() types.GenericResponse {
 	}
 
 	a.Logger.Info("Game process killed successfully")
+	a.gameCmd = nil
 	return types.SuccessResponse("Game stopped")
 }
 
@@ -509,7 +522,7 @@ func (a *App) InstallLinuxSandbox() types.GenericResponse {
 	}
 
 	sandboxPath := path.Join("/tmp", "squashfs-root", "chrome-sandbox")
-	if _, err := os.Stat(sandboxPath); os.IsNotExist(err) {
+	if _, err := os.Stat(sandboxPath); errors.Is(err, fs.ErrNotExist) {
 		a.Logger.Error("Extracted chrome-sandbox not found at expected path", err)
 		return types.ErrorResponse(fmt.Sprintf("extracted chrome-sandbox not found at expected path: %s", sandboxPath))
 	}
@@ -531,7 +544,7 @@ func (a *App) InstallLinuxSandbox() types.GenericResponse {
 func (a *App) SandboxIsInstalled() types.SandboxStatusResponse {
 	installed := false
 	if runtime.GOOS == "linux" && a.Config.Cfg.ChromeSandboxPath != "" {
-		if _, err := os.Stat(a.Config.Cfg.ChromeSandboxPath); !os.IsNotExist(err) {
+		if _, err := os.Stat(a.Config.Cfg.ChromeSandboxPath); !errors.Is(err, fs.ErrNotExist) {
 			installed = true
 		}
 	}
@@ -697,7 +710,7 @@ func (a *App) generateMod(port int) error {
 }
 
 func (a *App) addSaltsOnFirstRun() error {
-	if _, err := os.Stat(paths.JoinLocalPath(paths.AppDataRoot(), constants.RailyardAssetsSaltedMarker)); os.IsNotExist(err) {
+	if _, err := os.Stat(paths.JoinLocalPath(paths.AppDataRoot(), constants.RailyardAssetsSaltedMarker)); errors.Is(err, fs.ErrNotExist) {
 		a.Logger.Info("Adding salts to existing assets on first run")
 		for _, mod := range a.Registry.GetInstalledMods() {
 			id := mod.ID

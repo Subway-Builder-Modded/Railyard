@@ -2,8 +2,10 @@ package updater
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -31,7 +33,7 @@ func TestDeleteOldTempInstallers(t *testing.T) {
 	require.NoError(t, deleteOldTempInstallers())
 
 	_, staleErr := os.Stat(staleInstaller)
-	require.True(t, os.IsNotExist(staleErr))
+	require.True(t, errors.Is(staleErr, fs.ErrNotExist))
 	_, keepErr := os.Stat(keepFile)
 	require.NoError(t, keepErr)
 }
@@ -193,7 +195,8 @@ func TestDownloadAndRunInstallerReturnsErrorOnBadStatus(t *testing.T) {
 	}))
 	defer server.Close()
 
-	err := downloadAndRunInstaller(server.URL+"/installer.exe", context.Background(), nil)
+	log := logger.LoggerAtPath(filepath.Join(t.TempDir(), "updater_download_error.log"))
+	err := downloadAndRunInstaller(server.URL+"/installer.exe", context.Background(), nil, log)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "status code 503")
 }

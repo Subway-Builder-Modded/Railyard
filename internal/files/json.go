@@ -3,7 +3,9 @@ package files
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 )
 
@@ -19,14 +21,14 @@ func ReadJSON[T any](path string, label string, opts JSONReadOptions) (T, error)
 	var zero T
 	data, err := os.ReadFile(path)
 	// If the file is missing, attempt to recover from backup if allowed, then try reading again. If still missing and AllowMissing is true, return zero value without error.
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		if recoverErr := recoverAtomicBackup(path, label); recoverErr != nil {
 			return zero, recoverErr
 		}
 		data, err = os.ReadFile(path)
 	}
 	if err != nil {
-		if os.IsNotExist(err) && opts.AllowMissing {
+		if errors.Is(err, fs.ErrNotExist) && opts.AllowMissing {
 			return zero, nil
 		}
 		return zero, fmt.Errorf("failed to read %s %q: %w", label, path, err)

@@ -84,6 +84,10 @@ func (a *App) emitPendingDeepLinks() {
 	a.bringToFront()
 
 	for _, target := range queued {
+		if target.Type == "GameStart" {
+			wailsruntime.EventsEmit(a.ctx, "deeplink:start-game")
+			continue
+		}
 		wailsruntime.EventsEmit(a.ctx, "deeplink:open", map[string]string{
 			"type": target.Type,
 			"id":   target.ID,
