@@ -67,7 +67,6 @@ type Subscriptions struct {
 	Maps      map[string]string `json:"maps"`
 	LocalMaps map[string]string `json:"localMaps"`
 	Mods      map[string]string `json:"mods"`
-	ModsDeps  map[string]string `json:"modsDeps,omitempty"` // Optional field to track installed versions of dependencies for subscribed mods, used to determine whether dependency updates are needed when subscribed mods are updated
 }
 
 type SubscriptionAction string

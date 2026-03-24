@@ -22,7 +22,6 @@ func (s *UserProfiles) SyncSubscriptions(profileID string, replaceOnConflict boo
 
 	mapArgs := s.buildMapSyncArgs(profile, func() bool { return s.isSnapshotStale(snapshotVersion) }, replaceOnConflict)
 	modArgs := s.buildModSyncArgs(profile, func() bool { return s.isSnapshotStale(snapshotVersion) })
-	depModArgs := s.buildDepModSyncArgs(profile, func() bool { return s.isSnapshotStale(snapshotVersion) })
 
 	syncErrors := make([]types.UserProfilesError, 0)
 	operations := make([]types.SubscriptionOperation, 0)
@@ -41,13 +40,7 @@ func (s *UserProfiles) SyncSubscriptions(profileID string, replaceOnConflict boo
 	syncErrors = append(syncErrors, modErrors...)
 	assetsToPurge = append(assetsToPurge, invalidMods...)
 
-	s.Logger.Info("Syncing mod dependency subscriptions", "profile_id", profileID, "subscription_count", len(profile.Subscriptions.ModsDeps))
-	depModOperations, depModErrors, invalidDepMods, depModStale := syncAssetSubscriptions(s.Logger, profileID, depModArgs)
-	operations = append(operations, depModOperations...)
-	syncErrors = append(syncErrors, depModErrors...)
-	assetsToPurge = append(assetsToPurge, invalidDepMods...)
-
-	if mapStale || modStale || depModStale {
+	if mapStale || modStale {
 		s.Logger.Warn("Subscription sync cancelled due to newer profile update", "profile_id", profileID)
 		staleWarning := userProfilesError(
 			profileID,
@@ -185,36 +178,6 @@ func (s *UserProfiles) buildModSyncArgs(profile types.UserProfile, isStale func(
 		},
 		uninstall: func(assetID string) types.AssetUninstallResponse {
 			return s.Downloader.UninstallAsset(types.AssetTypeMod, assetID)
-		},
-	}
-}
-
-func (s *UserProfiles) buildDepModSyncArgs(profile types.UserProfile, isStale func() bool) assetSyncArgs[types.InstalledModInfo, types.ModManifest] {
-	return assetSyncArgs[types.InstalledModInfo, types.ModManifest]{
-		assetType:     types.AssetTypeDepMod,
-		subscriptions: profile.Subscriptions.ModsDeps,
-		isStale:       isStale,
-		installedArgs: installedVersionArgs[types.InstalledModInfo]{
-			getInstalledAssetsFn: s.Registry.GetInstalledMods, // Dependency mods are not tracked separately from subscribed mods in the registry, so we can use the same function to resolve installed versions
-			idFn:                 func(item types.InstalledModInfo) string { return item.ID },
-			versionFn:            func(item types.InstalledModInfo) string { return item.Version },
-		},
-		availableArgs: availableVersionArgs[types.ModManifest]{
-			getManifestsFn: s.Registry.GetMods, // Dependency mods are not tracked separately from subscribed mods in the registry, so we can use the same function to resolve available versions
-			idFn:           func(item types.ModManifest) string { return item.ID },
-			updateTypeFn:   func(item types.ModManifest) string { return item.Update.Type },
-			updateSourceFn: func(item types.ModManifest) string { return item.Update.Source() },
-			getVersionsFn:  s.Registry.GetVersions,
-		},
-		install: func(assetID string, version string) types.AssetInstallResponse {
-			return s.Downloader.InstallAsset(types.InstallAssetRequest{
-				AssetType: types.AssetTypeDepMod,
-				AssetID:   assetID,
-				Version:   version,
-			})
-		},
-		uninstall: func(assetID string) types.AssetUninstallResponse {
-			return s.Downloader.UninstallAsset(types.AssetTypeMod, assetID) // Dependency mods are not tracked separately from subscribed mods in the registry, so we can use the same function to uninstall them
 		},
 	}
 }

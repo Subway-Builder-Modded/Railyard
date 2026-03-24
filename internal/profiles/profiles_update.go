@@ -722,8 +722,6 @@ func applySubscriptionMutation(
 		return mutateSubscriptionMap(target, action, assetID, item)
 	case types.AssetTypeMod:
 		return mutateSubscriptionMap(profile.Subscriptions.Mods, action, assetID, item)
-	case types.AssetTypeDepMod:
-		return mutateSubscriptionMap(profile.Subscriptions.ModsDeps, action, assetID, item)
 	default:
 		err := userProfilesError("", assetID, item.Type, types.ErrorInvalidAssetType, "", fmt.Sprintf("Invalid asset type: %q", item.Type))
 		return nil, &err

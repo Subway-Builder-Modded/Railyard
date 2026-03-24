@@ -820,7 +820,7 @@ func (d *Downloader) InstallAsset(req types.InstallAssetRequest) types.AssetInst
 					})
 
 					// Deps need to be subscribed to avoid them being uninstalled, but ForceSyncing will trigger an unecessary deps check
-					wailsruntime.EventsEmit(opCtx, "downloader:subscribeDependency", key, types.AssetTypeDepMod, dep.InstallCandidate.Version)
+					wailsruntime.EventsEmit(opCtx, "downloader:subscribeDependency", key, types.AssetTypeMod, dep.InstallCandidate.Version)
 				}
 			}
 			return operationResult{assetInstallResponse: d.installModNow(opCtx, req.AssetID, req.Version)}
