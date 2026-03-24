@@ -26,6 +26,7 @@ export namespace types {
 	    checkForUpdatesOnLaunch: boolean;
 	    setupCompleted: boolean;
 	    chromeSandboxPath?: string;
+	    viewTestMods?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -39,6 +40,7 @@ export namespace types {
 	        this.checkForUpdatesOnLaunch = source["checkForUpdatesOnLaunch"];
 	        this.setupCompleted = source["setupCompleted"];
 	        this.chromeSandboxPath = source["chromeSandboxPath"];
+	        this.viewTestMods = source["viewTestMods"];
 	    }
 	}
 	export class AppVersionResponse {
@@ -749,6 +751,7 @@ export namespace types {
 	    gallery: string[];
 	    source: string;
 	    update: UpdateConfig;
+	    is_test?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new MapManifest(source);
@@ -776,6 +779,7 @@ export namespace types {
 	        this.gallery = source["gallery"];
 	        this.source = source["source"];
 	        this.update = this.convertValues(source["update"], UpdateConfig);
+	        this.is_test = source["is_test"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -842,6 +846,7 @@ export namespace types {
 	    gallery: string[];
 	    source: string;
 	    update: UpdateConfig;
+	    is_test?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ModManifest(source);
@@ -860,6 +865,7 @@ export namespace types {
 	        this.gallery = source["gallery"];
 	        this.source = source["source"];
 	        this.update = this.convertValues(source["update"], UpdateConfig);
+	        this.is_test = source["is_test"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

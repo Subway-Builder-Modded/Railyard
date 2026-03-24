@@ -29,6 +29,7 @@ type ModManifest struct {
 	Gallery       []string     `json:"gallery"`
 	Source        string       `json:"source"`
 	Update        UpdateConfig `json:"update"`
+	IsTest        bool         `json:"is_test,omitempty"` // Indicates whether this mod is a test mod that should only be shown when "View Test Mods" is enabled in settings
 }
 
 type ModsResponse struct {
@@ -95,6 +96,7 @@ type MapManifest struct {
 	Gallery []string     `json:"gallery"`
 	Source  string       `json:"source"`
 	Update  UpdateConfig `json:"update"`
+	IsTest  bool         `json:"is_test,omitempty"` // Indicates whether this map is a test map that should only be shown when "View Test Mods" is enabled in settings
 }
 
 type MapsResponse struct {

@@ -94,7 +94,14 @@ func (r *Registry) RefreshResponse() types.GenericResponse {
 
 // GetMods returns all mod manifests.
 func (r *Registry) GetMods() []types.ModManifest {
-	return r.mods
+	NewMods := make([]types.ModManifest, 0)
+	for _, mod := range r.mods {
+		if mod.IsTest && !r.config.Cfg.ViewTestMods {
+			continue // Skip test mods if the setting is disabled
+		}
+		NewMods = append(NewMods, mod)
+	}
+	return NewMods
 }
 
 // GetModsResponse returns all mod manifests with status metadata.
@@ -107,7 +114,14 @@ func (r *Registry) GetModsResponse() types.ModsResponse {
 
 // GetMaps returns all map manifests.
 func (r *Registry) GetMaps() []types.MapManifest {
-	return r.maps
+	NewMaps := make([]types.MapManifest, 0)
+	for _, m := range r.maps {
+		if m.IsTest && !r.config.Cfg.ViewTestMods {
+			continue
+		}
+		NewMaps = append(NewMaps, m)
+	}
+	return NewMaps
 }
 
 // GetMapsResponse returns all map manifests with status metadata.
