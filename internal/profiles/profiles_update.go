@@ -80,7 +80,7 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 
 		// TODO: Implement per-profile request coalescing so burst frontend updates reconcile once
 		// against the latest desired subscriptions state instead of running multiple stale snapshots.
-		syncResult := s.SyncSubscriptions(req.ProfileID, req.ReplaceOnConflict)
+		syncResult := s.SyncSubscriptions(req.ProfileID, req.ReplaceOnConflict, req.SkipDependencyInstall)
 		if syncResult.Status == types.ResponseError {
 			result.Status = types.ResponseError
 			result.Message = "Failed to sync subscriptions"

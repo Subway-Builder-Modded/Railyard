@@ -37,16 +37,16 @@ type RegistryUpdateFunc func()
 var downloaderHTTPClient = requests.NewDownloadClient()
 
 type Downloader struct {
-	tempPath              string
-	mapTilePath           string
-	Registry              *registry.Registry
-	Config                *config.Config
-	Logger                logger.Logger
-	OnProgress            types.ProgressFunc
-	OnExtractProgress     ExtractProgressFunc
-	OnCancelled           CancelledFunc
-	OnRegistryUpdate      RegistryUpdateFunc
-	OnDependencyInstalled DependencyInstalledFunc
+	tempPath          string
+	mapTilePath       string
+	Registry          *registry.Registry
+	Config            *config.Config
+	Logger            logger.Logger
+	OnProgress        types.ProgressFunc
+	OnExtractProgress ExtractProgressFunc
+	OnCancelled       CancelledFunc
+	OnRegistryUpdate  RegistryUpdateFunc
+	InstallDependency DependencyInstalledFunc
 
 	downloadMu   sync.Mutex
 	downloadCond *sync.Cond
@@ -777,12 +777,14 @@ func (d *Downloader) InstallAsset(req types.InstallAssetRequest) types.AssetInst
 	opCtx, cancel := context.WithCancel(context.Background())
 	result := d.enqueueOperation(operationActionInstall, assetKey, key, func() operationResult {
 		defer cancel()
+		d.Logger.Info("Attempting to resolve installation method", "asset_type", req.AssetType, "asset_id", req.AssetID, "version", req.Version)
 		switch req.AssetType {
 		case types.AssetTypeDepMod:
 			return operationResult{assetInstallResponse: d.installModNow(opCtx, req.AssetID, req.Version, true)}
 		case types.AssetTypeMap:
 			return operationResult{assetInstallResponse: d.installMapNow(opCtx, req.AssetID, req.Version, replaceOnConflict)}
 		case types.AssetTypeMod:
+			skipDeps := req.Mod != nil && req.Mod.SkipDependencies
 			var version types.VersionInfo
 			// Initialize version info
 			var versions []types.VersionInfo
@@ -806,19 +808,24 @@ func (d *Downloader) InstallAsset(req types.InstallAssetRequest) types.AssetInst
 					break
 				}
 			}
-			deps := d.ComputeDependencyList(req.AssetID, version)
-			if deps.Status == types.ResponseError {
-				return operationResult{assetInstallResponse: d.installError(types.AssetTypeMod, req.AssetID, req.Version, types.ConfigData{}, types.InstallErrorDependencyResolutionFailed, "Failed to resolve mod dependencies", nil, "mod_id", req.AssetID, "version", req.Version)}
-			}
-			for key, dep := range deps.InstallList {
-				if key == req.AssetID {
-					continue
-				} else {
-					d.InstallAsset(types.InstallAssetRequest{
-						AssetType: types.AssetTypeDepMod,
-						AssetID:   key,
-						Version:   dep.InstallCandidate.Version,
-					})
+			if !skipDeps {
+				deps := d.ComputeDependencyList(req.AssetID, version)
+				if deps.Status == types.ResponseError {
+					return operationResult{assetInstallResponse: d.installError(types.AssetTypeMod, req.AssetID, req.Version, types.ConfigData{}, types.InstallErrorDependencyResolutionFailed, "Failed to resolve mod dependencies", nil, "mod_id", req.AssetID, "version", req.Version)}
+				}
+				d.Logger.Info("Resolved mod dependencies", "mod_id", req.AssetID, "version", req.Version, "dependencies", deps.InstallList)
+				for key, dep := range deps.InstallList {
+					d.Logger.Info("Installing mod dependency", "mod_id", req.AssetID, "version", req.Version, "dependency_id", key, "dependency_version", dep.InstallCandidate.Version)
+					if key == req.AssetID {
+						d.Logger.Info("Skipping installation of mod dependency that matches target mod", "mod_id", req.AssetID, "version", req.Version)
+						continue
+					}
+					d.installModNow(opCtx, key, dep.InstallCandidate.Version, true)
+					if d.InstallDependency != nil {
+						depID := key
+						depVersion := types.Version(dep.InstallCandidate.Version)
+						go d.InstallDependency(depID, types.AssetTypeMod, depVersion)
+					}
 				}
 			}
 			return operationResult{assetInstallResponse: d.installModNow(opCtx, req.AssetID, req.Version, false)}
@@ -918,10 +925,6 @@ func (d *Downloader) installModNow(ctx context.Context, modId string, version st
 		d.Logger.Warn("Failed to persist installed state after installing mod", "error", err)
 	}
 	d.Logger.Info("InstallMod completed", "mod_id", modId, "version", version)
-	if isDep {
-		// Deps need to be subscribed to avoid them being uninstalled, but ForceSyncing will trigger an unecessary deps check
-		d.OnDependencyInstalled(modId, types.AssetTypeMod, types.Version(version))
-	}
 	return d.installSuccess(types.AssetTypeMod, modId, version, types.ConfigData{}, "Mod installed successfully", "mod_id", modId, "version", version)
 }
 

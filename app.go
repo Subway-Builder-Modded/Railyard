@@ -76,11 +76,12 @@ func (a *App) startup(ctx context.Context) {
 	a.setStartupReady(false)
 	a.ctx = ctx
 	a.Config.SetContext(ctx)
-	a.Downloader.OnDependencyInstalled = func(itemId string, itemType types.AssetType, version types.Version) {
+	a.Downloader.InstallDependency = func(itemId string, itemType types.AssetType, version types.Version) {
 		a.Profiles.UpdateSubscriptions(types.UpdateSubscriptionsRequest{
-			ProfileID: a.Profiles.GetActiveProfile().Profile.ID,
-			Action:    types.SubscriptionActionSubscribe,
-			ForceSync: true,
+			ProfileID:             a.Profiles.GetActiveProfile().Profile.ID,
+			Action:                types.SubscriptionActionSubscribe,
+			ForceSync:             true,
+			SkipDependencyInstall: true,
 			Assets: map[string]types.SubscriptionUpdateItem{
 				itemId: {
 					Version: version,
@@ -237,7 +238,7 @@ func runNonBlockingStartupRoutines(a *App, activeProfile types.UserProfile) {
 
 	// Sync subscriptions for active profile on startup
 	// TODO: Make this configurable within the profile itself
-	syncResult := a.Profiles.SyncSubscriptions(activeProfile.ID, false)
+	syncResult := a.Profiles.SyncSubscriptions(activeProfile.ID, false, false)
 	switch syncResult.Status {
 	case types.ResponseError:
 		a.Logger.MultipleError("Failed to sync profile subscriptions on startup", logger.AsErrors(syncResult.Errors), "profile_id", activeProfile.ID)

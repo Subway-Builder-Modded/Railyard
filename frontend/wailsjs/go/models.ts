@@ -523,7 +523,7 @@ export namespace types {
 	    }
 	}
 	export class ModInstallOptions {
-	
+	    skipDependencies?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ModInstallOptions(source);
@@ -531,7 +531,7 @@ export namespace types {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	
+	        this.skipDependencies = source["skipDependencies"];
 	    }
 	}
 	export class MapInstallOptions {
@@ -551,8 +551,7 @@ export namespace types {
 	    assetId: string;
 	    version: string;
 	    map?: MapInstallOptions;
-	    // Go type: ModInstallOptions
-	    mod?: any;
+	    mod?: ModInstallOptions;
 	
 	    static createFrom(source: any = {}) {
 	        return new InstallAssetRequest(source);
@@ -564,7 +563,7 @@ export namespace types {
 	        this.assetId = source["assetId"];
 	        this.version = source["version"];
 	        this.map = this.convertValues(source["map"], MapInstallOptions);
-	        this.mod = this.convertValues(source["mod"], null);
+	        this.mod = this.convertValues(source["mod"], ModInstallOptions);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -932,6 +931,7 @@ export namespace types {
 		    return a;
 		}
 	}
+	
 	export class ModManifest {
 	    schema_version: number;
 	    id: string;
@@ -1357,7 +1357,6 @@ export namespace types {
 	    maps: Record<string, string>;
 	    localMaps: Record<string, string>;
 	    mods: Record<string, string>;
-	    modsDeps?: Record<string, string>;
 	
 	    static createFrom(source: any = {}) {
 	        return new Subscriptions(source);
@@ -1368,7 +1367,6 @@ export namespace types {
 	        this.maps = source["maps"];
 	        this.localMaps = source["localMaps"];
 	        this.mods = source["mods"];
-	        this.modsDeps = source["modsDeps"];
 	    }
 	}
 	export class UserProfilesError {
@@ -1470,6 +1468,7 @@ export namespace types {
 	    action: string;
 	    forceSync: boolean;
 	    replaceOnConflict: boolean;
+	    skipDependencyInstall?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateSubscriptionsRequest(source);
@@ -1482,6 +1481,7 @@ export namespace types {
 	        this.action = source["action"];
 	        this.forceSync = source["forceSync"];
 	        this.replaceOnConflict = source["replaceOnConflict"];
+	        this.skipDependencyInstall = source["skipDependencyInstall"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

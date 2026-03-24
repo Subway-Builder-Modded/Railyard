@@ -18,7 +18,7 @@ export function ResetUserProfiles():Promise<types.UserProfileResult>;
 
 export function RestoreProfileArchive(arg1:string):Promise<types.GenericResponse>;
 
-export function SyncSubscriptions(arg1:string,arg2:boolean):Promise<types.SyncSubscriptionsResult>;
+export function SyncSubscriptions(arg1:string,arg2:boolean,arg3:boolean):Promise<types.SyncSubscriptionsResult>;
 
 export function UpdateSubscriptions(arg1:types.UpdateSubscriptionsRequest):Promise<types.UpdateSubscriptionsResult>;
 

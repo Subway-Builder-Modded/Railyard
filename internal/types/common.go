@@ -104,8 +104,10 @@ type MapInstallOptions struct {
 	ReplaceOnConflict bool `json:"replaceOnConflict"`
 }
 
-// Reserved for future mod-specific install options.
-type ModInstallOptions struct{}
+// Reserved for mod-specific install options.
+type ModInstallOptions struct {
+	SkipDependencies bool `json:"skipDependencies,omitempty"`
+}
 
 type InstallAssetRequest struct {
 	AssetType AssetType          `json:"assetType"`
@@ -158,7 +160,7 @@ var LocalMapCodePattern = regexp.MustCompile(`^[A-Z]{2,4}$`)
 
 func IsValidAssetType(assetType AssetType) bool {
 	switch assetType {
-	case AssetTypeMap, AssetTypeMod:
+	case AssetTypeMap, AssetTypeMod, AssetTypeDepMod:
 		return true
 	default:
 		return false
