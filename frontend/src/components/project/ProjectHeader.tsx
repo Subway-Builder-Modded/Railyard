@@ -357,16 +357,16 @@ export function ProjectHeader({
               )}
               <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                 by{' '}
-                <button
-                  type="button"
+                <Button
+                  variant="link"
+                  className="h-auto p-0 text-sm font-normal text-muted-foreground hover:text-foreground gap-1"
                   onClick={() =>
                     BrowserOpenURL(`https://github.com/${item.author}`)
                   }
-                  className="inline-flex items-center gap-1 transition-colors hover:text-foreground hover:underline"
                 >
                   {item.author}
                   <ExternalLink className="h-3 w-3" />
-                </button>
+                </Button>
               </p>
             </div>
 
@@ -384,15 +384,15 @@ export function ProjectHeader({
                 </span>
               )}
               {item.source && (
-                <button
-                  type="button"
+                <Button
+                  variant="link"
+                  className="h-auto p-0 text-sm font-normal text-muted-foreground hover:text-foreground gap-1 no-underline hover:no-underline"
                   onClick={() => BrowserOpenURL(item.source!)}
-                  className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
                 >
                   <Globe className="h-3.5 w-3.5" />
                   Source
                   <ExternalLink className="h-3 w-3" />
-                </button>
+                </Button>
               )}
             </div>
 
