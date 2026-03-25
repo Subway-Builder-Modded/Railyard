@@ -31,15 +31,36 @@ import {
 import { cn } from '@/lib/utils';
 import { useProfileStore } from '@/stores/profile-store';
 
-const VALID_THEMES = new Set<ThemeValue>(['dark', 'light', 'system']);
+const VALID_THEMES = new Set<ThemeValue>([
+  'dark',
+  'light',
+  'system',
+  'midnight',
+  'sepia',
+  'forest',
+  'crystal',
+]);
 const THEME_LABELS: Record<ThemeValue, string> = {
   dark: 'Dark',
   light: 'Light',
   system: 'System',
+  midnight: 'Midnight',
+  sepia: 'Sepia',
+  forest: 'Forest',
+  crystal: 'Crystal',
 };
 
 function normalizeThemeValue(theme: unknown): ThemeValue {
-  if (theme === 'system' || theme === 'light' || theme === 'dark') return theme;
+  if (
+    theme === 'system' ||
+    theme === 'light' ||
+    theme === 'dark' ||
+    theme === 'midnight' ||
+    theme === 'sepia' ||
+    theme === 'forest' ||
+    theme === 'crystal'
+  )
+    return theme;
   if (typeof theme === 'string') {
     const lowered = theme.toLowerCase();
     if (lowered.startsWith('light')) return 'light';
@@ -123,7 +144,7 @@ export function UIPreferencesPanel() {
                   aria-expanded={showThemePreviews}
                   className={cn(
                     BROWSE_TRIGGER_CN,
-                    'flex w-28 items-center justify-between',
+                    'flex w-32 items-center justify-between',
                   )}
                 >
                   <span>

@@ -1,7 +1,14 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export type ThemeValue = 'dark' | 'light' | 'system';
+export type ThemeValue =
+  | 'dark'
+  | 'light'
+  | 'system'
+  | 'midnight'
+  | 'sepia'
+  | 'forest'
+  | 'crystal';
 
 interface ThemePreviewColors {
   bg: string;
@@ -44,6 +51,58 @@ const THEME_OPTIONS: ThemeOption[] = [
       primary: '#ebebeb',
       muted: '#383838',
       border: '#2e2e2e',
+    },
+  },
+  {
+    value: 'sepia',
+    label: 'Sepia',
+    colors: {
+      bg: '#251508',
+      sidebar: '#2c1a0c',
+      card: '#332010',
+      bar: '#251508',
+      primary: '#f0e4d0',
+      muted: '#3e2818',
+      border: '#4a3020',
+    },
+  },
+  {
+    value: 'midnight',
+    label: 'Midnight',
+    colors: {
+      bg: '#0d1120',
+      sidebar: '#111828',
+      card: '#161e30',
+      bar: '#0d1120',
+      primary: '#e8eaf0',
+      muted: '#1c2438',
+      border: '#1e2840',
+    },
+  },
+  {
+    value: 'crystal',
+    label: 'Crystal',
+    colors: {
+      bg: '#dff0ef',
+      sidebar: '#d0e8e8',
+      card: '#eaf6f6',
+      bar: '#c8e0e0',
+      primary: '#0c2830',
+      muted: '#b8d8da',
+      border: '#82b8bc',
+    },
+  },
+  {
+    value: 'forest',
+    label: 'Forest',
+    colors: {
+      bg: '#0d1a0f',
+      sidebar: '#112015',
+      card: '#15261a',
+      bar: '#0d1a0f',
+      primary: '#d8ede0',
+      muted: '#1a2e20',
+      border: '#1e3425',
     },
   },
 ];

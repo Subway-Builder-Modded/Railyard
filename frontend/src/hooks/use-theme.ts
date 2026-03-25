@@ -2,22 +2,40 @@ import { useEffect } from 'react';
 
 import { useProfileStore } from '@/stores/profile-store';
 
-function normalizeTheme(theme: string): 'dark' | 'light' | 'system' {
-  if (theme === 'dark' || theme === 'light' || theme === 'system') {
-    return theme;
-  }
+type FullTheme =
+  | 'dark'
+  | 'light'
+  | 'system'
+  | 'midnight'
+  | 'sepia'
+  | 'forest'
+  | 'crystal';
 
+const VALID_THEMES = new Set<FullTheme>([
+  'dark',
+  'light',
+  'system',
+  'midnight',
+  'sepia',
+  'forest',
+  'crystal',
+]);
+
+function normalizeTheme(theme: string): FullTheme {
+  if (VALID_THEMES.has(theme as FullTheme)) return theme as FullTheme;
   const lowered = theme.toLowerCase();
   if (lowered.startsWith('dark')) return 'dark';
   if (lowered.startsWith('light')) return 'light';
   return 'system';
 }
 
-function applyThemeClasses(
-  root: HTMLElement,
-  effectiveTheme: 'dark' | 'light',
-) {
-  root.classList.toggle('dark', effectiveTheme === 'dark');
+function applyThemeClasses(root: HTMLElement, theme: Exclude<FullTheme, 'system'>) {
+  const isDark = theme === 'dark' || theme === 'midnight' || theme === 'forest' || theme === 'sepia';
+  root.classList.toggle('dark', isDark);
+  root.classList.toggle('midnight', theme === 'midnight');
+  root.classList.toggle('sepia', theme === 'sepia');
+  root.classList.toggle('forest', theme === 'forest');
+  root.classList.toggle('crystal', theme === 'crystal');
 }
 
 export function useTheme() {

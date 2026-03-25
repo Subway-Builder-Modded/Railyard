@@ -13,13 +13,13 @@ import (
 type ThemeMode string
 
 const (
-	ThemeDark      ThemeMode = "dark"
-	ThemeDarkLow   ThemeMode = "dark_low"
-	ThemeDarkHigh  ThemeMode = "dark_high"
-	ThemeLight     ThemeMode = "light"
-	ThemeLightLow  ThemeMode = "light_low"
-	ThemeLightHigh ThemeMode = "light_high"
-	ThemeSystem    ThemeMode = "system"
+	ThemeDark     ThemeMode = "dark"
+	ThemeLight    ThemeMode = "light"
+	ThemeSystem   ThemeMode = "system"
+	ThemeMidnight ThemeMode = "midnight"
+	ThemeSepia    ThemeMode = "sepia"
+	ThemeForest   ThemeMode = "forest"
+	ThemeCrystal  ThemeMode = "crystal"
 )
 
 // PageSize represents the number of entries to display per page when the user browses the registry.
@@ -279,12 +279,12 @@ func InitialProfilesState() UserProfilesState {
 func isValidTheme(theme ThemeMode) bool {
 	switch theme {
 	case ThemeDark,
-		ThemeDarkLow,
-		ThemeDarkHigh,
 		ThemeLight,
-		ThemeLightLow,
-		ThemeLightHigh,
-		ThemeSystem:
+		ThemeSystem,
+		ThemeMidnight,
+		ThemeSepia,
+		ThemeForest,
+		ThemeCrystal:
 		return true
 	default:
 		return false
