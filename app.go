@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -29,6 +30,7 @@ import (
 	"railyard/internal/updater"
 	"railyard/internal/utils"
 
+	"github.com/beescuit/asar"
 	"github.com/protomaps/go-pmtiles/pmtiles"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -53,6 +55,8 @@ type App struct {
 	startupReady  bool
 
 	deepLinks deepLinkQueue
+
+	cachedGameVersion types.GameVersionResponse
 }
 
 // NewApp creates a new App application struct
@@ -112,6 +116,9 @@ func (a *App) startup(ctx context.Context) {
 			"assetType": string(assetType),
 			"phase":     phase,
 		})
+	}
+	a.Downloader.GetGameVersion = func() types.GameVersionResponse {
+		return a.GetGameVersion()
 	}
 	a.Downloader.OnRegistryUpdate = func() {
 		wailsruntime.EventsEmit(ctx, "registry:update")
@@ -259,6 +266,10 @@ func (a *App) bootstrapInstalledState(activeProfile types.UserProfile) {
 // Returns an empty version with a warning status if detection fails.
 func (a *App) GetGameVersion() types.GameVersionResponse {
 	a.Logger.Info("Attempting to resolve game version")
+	if a.cachedGameVersion != (types.GameVersionResponse{}) {
+		a.Logger.Info("Returning cached game version", "version", a.cachedGameVersion.Version)
+		return a.cachedGameVersion
+	}
 	cfg := a.Config.GetConfig()
 	if !cfg.Validation.ExecutablePathValid {
 		return types.GameVersionResponse{
@@ -268,47 +279,76 @@ func (a *App) GetGameVersion() types.GameVersionResponse {
 	}
 	exePath := cfg.Config.ExecutablePath
 
-	var candidates []string
+	var asarPath string
 	if runtime.GOOS == "darwin" {
-		// macOS: exe is at <app>/Contents/MacOS/<name>, resources at <app>/Contents/Resources/app/package.json
-		macosDir := path.Dir(exePath)
-		contentsDir := path.Dir(macosDir)
-		candidates = append(candidates,
-			path.Join(contentsDir, "Resources", "app", "package.json"),
-		)
+		asarPath = filepath.Join(exePath, "Contents", "Resources", "app.asar")
 	} else {
-		// Windows/Linux: exe is alongside resources/ directory
-		exeDir := path.Dir(exePath)
-		candidates = append(candidates,
-			path.Join(exeDir, "resources", "app", "package.json"),
-		)
+		asarPath = filepath.Join(filepath.Dir(exePath), "resources", "app.asar")
 	}
 
-	for _, candidate := range candidates {
-		data, err := os.ReadFile(candidate)
-		if err != nil {
-			continue
+	archiveFile, err := os.Open(asarPath)
+	if err != nil {
+		a.Logger.Warn("Failed to open app.asar for game version detection", "error", err, "asarPath", asarPath)
+		a.cachedGameVersion = types.GameVersionResponse{
+			GenericResponse: types.WarnResponse("Game version not detected"),
+			Version:         "",
 		}
-		var pkg struct {
-			Version string `json:"version"`
-		}
-		if err := json.Unmarshal(data, &pkg); err != nil {
-			a.Logger.Warn("Failed to unmarshal package.json", "candidate", candidate, "error", err)
-			continue
-		}
-		if pkg.Version != "" {
-			a.Logger.Info("Successfully resolved game version", "version", pkg.Version, "candidate", candidate)
-			return types.GameVersionResponse{
-				GenericResponse: types.SuccessResponse("Game version resolved"),
-				Version:         pkg.Version,
-			}
+		return types.GameVersionResponse{
+			GenericResponse: types.WarnResponse("Game version not detected"),
+			Version:         "",
 		}
 	}
-	a.Logger.Warn("Could not detect game version from expected locations", "candidates", candidates)
-	return types.GameVersionResponse{
-		GenericResponse: types.WarnResponse("Game version not detected"),
-		Version:         "",
+
+	archive, err := asar.Decode(archiveFile)
+	if err != nil {
+		a.Logger.Warn("Failed to decode app.asar for game version detection", "error", err, "asarPath", asarPath)
+		a.cachedGameVersion = types.GameVersionResponse{
+			GenericResponse: types.WarnResponse("Game version not detected"),
+			Version:         "",
+		}
+		return types.GameVersionResponse{
+			GenericResponse: types.WarnResponse("Game version not detected"),
+			Version:         "",
+		}
 	}
+
+	packageFile := archive.Find("package.json")
+	if packageFile == nil {
+		a.Logger.Warn("Failed to find package.json in app.asar", "asarPath", asarPath)
+		a.cachedGameVersion = types.GameVersionResponse{
+			GenericResponse: types.WarnResponse("Game version not detected"),
+			Version:         "",
+		}
+		return types.GameVersionResponse{
+			GenericResponse: types.WarnResponse("Game version not detected"),
+			Version:         "",
+		}
+	}
+
+	packageReader := packageFile.Open()
+	var pkg struct {
+		Version string `json:"version"`
+	}
+
+	if err := json.NewDecoder(packageReader).Decode(&pkg); err != nil {
+		a.Logger.Warn("Failed to decode package.json", "asarPath", asarPath, "error", err)
+		a.cachedGameVersion = types.GameVersionResponse{
+			GenericResponse: types.WarnResponse("Game version not detected"),
+			Version:         "",
+		}
+		return types.GameVersionResponse{
+			GenericResponse: types.WarnResponse("Game version not detected"),
+			Version:         "",
+		}
+	}
+
+	a.Logger.Info("Game version detected", "version", pkg.Version)
+	resp := types.GameVersionResponse{
+		GenericResponse: types.SuccessResponse("Game version detected"),
+		Version:         pkg.Version,
+	}
+	a.cachedGameVersion = resp
+	return resp
 }
 
 func (a *App) LaunchGame() types.GenericResponse {
@@ -389,7 +429,7 @@ func (a *App) LaunchGame() types.GenericResponse {
 			// Fall back to direct launch if flatpak-spawn is not available
 			a.Logger.Warn("flatpak-spawn not available; falling back to direct executable launch", "error", lookPathErr)
 			cmd = exec.Command(exePath, extraSplitArgs...)
-			cmd.Dir = path.Dir(exePath)
+			cmd.Dir = filepath.Dir(exePath)
 		}
 		if profile.Status == types.ResponseSuccess {
 			if profile.Profile.SystemPreferences.UseDevTools {
@@ -398,7 +438,7 @@ func (a *App) LaunchGame() types.GenericResponse {
 		}
 	} else {
 		cmd = exec.Command(exePath, extraSplitArgs...)
-		cmd.Dir = path.Dir(exePath)
+		cmd.Dir = filepath.Dir(exePath)
 		if profile.Status == types.ResponseSuccess {
 			if profile.Profile.SystemPreferences.UseDevTools {
 				cmd.Env = append(cmd.Env, "DEBUG_PROD=TRUE")

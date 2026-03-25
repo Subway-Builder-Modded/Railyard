@@ -61,6 +61,7 @@ const (
 	InstallErrorFilesystem                 DownloaderErrorType = "install_filesystem_error"
 	InstallErrorPersistStateFailed         DownloaderErrorType = "install_persist_state_failed"
 	InstallErrorDependencyResolutionFailed DownloaderErrorType = "install_dependency_resolution_failed"
+	InstallErrorIncompatibleGameVersion    DownloaderErrorType = "install_incompatible_game_version"
 	UninstallErrorInvalidAssetType         DownloaderErrorType = "uninstall_invalid_asset_type"
 	UninstallErrorNotInstalled             DownloaderErrorType = "uninstall_not_installed"
 	UninstallErrorFilesystem               DownloaderErrorType = "uninstall_filesystem_error"
