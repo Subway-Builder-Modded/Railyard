@@ -399,6 +399,8 @@ func TestBootstrapInstalledStateFromProfileKeepsRemoteMapWhenDownloadedDataFiles
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "demand_data.json.gz"), []byte("{}"), 0o644))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "roads.geojson.gz"), []byte("{}"), 0o644))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "runways_taxiways.geojson.gz"), []byte("{}"), 0o644))
+	require.NoError(t, os.MkdirAll(paths.TilesPath(), 0o755))
+	require.NoError(t, os.WriteFile(paths.JoinLocalPath(paths.TilesPath(), "AAA.pmtiles"), []byte("tiles"), 0o644))
 
 	profile := types.DefaultProfile()
 	profile.Subscriptions.Maps["map-a"] = "2.0.0"
@@ -438,6 +440,8 @@ func TestBootstrapInstalledStateFromProfilePreservesExistingRemoteMapConfigAndBa
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "demand_data.json.gz"), []byte("{}"), 0o644))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "roads.geojson.gz"), []byte("{}"), 0o644))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "runways_taxiways.geojson.gz"), []byte("{}"), 0o644))
+	require.NoError(t, os.MkdirAll(paths.TilesPath(), 0o755))
+	require.NoError(t, os.WriteFile(paths.JoinLocalPath(paths.TilesPath(), "AAA.pmtiles"), []byte("tiles"), 0o644))
 
 	reg.installedMaps = []types.InstalledMapInfo{
 		{
@@ -491,6 +495,8 @@ func TestBootstrapInstalledStateFromProfileKeepsLocalMap(t *testing.T) {
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "demand_data.json.gz"), []byte("{}"), 0o644))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "roads.geojson.gz"), []byte("{}"), 0o644))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "runways_taxiways.geojson.gz"), []byte("{}"), 0o644))
+	require.NoError(t, os.MkdirAll(paths.TilesPath(), 0o755))
+	require.NoError(t, os.WriteFile(paths.JoinLocalPath(paths.TilesPath(), cityCode+".pmtiles"), []byte("tiles"), 0o644))
 	country := "JP"
 	require.NoError(t, files.WriteJSON(paths.JoinLocalPath(mapPath, "config.json"), "installed map config", types.ConfigData{
 		Code:    cityCode,
@@ -529,6 +535,8 @@ func TestBootstrapInstalledStateFromProfilePrefersExistingInstalledConfigForLoca
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "demand_data.json.gz"), []byte("{}"), 0o644))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "roads.geojson.gz"), []byte("{}"), 0o644))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "runways_taxiways.geojson.gz"), []byte("{}"), 0o644))
+	require.NoError(t, os.MkdirAll(paths.TilesPath(), 0o755))
+	require.NoError(t, os.WriteFile(paths.JoinLocalPath(paths.TilesPath(), cityCode+".pmtiles"), []byte("tiles"), 0o644))
 
 	diskCountry := "JP"
 	require.NoError(t, files.WriteJSON(paths.JoinLocalPath(mapPath, "config.json"), "installed map config", types.ConfigData{

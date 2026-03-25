@@ -137,7 +137,7 @@ func readInstalledMapConfig(mapInstallRoot string, cityCode string) (types.Confi
 // ValidateInstalledMapData validates installed map files under a city-code folder.
 // For local maps (isLocal=true), config.json is required and parsed.
 // For downloaded maps (isLocal=false), only the compressed city-data files are required.
-func ValidateInstalledMapData(mapInstallRoot string, cityCode string, isLocal bool) (types.ConfigData, types.DownloaderErrorType, error) {
+func ValidateInstalledMapData(mapInstallRoot string, mapTilesRoot string, cityCode string, isLocal bool) (types.ConfigData, types.DownloaderErrorType, error) {
 	if isLocal {
 		configPath := paths.JoinLocalPath(mapInstallRoot, cityCode, MapConfigFileName)
 		if _, err := os.Stat(configPath); err != nil {
@@ -148,7 +148,7 @@ func ValidateInstalledMapData(mapInstallRoot string, cityCode string, isLocal bo
 		}
 	}
 
-	if errorType, err := validateRequiredInstalledMapFiles(mapInstallRoot, cityCode); err != nil {
+	if errorType, err := validateRequiredInstalledMapFiles(mapInstallRoot, mapTilesRoot, cityCode); err != nil {
 		return types.ConfigData{}, errorType, err
 	}
 
@@ -168,12 +168,13 @@ func requiredFilesPresent(filesFound map[string]types.FileFoundStruct) bool {
 	return true
 }
 
-func validateRequiredInstalledMapFiles(mapInstallRoot string, cityCode string) (types.DownloaderErrorType, error) {
+func validateRequiredInstalledMapFiles(mapInstallRoot string, mapTilesRoot string, cityCode string) (types.DownloaderErrorType, error) {
 	requiredPaths := []string{
 		paths.JoinLocalPath(mapInstallRoot, cityCode, MapDemandFileName+".gz"),
 		paths.JoinLocalPath(mapInstallRoot, cityCode, MapRoadsFileName+".gz"),
 		paths.JoinLocalPath(mapInstallRoot, cityCode, MapRunwaysFileName+".gz"),
 		paths.JoinLocalPath(mapInstallRoot, cityCode, MapBuildingsFileName+".gz"),
+		paths.JoinLocalPath(mapTilesRoot, cityCode+MapTileFileExt),
 	}
 
 	for _, filePath := range requiredPaths {

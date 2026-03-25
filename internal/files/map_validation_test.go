@@ -96,15 +96,15 @@ func TestValidateMapArchive(t *testing.T) {
 func TestValidateInstalledMapDataLocal(t *testing.T) {
 	tests := []struct {
 		name        string
-		setup       func(t *testing.T, mapRoot, cityCode string)
+		setup       func(t *testing.T, mapRoot, tilesRoot, cityCode string)
 		wantErrType types.DownloaderErrorType
 		wantErr     bool
 		wantCode    string
 	}{
 		{
 			name: "valid local installed map data",
-			setup: func(t *testing.T, mapRoot, cityCode string) {
-				writeInstalledLocalMapFixture(t, mapRoot, cityCode, "AAA")
+			setup: func(t *testing.T, mapRoot, tilesRoot, cityCode string) {
+				writeInstalledLocalMapFixture(t, mapRoot, tilesRoot, cityCode, "AAA")
 			},
 			wantErrType: "",
 			wantErr:     false,
@@ -112,8 +112,8 @@ func TestValidateInstalledMapDataLocal(t *testing.T) {
 		},
 		{
 			name: "missing config file",
-			setup: func(t *testing.T, mapRoot, cityCode string) {
-				writeInstalledLocalMapFixture(t, mapRoot, cityCode, "AAA")
+			setup: func(t *testing.T, mapRoot, tilesRoot, cityCode string) {
+				writeInstalledLocalMapFixture(t, mapRoot, tilesRoot, cityCode, "AAA")
 				configPath := paths.JoinLocalPath(mapRoot, cityCode, MapConfigFileName)
 				require.NoError(t, os.Remove(configPath))
 			},
@@ -122,8 +122,8 @@ func TestValidateInstalledMapDataLocal(t *testing.T) {
 		},
 		{
 			name: "missing required gz file",
-			setup: func(t *testing.T, mapRoot, cityCode string) {
-				writeInstalledLocalMapFixture(t, mapRoot, cityCode, "AAA")
+			setup: func(t *testing.T, mapRoot, tilesRoot, cityCode string) {
+				writeInstalledLocalMapFixture(t, mapRoot, tilesRoot, cityCode, "AAA")
 				roadsPath := paths.JoinLocalPath(mapRoot, cityCode, MapRoadsFileName+".gz")
 				require.NoError(t, os.Remove(roadsPath))
 			},
@@ -131,9 +131,19 @@ func TestValidateInstalledMapDataLocal(t *testing.T) {
 			wantErr:     true,
 		},
 		{
+			name: "missing tile file",
+			setup: func(t *testing.T, mapRoot, tilesRoot, cityCode string) {
+				writeInstalledLocalMapFixture(t, mapRoot, tilesRoot, cityCode, "AAA")
+				tilePath := paths.JoinLocalPath(tilesRoot, cityCode+MapTileFileExt)
+				require.NoError(t, os.Remove(tilePath))
+			},
+			wantErrType: types.InstallErrorInvalidArchive,
+			wantErr:     true,
+		},
+		{
 			name: "invalid installed config json",
-			setup: func(t *testing.T, mapRoot, cityCode string) {
-				writeInstalledLocalMapFixture(t, mapRoot, cityCode, "AAA")
+			setup: func(t *testing.T, mapRoot, tilesRoot, cityCode string) {
+				writeInstalledLocalMapFixture(t, mapRoot, tilesRoot, cityCode, "AAA")
 				configPath := paths.JoinLocalPath(mapRoot, cityCode, MapConfigFileName)
 				require.NoError(t, os.WriteFile(configPath, []byte("{invalid"), 0o644))
 			},
@@ -142,8 +152,8 @@ func TestValidateInstalledMapDataLocal(t *testing.T) {
 		},
 		{
 			name: "invalid installed config map code",
-			setup: func(t *testing.T, mapRoot, cityCode string) {
-				writeInstalledLocalMapFixture(t, mapRoot, cityCode, "aaa")
+			setup: func(t *testing.T, mapRoot, tilesRoot, cityCode string) {
+				writeInstalledLocalMapFixture(t, mapRoot, tilesRoot, cityCode, "aaa")
 			},
 			wantErrType: types.InstallErrorInvalidMapCode,
 			wantErr:     true,
@@ -153,10 +163,11 @@ func TestValidateInstalledMapDataLocal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mapRoot := t.TempDir()
+			tilesRoot := t.TempDir()
 			cityCode := "AAA"
-			tt.setup(t, mapRoot, cityCode)
+			tt.setup(t, mapRoot, tilesRoot, cityCode)
 
-			config, errType, err := ValidateInstalledMapData(mapRoot, cityCode, true)
+			config, errType, err := ValidateInstalledMapData(mapRoot, tilesRoot, cityCode, true)
 			require.Equal(t, tt.wantErrType, errType)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -172,24 +183,34 @@ func TestValidateInstalledMapDataLocal(t *testing.T) {
 func TestValidateInstalledMapDataDownloaded(t *testing.T) {
 	tests := []struct {
 		name        string
-		setup       func(t *testing.T, mapRoot, cityCode string)
+		setup       func(t *testing.T, mapRoot, tilesRoot, cityCode string)
 		wantErrType types.DownloaderErrorType
 		wantErr     bool
 	}{
 		{
 			name: "valid downloaded installed map data",
-			setup: func(t *testing.T, mapRoot, cityCode string) {
-				writeInstalledDownloadedMapFixture(t, mapRoot, cityCode)
+			setup: func(t *testing.T, mapRoot, tilesRoot, cityCode string) {
+				writeInstalledDownloadedMapFixture(t, mapRoot, tilesRoot, cityCode)
 			},
 			wantErrType: "",
 			wantErr:     false,
 		},
 		{
 			name: "missing required file",
-			setup: func(t *testing.T, mapRoot, cityCode string) {
-				writeInstalledDownloadedMapFixture(t, mapRoot, cityCode)
+			setup: func(t *testing.T, mapRoot, tilesRoot, cityCode string) {
+				writeInstalledDownloadedMapFixture(t, mapRoot, tilesRoot, cityCode)
 				demandPath := paths.JoinLocalPath(mapRoot, cityCode, MapDemandFileName+".gz")
 				require.NoError(t, os.Remove(demandPath))
+			},
+			wantErrType: types.InstallErrorInvalidArchive,
+			wantErr:     true,
+		},
+		{
+			name: "missing tile file",
+			setup: func(t *testing.T, mapRoot, tilesRoot, cityCode string) {
+				writeInstalledDownloadedMapFixture(t, mapRoot, tilesRoot, cityCode)
+				tilePath := paths.JoinLocalPath(tilesRoot, cityCode+MapTileFileExt)
+				require.NoError(t, os.Remove(tilePath))
 			},
 			wantErrType: types.InstallErrorInvalidArchive,
 			wantErr:     true,
@@ -199,10 +220,11 @@ func TestValidateInstalledMapDataDownloaded(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mapRoot := t.TempDir()
+			tilesRoot := t.TempDir()
 			cityCode := "AAA"
-			tt.setup(t, mapRoot, cityCode)
+			tt.setup(t, mapRoot, tilesRoot, cityCode)
 
-			_, errType, err := ValidateInstalledMapData(mapRoot, cityCode, false)
+			_, errType, err := ValidateInstalledMapData(mapRoot, tilesRoot, cityCode, false)
 			require.Equal(t, tt.wantErrType, errType)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -243,19 +265,21 @@ func writeZipArchive(t *testing.T, files map[string][]byte) string {
 	return zipPath
 }
 
-func writeInstalledDownloadedMapFixture(t *testing.T, mapRoot, cityCode string) {
+func writeInstalledDownloadedMapFixture(t *testing.T, mapRoot, tilesRoot, cityCode string) {
 	t.Helper()
 	cityPath := paths.JoinLocalPath(mapRoot, cityCode)
 	require.NoError(t, os.MkdirAll(cityPath, 0o755))
+	require.NoError(t, os.MkdirAll(tilesRoot, 0o755))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(cityPath, MapDemandFileName+".gz"), []byte("{}"), 0o644))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(cityPath, MapRoadsFileName+".gz"), []byte("{}"), 0o644))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(cityPath, MapRunwaysFileName+".gz"), []byte("{}"), 0o644))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(cityPath, MapBuildingsFileName+".gz"), []byte("{}"), 0o644))
+	require.NoError(t, os.WriteFile(paths.JoinLocalPath(tilesRoot, cityCode+MapTileFileExt), []byte("tiles"), 0o644))
 }
 
-func writeInstalledLocalMapFixture(t *testing.T, mapRoot, cityCode, configCode string) {
+func writeInstalledLocalMapFixture(t *testing.T, mapRoot, tilesRoot, cityCode, configCode string) {
 	t.Helper()
-	writeInstalledDownloadedMapFixture(t, mapRoot, cityCode)
+	writeInstalledDownloadedMapFixture(t, mapRoot, tilesRoot, cityCode)
 	configPath := paths.JoinLocalPath(mapRoot, cityCode, MapConfigFileName)
 	require.NoError(t, os.WriteFile(configPath, mustMapConfigJSON(t, configCode), 0o644))
 }

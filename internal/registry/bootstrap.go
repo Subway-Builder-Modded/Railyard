@@ -180,7 +180,7 @@ func (r *Registry) validateMapData(
 	if !r.hasAssetMarker(types.AssetTypeMap, assetID, mapInstallRoot, cityCode) {
 		return types.ConfigData{}, false
 	}
-	configFromDisk, errorType, validationErr := files.ValidateInstalledMapData(mapInstallRoot, cityCode, isLocal)
+	configFromDisk, errorType, validationErr := files.ValidateInstalledMapData(mapInstallRoot, paths.TilesPath(), cityCode, isLocal)
 	if validationErr != nil {
 		r.logger.Warn("Skipping subscribed map during installed-state bootstrap: missing downloaded map data files", "map_id", assetID,
 			"map_code", cityCode,
