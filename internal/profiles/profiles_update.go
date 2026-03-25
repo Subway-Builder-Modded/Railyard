@@ -15,7 +15,11 @@ import (
 
 // UpdateSubscriptions mutates the runtime state of the specified profile's subscriptions
 func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest) types.UpdateSubscriptionsResult {
-	s.logRequest("UpdateSubscriptions", "profile_id", req.ProfileID, "action", req.Action, "asset_count", len(req.Assets), "force_sync", req.ForceSync)
+	s.logRequest("UpdateSubscriptions", "profile_id", req.ProfileID, "action", req.Action, "asset_count", len(req.Assets), "apply_mode", req.ApplyMode)
+
+	if !types.IsValidUpdateSubscriptionsApplyMode(req.ApplyMode) {
+		panic(fmt.Sprintf("invalid UpdateSubscriptions apply mode %q", req.ApplyMode))
+	}
 
 	s.mu.Lock()
 	result := s.updateProfileSubscriptions(req)
@@ -24,7 +28,7 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 		return result
 	}
 
-	if req.ForceSync {
+	if shouldPersist(req.ApplyMode) {
 		cancelErrors := make([]types.UserProfilesError, 0)
 		cancelFailed := false
 		for _, operation := range result.Operations {
@@ -75,6 +79,9 @@ func (s *UserProfiles) UpdateSubscriptions(req types.UpdateSubscriptionsRequest)
 
 		// Unsubscribe requests already issue direct uninstall/cancel operations above. Skip the full sync routine to avoid redundant processing
 		if req.Action == types.SubscriptionActionUnsubscribe {
+			return result
+		}
+		if !shouldSync(req.ApplyMode) {
 			return result
 		}
 
@@ -163,7 +170,7 @@ func (s *UserProfiles) UpdateSubscriptionsToLatest(req types.UpdateSubscriptions
 		ProfileID: req.ProfileID,
 		Assets:    requiredUpdates,
 		Action:    types.SubscriptionActionSubscribe,
-		ForceSync: true,
+		ApplyMode: types.UpdateSubscriptionsPersistAndSync,
 	})
 
 	status := updateResult.Status
@@ -388,7 +395,7 @@ func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsR
 
 	operations := make([]types.SubscriptionOperation, 0, len(req.Assets))
 	conflicts := make([]types.MapCodeConflict, 0)
-	if req.Action == types.SubscriptionActionSubscribe && req.ForceSync {
+	if req.Action == types.SubscriptionActionSubscribe && shouldPersist(req.ApplyMode) {
 		// Check for map code conflicts before applying any mutations to surface surface confirmation request to FE
 		mapCodeConflicts := s.checkMapCodeConflicts(req)
 		if len(mapCodeConflicts) > 0 && !req.ReplaceOnConflict {
@@ -427,7 +434,7 @@ func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsR
 		operations = appendOperation(operations, operation)
 	}
 
-	if err := s.commitProfileMutation(&stateCopy, req.ProfileID, profile, req.ForceSync); err != nil {
+	if err := s.commitProfileMutation(&stateCopy, req.ProfileID, profile, shouldPersist(req.ApplyMode)); err != nil {
 		result := updateResultBase(types.UpdateSubscriptions, types.ResponseError, "Failed to persist subscriptions")
 		result.Profile = profile
 		result.Operations = operations
@@ -440,7 +447,7 @@ func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsR
 	result := updateResultBase(types.UpdateSubscriptions, types.ResponseSuccess, "Subscriptions updated")
 	result.Applied = true
 	result.Profile = profile
-	result.Persisted = req.ForceSync
+	result.Persisted = shouldPersist(req.ApplyMode)
 	result.Operations = operations
 	result.Conflicts = conflicts
 	s.Logger.LogResponse(
@@ -448,7 +455,7 @@ func (s *UserProfiles) updateProfileSubscriptions(req types.UpdateSubscriptionsR
 		result.GenericResponse,
 		"profile_id", req.ProfileID,
 		"operation_count", len(operations),
-		"persisted", req.ForceSync,
+		"persisted", shouldPersist(req.ApplyMode),
 	)
 	return result
 }
@@ -622,6 +629,14 @@ func (s *UserProfiles) resolveProfileFromCopy(profileID string) (types.UserProfi
 		return types.UserProfilesState{}, types.UserProfile{}, profileErr
 	}
 	return stateCopy, profile, nil
+}
+
+func shouldPersist(mode types.UpdateSubscriptionsApplyMode) bool {
+	return mode == types.UpdateSubscriptionsPersistOnly || mode == types.UpdateSubscriptionsPersistAndSync
+}
+
+func shouldSync(mode types.UpdateSubscriptionsApplyMode) bool {
+	return mode == types.UpdateSubscriptionsPersistAndSync
 }
 
 func (s *UserProfiles) commitProfileMutation(state *types.UserProfilesState, profileID string, profile types.UserProfile, persist bool) error {

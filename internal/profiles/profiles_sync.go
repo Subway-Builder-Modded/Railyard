@@ -367,7 +367,7 @@ func (s *UserProfiles) applyPurgeOperations(profileID string, args []assetPurgeA
 		ProfileID: profileID,
 		Assets:    assets,
 		Action:    types.SubscriptionActionUnsubscribe,
-		ForceSync: true,
+		ApplyMode: types.UpdateSubscriptionsPersistOnly,
 	})
 	if result.Status == types.ResponseError {
 		return []types.SubscriptionOperation{}, append(purgeErrors, result.Errors...)

@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"railyard/internal/logger"
 	"railyard/internal/types"
+	"strings"
 )
 
 // CopyFileToArchive adds a file to the tar archive
@@ -124,6 +126,52 @@ func ExtractArchiveToDir(archivePath, destDir string) error {
 	}
 
 	return nil
+}
+
+// ReadJSONFromTarArchive reads and decodes a JSON file from a tar archive by file basename.
+// Returns found=false when the target file is not present in the archive.
+func ReadJSONFromTarArchive[T any](archivePath string, targetFileName string) (T, bool, error) {
+	var value T
+
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return value, false, err
+	}
+	defer file.Close()
+
+	reader := tar.NewReader(file)
+	for {
+		header, nextErr := reader.Next()
+		if nextErr == io.EOF {
+			return value, false, nil
+		}
+		if nextErr != nil {
+			return value, false, nextErr
+		}
+		if header.FileInfo().IsDir() {
+			continue
+		}
+
+		normalizedName := strings.ReplaceAll(header.Name, "\\", "/")
+		if path.Base(normalizedName) != targetFileName {
+			continue
+		}
+
+		raw, readErr := io.ReadAll(reader)
+		if readErr != nil {
+			return value, false, readErr
+		}
+		decoded, decodeErr := ParseJSON[T](raw, targetFileName)
+		if decodeErr != nil {
+			return value, false, decodeErr
+		}
+		return decoded, true, nil
+	}
+}
+
+// WriteArchiveJSON writes a JSON payload into an archive staging directory.
+func WriteArchiveJSON[T any](tempDir, fileName, label string, payload T) error {
+	return WriteJSON(filepath.Join(tempDir, fileName), label, payload)
 }
 
 // CopyDirectory copies all files from src to dst

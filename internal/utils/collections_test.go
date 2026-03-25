@@ -80,3 +80,18 @@ func TestCloneNestedMapReturnsDeepCopy(t *testing.T) {
 	output["a"]["x"] = 2
 	require.Equal(t, 1, input["a"]["x"])
 }
+
+func TestMapEqual(t *testing.T) {
+	require.True(t, MapEqual(map[string]string{"a": "1"}, map[string]string{"a": "1"}))
+	require.False(t, MapEqual(map[string]string{"a": "1"}, map[string]string{"a": "2"}))
+	require.False(t, MapEqual(map[string]string{"a": "1"}, map[string]string{"a": "1", "b": "2"}))
+}
+
+func TestCloneStringMap(t *testing.T) {
+	input := map[string]string{"a": "1"}
+	output := CloneStringMap(input)
+	require.Equal(t, input, output)
+
+	output["a"] = "2"
+	require.Equal(t, "1", input["a"])
+}

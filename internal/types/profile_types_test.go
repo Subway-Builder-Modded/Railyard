@@ -8,11 +8,7 @@ import (
 
 func TestIsValidTheme(t *testing.T) {
 	require.True(t, isValidTheme(ThemeDark))
-	require.True(t, isValidTheme(ThemeDarkLow))
-	require.True(t, isValidTheme(ThemeDarkHigh))
 	require.True(t, isValidTheme(ThemeLight))
-	require.True(t, isValidTheme(ThemeLightLow))
-	require.True(t, isValidTheme(ThemeLightHigh))
 	require.True(t, isValidTheme(ThemeSystem))
 	require.False(t, isValidTheme(ThemeMode("custom")))
 }

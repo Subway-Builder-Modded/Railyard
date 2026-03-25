@@ -10,7 +10,10 @@ import (
 	"railyard/internal/files"
 	"railyard/internal/paths"
 	"railyard/internal/types"
+	"railyard/internal/utils"
 )
+
+const profileSubscriptionsArchiveFileName = "profile_subscriptions.json"
 
 // CreateProfileArchive generates a tar archive of the profile's current state, including installed maps/mods and their data, and saves it to disk. Returns a GenericResponse indicating success or failure with an appropriate message.
 func (s *UserProfiles) CreateProfileArchive(profileID string) types.GenericResponse {
@@ -25,7 +28,7 @@ func (s *UserProfiles) CreateProfileArchive(profileID string) types.GenericRespo
 		return resp
 	}
 
-	archivePath := paths.JoinLocalPath(paths.ProfileArchivesPath(), fmt.Sprintf("%s.tar", profile.UUID))
+	archivePath := profileArchivePath(profile.UUID)
 
 	file, err := os.Create(archivePath)
 	if err != nil {
@@ -59,6 +62,9 @@ func (s *UserProfiles) CreateProfileArchive(profileID string) types.GenericRespo
 	if metadataErr, ok := s.writeInstalledMetadata(tempDir, profileID); !ok {
 		return metadataErr
 	}
+	if subscriptionsErr, ok := s.writeProfileSubscriptionsMetadata(tempDir, profile.Subscriptions, profileID); !ok {
+		return subscriptionsErr
+	}
 
 	if err := files.AddDirToArchive(archive, tempDir, tempDir); err != nil {
 		resp, _ := s.archiveError("Failed to add temporary profile archive directory to archive", "failed to add temporary profile archive directory to archive", err, "profile_id", profileID)
@@ -91,24 +97,20 @@ func (s *UserProfiles) copyMapsToArchive(tempDir, profileID string) (types.Gener
 
 		// Copy map data
 		dataPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "cities", "data", code)
-		if err := os.CopyFS(paths.JoinLocalPath(mapDir, "data"), os.DirFS(dataPath)); err != nil {
+		if err := files.CopyDirFromFS(paths.JoinLocalPath(mapDir, "data"), os.DirFS(dataPath)); err != nil {
 			return s.archiveError("Failed to copy map data", "failed to copy map data", err, "profile_id", profileID, "map_id", code)
 		}
 
 		// Copy thumbnail if exists
 		thumbnailPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "public", "data", "city-maps", fmt.Sprintf("%s.svg", code))
-		if _, err := os.Stat(thumbnailPath); !errors.Is(err, fs.ErrNotExist) {
-			if errResp, ok := files.CopyFile(thumbnailPath, paths.JoinLocalPath(mapDir, "thumbnail.svg"), profileID, code, s.Logger); !ok {
-				return errResp, false
-			}
+		if errResp, ok := files.CopyOptionalFile(thumbnailPath, paths.JoinLocalPath(mapDir, "thumbnail.svg"), profileID, code, "thumbnail", s.Logger); !ok {
+			return errResp, false
 		}
 
 		// Copy tiles if exists
 		tilePath := paths.JoinLocalPath(paths.TilesPath(), fmt.Sprintf("%s.pmtiles", code))
-		if _, err := os.Stat(tilePath); !errors.Is(err, fs.ErrNotExist) {
-			if errResp, ok := files.CopyFile(tilePath, paths.JoinLocalPath(mapDir, "tiles.pmtiles"), profileID, code, s.Logger); !ok {
-				return errResp, false
-			}
+		if errResp, ok := files.CopyOptionalFile(tilePath, paths.JoinLocalPath(mapDir, "tiles.pmtiles"), profileID, code, "tiles", s.Logger); !ok {
+			return errResp, false
 		}
 	}
 	return types.GenericResponse{}, true
@@ -124,7 +126,7 @@ func (s *UserProfiles) copyModsToArchive(tempDir, profileID string) (types.Gener
 		}
 
 		modSrc := paths.JoinLocalPath(s.Config.Cfg.GetModsFolderPath(), modInfo.ID)
-		if err := os.CopyFS(paths.JoinLocalPath(modDest, "data"), os.DirFS(modSrc)); err != nil {
+		if err := files.CopyDirFromFS(paths.JoinLocalPath(modDest, "data"), os.DirFS(modSrc)); err != nil {
 			return s.archiveError("Failed to copy mod data", "failed to copy mod data", err, "profile_id", profileID, "mod_id", modInfo.ID)
 		}
 	}
@@ -133,14 +135,24 @@ func (s *UserProfiles) copyModsToArchive(tempDir, profileID string) (types.Gener
 
 // writeInstalledMetadata writes the installed maps and mods JSON to the archive directory
 func (s *UserProfiles) writeInstalledMetadata(tempDir, profileID string) (types.GenericResponse, bool) {
-	installedMapsPath := paths.JoinLocalPath(tempDir, "installed_maps.json")
-	if err := files.WriteJSON(installedMapsPath, "installed maps", s.Registry.GetInstalledMaps()); err != nil {
+	if err := files.WriteArchiveJSON(tempDir, "installed_maps.json", "installed maps", s.Registry.GetInstalledMaps()); err != nil {
 		return s.archiveError("Failed to write installed maps file", "failed to write installed maps file", err, "profile_id", profileID)
 	}
 
-	installedModsPath := paths.JoinLocalPath(tempDir, "installed_mods.json")
-	if err := files.WriteJSON(installedModsPath, "installed mods", s.Registry.GetInstalledMods()); err != nil {
+	if err := files.WriteArchiveJSON(tempDir, "installed_mods.json", "installed mods", s.Registry.GetInstalledMods()); err != nil {
 		return s.archiveError("Failed to write installed mods file", "failed to write installed mods file", err, "profile_id", profileID)
+	}
+	return types.GenericResponse{}, true
+}
+
+// writeProfileSubscriptionsMetadata writes the profile's subscriptions JSON to the archive directory for use in future freshness checks
+func (s *UserProfiles) writeProfileSubscriptionsMetadata(
+	tempDir string,
+	subscriptions types.Subscriptions,
+	profileID string,
+) (types.GenericResponse, bool) {
+	if err := files.WriteArchiveJSON(tempDir, profileSubscriptionsArchiveFileName, "profile subscriptions", subscriptions); err != nil {
+		return s.archiveError("Failed to write profile subscriptions file", "failed to write profile subscriptions file", err, "profile_id", profileID)
 	}
 	return types.GenericResponse{}, true
 }
@@ -152,8 +164,13 @@ func (s *UserProfiles) RestoreProfileArchive(profileID string) types.GenericResp
 		return types.ErrorResponse(profileErr.Error())
 	}
 
-	archivePath := paths.JoinLocalPath(paths.ProfileArchivesPath(), fmt.Sprintf("%s.tar", profile.UUID))
-	if _, err := os.Stat(archivePath); errors.Is(err, fs.ErrNotExist) {
+	archivePath := profileArchivePath(profile.UUID)
+	exists, archiveStatusErr := profileArchiveExists(profile.UUID)
+	if archiveStatusErr != nil {
+		resp, _ := s.archiveError("Failed to check profile archive status", "failed to check profile archive status", archiveStatusErr, "profile_id", profileID, "archive_path", archivePath)
+		return resp
+	}
+	if !exists {
 		profileErr := userProfilesError(profileID, "", "", types.ErrorProfileNotFound, "", fmt.Sprintf("Archive file not found for profile restoration: %q", profileID))
 		s.Logger.Warn("Profile archive not found for restoration", profileErr, "profile_id", profileID)
 		return types.WarnResponse(profileErr.Error())
@@ -219,32 +236,24 @@ func (s *UserProfiles) restoreMapsFromArchive(tempDir, profileID string) (types.
 
 		// Create city data directory
 		cityDataPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "cities", "data", code)
-		if err := os.MkdirAll(cityDataPath, os.ModePerm); err != nil {
-			return s.archiveError("Failed to create city data directory", "failed to create city data directory", err, "profile_id", profileID, "map_id", code)
-		}
-
 		// Copy city data
 		archiveMapDataPath := paths.JoinLocalPath(tempDir, "maps", code, "data")
-		if err := os.CopyFS(cityDataPath, os.DirFS(archiveMapDataPath)); err != nil {
+		if err := files.CopyDirFromFS(cityDataPath, os.DirFS(archiveMapDataPath)); err != nil {
 			return s.archiveError("Failed to copy city data from archive", "failed to copy city data from archive", err, "profile_id", profileID, "map_id", code)
 		}
 
 		// Restore thumbnail if exists
 		archiveThumbnailPath := paths.JoinLocalPath(tempDir, "maps", code, "thumbnail.svg")
-		if _, err := os.Stat(archiveThumbnailPath); !errors.Is(err, fs.ErrNotExist) {
-			destThumbnailPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "public", "data", "city-maps", fmt.Sprintf("%s.svg", code))
-			if errResp, ok := files.CopyFileWithDest(archiveThumbnailPath, destThumbnailPath, profileID, code, "thumbnail", s.Logger); !ok {
-				return errResp, false
-			}
+		destThumbnailPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "public", "data", "city-maps", fmt.Sprintf("%s.svg", code))
+		if errResp, ok := files.CopyOptionalFile(archiveThumbnailPath, destThumbnailPath, profileID, code, "thumbnail", s.Logger); !ok {
+			return errResp, false
 		}
 
 		// Restore tiles if exists
 		archiveTilePath := paths.JoinLocalPath(tempDir, "maps", code, "tiles.pmtiles")
-		if _, err := os.Stat(archiveTilePath); !errors.Is(err, fs.ErrNotExist) {
-			destTilePath := paths.JoinLocalPath(paths.TilesPath(), fmt.Sprintf("%s.pmtiles", code))
-			if errResp, ok := files.CopyFileWithDest(archiveTilePath, destTilePath, profileID, code, "tiles", s.Logger); !ok {
-				return errResp, false
-			}
+		destTilePath := paths.JoinLocalPath(paths.TilesPath(), fmt.Sprintf("%s.pmtiles", code))
+		if errResp, ok := files.CopyOptionalFile(archiveTilePath, destTilePath, profileID, code, "tiles", s.Logger); !ok {
+			return errResp, false
 		}
 	}
 	return types.GenericResponse{}, true
@@ -255,14 +264,52 @@ func (s *UserProfiles) restoreModsFromArchive(tempDir, profileID string) (types.
 	for _, modInfo := range s.Registry.GetInstalledMods() {
 		modDest := paths.JoinLocalPath(s.Config.Cfg.GetModsFolderPath(), modInfo.ID)
 
-		if err := os.MkdirAll(modDest, os.ModePerm); err != nil {
-			return s.archiveError("Failed to create mod directory", "failed to create mod directory", err, "profile_id", profileID, "mod_id", modInfo.ID)
-		}
-
 		archiveModDataPath := paths.JoinLocalPath(tempDir, "mods", modInfo.ID, "data")
-		if err := os.CopyFS(modDest, os.DirFS(archiveModDataPath)); err != nil {
+		if err := files.CopyDirFromFS(modDest, os.DirFS(archiveModDataPath)); err != nil {
 			return s.archiveError("Failed to copy mod data from archive", "failed to copy mod data from archive", err, "profile_id", profileID, "mod_id", modInfo.ID)
 		}
 	}
 	return types.GenericResponse{}, true
+}
+
+func profileArchivePath(profileUUID string) string {
+	return paths.JoinLocalPath(paths.ProfileArchivesPath(), fmt.Sprintf("%s.tar", profileUUID))
+}
+
+func profileArchiveExists(profileUUID string) (bool, error) {
+	_, err := os.Stat(profileArchivePath(profileUUID))
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
+}
+
+// isProfileArchiveFresh checks if the profile's current subscriptions match the subscriptions stored in the archive, indicating whether the archive is fresh or stale.
+func (s *UserProfiles) isProfileArchiveFresh(profile types.UserProfile) (bool, error) {
+	archivePath := profileArchivePath(profile.UUID)
+	exists, archiveStatusErr := profileArchiveExists(profile.UUID)
+	if archiveStatusErr != nil {
+		return false, archiveStatusErr
+	}
+	if !exists {
+		return false, nil
+	}
+
+	archiveSubscriptions, found, err := files.ReadJSONFromTarArchive[types.Subscriptions](archivePath, profileSubscriptionsArchiveFileName)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return false, nil
+	}
+	return areSubscriptionsEqual(profile.Subscriptions, archiveSubscriptions), nil
+}
+
+func areSubscriptionsEqual(left types.Subscriptions, right types.Subscriptions) bool {
+	return utils.MapEqual(left.Maps, right.Maps) &&
+		utils.MapEqual(left.LocalMaps, right.LocalMaps) &&
+		utils.MapEqual(left.Mods, right.Mods)
 }

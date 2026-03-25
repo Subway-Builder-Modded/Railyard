@@ -220,14 +220,15 @@ func (r *Registry) getCustomVersions(updateURL string) ([]types.VersionInfo, err
 	versions := make([]types.VersionInfo, 0, len(updateFile.Versions))
 	for _, v := range updateFile.Versions {
 		versions = append(versions, types.VersionInfo{
-			Version:     v.Version,
-			Name:        v.Version,
-			Changelog:   v.Changelog,
-			Date:        v.Date,
-			DownloadURL: v.Download,
-			GameVersion: v.GameVersion,
-			SHA256:      v.SHA256,
-			Manifest:    v.Manifest,
+			Version:      v.Version,
+			Name:         v.Version,
+			Changelog:    v.Changelog,
+			Date:         v.Date,
+			DownloadURL:  v.Download,
+			GameVersion:  v.GameVersion,
+			SHA256:       v.SHA256,
+			Manifest:     v.Manifest,
+			Dependencies: v.Dependencies,
 		})
 	}
 

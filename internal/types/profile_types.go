@@ -91,11 +91,28 @@ type SubscriptionUpdateItem struct {
 	IsLocal bool      `json:"isLocal,omitempty"`
 }
 
+type UpdateSubscriptionsApplyMode string
+
+const (
+	UpdateSubscriptionsRuntimeOnly    UpdateSubscriptionsApplyMode = "runtime_only"
+	UpdateSubscriptionsPersistOnly    UpdateSubscriptionsApplyMode = "persist_only"
+	UpdateSubscriptionsPersistAndSync UpdateSubscriptionsApplyMode = "persist_and_sync"
+)
+
+func IsValidUpdateSubscriptionsApplyMode(mode UpdateSubscriptionsApplyMode) bool {
+	switch mode {
+	case UpdateSubscriptionsRuntimeOnly, UpdateSubscriptionsPersistOnly, UpdateSubscriptionsPersistAndSync:
+		return true
+	default:
+		return false
+	}
+}
+
 type UpdateSubscriptionsRequest struct {
 	ProfileID             string                            `json:"profileId"`
 	Assets                map[string]SubscriptionUpdateItem `json:"assets"`
 	Action                SubscriptionAction                `json:"action"`
-	ForceSync             bool                              `json:"forceSync"`
+	ApplyMode             UpdateSubscriptionsApplyMode      `json:"applyMode"`
 	ReplaceOnConflict     bool                              `json:"replaceOnConflict"`
 	SkipDependencyInstall bool                              `json:"skipDependencyInstall,omitempty"`
 }
@@ -105,6 +122,19 @@ type ImportAssetRequest struct {
 	AssetType         AssetType `json:"assetType"`
 	ZipPath           string    `json:"zipPath"`
 	ReplaceOnConflict bool      `json:"replaceOnConflict"`
+}
+
+type CreateProfileRequest struct {
+	Name              string             `json:"name"`
+	UIPreferences     *UIPreferences     `json:"uiPreferences,omitempty"`
+	SystemPreferences *SystemPreferences `json:"systemPreferences,omitempty"`
+	Subscriptions     *Subscriptions     `json:"subscriptions,omitempty"`
+	Favorites         *Favorites         `json:"favorites,omitempty"`
+}
+
+type SwapProfileRequest struct {
+	ProfileID string `json:"profileId"`
+	ForceSwap bool   `json:"forceSwap"`
 }
 
 type UpdateSubscriptionsToLatestRequest struct {
@@ -144,17 +174,26 @@ type PendingSubscriptionUpdate struct {
 type UserProfilesErrorType string
 
 const (
-	ErrorProfileNotFound   UserProfilesErrorType = "profile_not_found"
-	ErrorProfilesNotLoaded UserProfilesErrorType = "profiles_not_loaded"
-	ErrorInvalidAssetID    UserProfilesErrorType = "invalid_asset_id"
-	ErrorInvalidAssetType  UserProfilesErrorType = "invalid_asset_type"
-	ErrorInvalidVersion    UserProfilesErrorType = "invalid_version"
-	ErrorInvalidAction     UserProfilesErrorType = "invalid_action"
-	ErrorPersistFailed     UserProfilesErrorType = "persist_failed"
-	ErrorSyncFailed        UserProfilesErrorType = "sync_failed"
-	ErrorSyncSuperseded    UserProfilesErrorType = "sync_superseded"
-	ErrorLookupFailed      UserProfilesErrorType = "lookup_failed"
-	ErrorUnknown           UserProfilesErrorType = "unknown"
+	ErrorProfileNotFound    UserProfilesErrorType = "profile_not_found"
+	ErrorProfilesNotLoaded  UserProfilesErrorType = "profiles_not_loaded"
+	ErrorInvalidAssetID     UserProfilesErrorType = "invalid_asset_id"
+	ErrorInvalidAssetType   UserProfilesErrorType = "invalid_asset_type"
+	ErrorInvalidVersion     UserProfilesErrorType = "invalid_version"
+	ErrorInvalidAction      UserProfilesErrorType = "invalid_action"
+	ErrorInvalidProfileName UserProfilesErrorType = "invalid_profile_name"
+	ErrorDuplicateName      UserProfilesErrorType = "duplicate_profile_name"
+	ErrorDefaultProtected   UserProfilesErrorType = "default_profile_protected"
+	ErrorActiveProtected    UserProfilesErrorType = "active_profile_protected"
+	ErrorSwapConfirmation   UserProfilesErrorType = "swap_confirmation_required"
+	ErrorArchiveMissing     UserProfilesErrorType = "archive_missing"
+	ErrorArchiveStale       UserProfilesErrorType = "archive_stale"
+	ErrorArchiveUpdate      UserProfilesErrorType = "archive_update_failed"
+	ErrorArchiveRestore     UserProfilesErrorType = "archive_restore_failed"
+	ErrorPersistFailed      UserProfilesErrorType = "persist_failed"
+	ErrorSyncFailed         UserProfilesErrorType = "sync_failed"
+	ErrorSyncSuperseded     UserProfilesErrorType = "sync_superseded"
+	ErrorLookupFailed       UserProfilesErrorType = "lookup_failed"
+	ErrorUnknown            UserProfilesErrorType = "unknown"
 )
 
 type UserProfilesError struct {
