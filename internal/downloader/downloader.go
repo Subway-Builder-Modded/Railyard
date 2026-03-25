@@ -32,6 +32,7 @@ type ExtractProgressFunc func(itemId string, extracted int64, total int64)
 type CancelledFunc func(itemID string, assetType types.AssetType, phase string)
 type DependencyInstalledFunc func(modID string, itemType types.AssetType, version types.Version)
 type RegistryUpdateFunc func()
+type GameVersionFunc func() types.GameVersionResponse
 
 // TODO: Consider adding this as an injectable dependency for other services
 var downloaderHTTPClient = requests.NewDownloadClient()
@@ -47,6 +48,7 @@ type Downloader struct {
 	OnCancelled       CancelledFunc
 	OnRegistryUpdate  RegistryUpdateFunc
 	InstallDependency DependencyInstalledFunc
+	GetGameVersion    GameVersionFunc
 
 	downloadMu   sync.Mutex
 	downloadCond *sync.Cond
@@ -804,6 +806,18 @@ func (d *Downloader) InstallAsset(req types.InstallAssetRequest) types.AssetInst
 				if v.Version == req.Version {
 					version = v
 					break
+				}
+			}
+			gameVersionResp := d.GetGameVersion()
+			if gameVersionResp.Status == types.ResponseSuccess {
+				if subwayBuilderDep, ok := version.Dependencies["subway-builder"]; ok {
+					constraint, err := semver.NewConstraint(strings.TrimPrefix(subwayBuilderDep, "v"))
+					if err != nil {
+						return operationResult{assetInstallResponse: d.installError(types.AssetTypeMod, req.AssetID, req.Version, types.ConfigData{}, types.InstallErrorDependencyResolutionFailed, "Failed to parse mod dependency version constraint", err, "mod_id", req.AssetID, "dependency", "subway-builder", "constraint", subwayBuilderDep)}
+					}
+					if !constraint.Check(semver.MustParse(strings.TrimPrefix(gameVersionResp.Version, "v"))) {
+						return operationResult{assetInstallResponse: d.installError(types.AssetTypeMod, req.AssetID, req.Version, types.ConfigData{}, types.InstallErrorDependencyResolutionFailed, "Mod is not compatible with current game version", nil, "mod_id", req.AssetID, "dependency", "subway-builder", "constraint", subwayBuilderDep, "game_version", gameVersionResp.Version)}
+					}
 				}
 			}
 			if !skipDeps {

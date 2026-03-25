@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
+	github.com/beescuit/asar v0.1.0
 	github.com/go-git/go-git/v5 v5.17.0
 	github.com/gofrs/flock v0.13.0
 	github.com/google/uuid v1.6.0
