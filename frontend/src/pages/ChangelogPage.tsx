@@ -13,6 +13,7 @@ import {
   Gamepad2,
   Loader2,
   OctagonX,
+  Package,
   Tag,
   TriangleAlert,
   X,
@@ -24,11 +25,13 @@ import { toast } from 'sonner';
 import { Link, useRoute } from 'wouter';
 
 import { AppDialog } from '@/components/dialogs/AppDialog';
+import { ChangelogDependencies } from '@/components/project/ChangelogDependencies';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorBanner } from '@/components/shared/ErrorBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Tooltip,
   TooltipContent,
@@ -64,6 +67,9 @@ import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
 
 const INSTALL_ACCENT = getLocalAccentClasses('install');
 const FILES_ACCENT = getLocalAccentClasses('files');
+
+const TAB_TRIGGER_CLASS =
+  'h-10 flex-none rounded-lg px-3 text-sm font-semibold text-muted-foreground hover:bg-accent/45 hover:text-primary dark:hover:text-primary data-[state=active]:bg-accent/45 data-[state=active]:text-primary data-[state=active]:shadow-none dark:data-[state=active]:bg-accent/45 dark:data-[state=active]:text-primary';
 
 function conflictSourceLabel(conflict: types.MapCodeConflict): string {
   if (conflict.existingAssetId?.startsWith('vanilla:')) return 'Vanilla';
@@ -119,6 +125,7 @@ export function ChangelogPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  const [activeTab, setActiveTab] = useState('changelog');
   const [uninstallOpen, setUninstallOpen] = useState(false);
   const [uninstallLoading, setUninstallLoading] = useState(false);
   const [installError, setInstallError] = useState<{
@@ -497,81 +504,114 @@ export function ChangelogPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-4">
-              <div className="rounded-xl border border-border bg-card">
-                <div className="border-b border-border px-4 py-3">
-                  <h2 className="text-sm font-semibold">Changelog</h2>
-                </div>
-                <div className="p-4">
-                  {versionInfo.changelog ? (
-                    <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed">
-                      <Markdown
-                        rehypePlugins={[rehypeRaw]}
-                        components={{
-                          a: ({ href, children, ...props }) => (
-                            <a
-                              {...props}
-                              href={href}
-                              onClick={(e) => {
-                                if (href) {
-                                  e.preventDefault();
-                                  BrowserOpenURL(href);
-                                }
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList
+                variant="default"
+                className="h-auto rounded-xl border border-border/70 bg-background/90 p-0.5 shadow-sm backdrop-blur-md"
+              >
+                <TabsTrigger value="changelog" className={TAB_TRIGGER_CLASS}>
+                  <FileText className="h-4 w-4" />
+                  Changelog
+                </TabsTrigger>
+                <TabsTrigger value="dependencies" className={TAB_TRIGGER_CLASS}>
+                  <Package className="h-4 w-4" />
+                  Dependencies
+                  {Object.keys(versionInfo.dependencies ?? {}).length > 0 && (
+                    <Badge variant="secondary" size="sm" className="ml-0.5">
+                      {Object.keys(versionInfo.dependencies ?? {}).length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-4">
+                <div>
+                  <TabsContent value="changelog">
+                    <div className="rounded-xl border border-border bg-card">
+                      <div className="border-b border-border px-4 py-3">
+                        <h2 className="text-sm font-semibold">Changelog</h2>
+                      </div>
+                      <div className="p-4">
+                        {versionInfo.changelog ? (
+                          <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed">
+                            <Markdown
+                              rehypePlugins={[rehypeRaw]}
+                              components={{
+                                a: ({ href, children, ...props }) => (
+                                  <a
+                                    {...props}
+                                    href={href}
+                                    onClick={(e) => {
+                                      if (href) {
+                                        e.preventDefault();
+                                        BrowserOpenURL(href);
+                                      }
+                                    }}
+                                  >
+                                    {children}
+                                  </a>
+                                ),
                               }}
                             >
-                              {children}
-                            </a>
-                          ),
-                        }}
-                      >
-                        {versionInfo.changelog}
-                      </Markdown>
+                              {versionInfo.changelog}
+                            </Markdown>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">
+                            No changelog provided for this version.
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">
-                      No changelog provided for this version.
-                    </p>
-                  )}
-                </div>
-              </div>
+                  </TabsContent>
 
-              <div className="rounded-xl border border-border bg-card h-fit">
-                <div className="border-b border-border px-4 py-3">
-                  <h2 className="text-sm font-semibold">Information</h2>
+                  <TabsContent value="dependencies">
+                    <ChangelogDependencies
+                      type={type}
+                      itemId={item.id}
+                      versionInfo={versionInfo}
+                    />
+                  </TabsContent>
                 </div>
-                <div className="px-4 divide-y divide-border/50">
-                  <MetaRow icon={Tag} label="Version">
-                    {versionInfo.version}
-                  </MetaRow>
 
-                  <MetaRow icon={CheckCircle} label="Release Type">
-                    {versionInfo.prerelease ? (
-                      <Badge className="border-amber-500/40 bg-amber-500/15 text-amber-600 dark:border-amber-400/40 dark:bg-amber-400/15 dark:text-amber-400">
-                        Beta
-                      </Badge>
-                    ) : (
-                      <Badge variant="success">Release</Badge>
+                <div className="rounded-xl border border-border bg-card h-fit">
+                  <div className="border-b border-border px-4 py-3">
+                    <h2 className="text-sm font-semibold">Information</h2>
+                  </div>
+                  <div className="px-4 divide-y divide-border/50">
+                    <MetaRow icon={Tag} label="Version">
+                      {versionInfo.version}
+                    </MetaRow>
+
+                    <MetaRow icon={CheckCircle} label="Release Type">
+                      {versionInfo.prerelease ? (
+                        <Badge className="border-amber-500/40 bg-amber-500/15 text-amber-600 dark:border-amber-400/40 dark:bg-amber-400/15 dark:text-amber-400">
+                          Beta
+                        </Badge>
+                      ) : (
+                        <Badge variant="success">Release</Badge>
+                      )}
+                    </MetaRow>
+
+                    {versionInfo.game_version && (
+                      <MetaRow icon={Gamepad2} label="Game Version">
+                        {versionInfo.game_version}
+                      </MetaRow>
                     )}
-                  </MetaRow>
 
-                  {versionInfo.game_version && (
-                    <MetaRow icon={Gamepad2} label="Game Version">
-                      {versionInfo.game_version}
+                    <MetaRow icon={ArrowDownToLine} label="Downloads">
+                      {versionInfo.downloads.toLocaleString()}
                     </MetaRow>
-                  )}
 
-                  <MetaRow icon={ArrowDownToLine} label="Downloads">
-                    {versionInfo.downloads.toLocaleString()}
-                  </MetaRow>
-
-                  {formattedDate && (
-                    <MetaRow icon={Calendar} label="Published">
-                      {formattedDate}
-                    </MetaRow>
-                  )}
+                    {formattedDate && (
+                      <MetaRow icon={Calendar} label="Published">
+                        {formattedDate}
+                      </MetaRow>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            </Tabs>
           </>
         )}
       </div>

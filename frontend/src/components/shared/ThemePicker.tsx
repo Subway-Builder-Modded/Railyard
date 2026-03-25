@@ -6,7 +6,7 @@ export type ThemeValue =
   | 'light'
   | 'system'
   | 'midnight'
-  | 'sepia'
+  | 'coffee'
   | 'forest'
   | 'crystal';
 
@@ -54,29 +54,29 @@ const THEME_OPTIONS: ThemeOption[] = [
     },
   },
   {
-    value: 'sepia',
-    label: 'Sepia',
+    value: 'coffee',
+    label: 'Coffee',
     colors: {
-      bg: '#251508',
-      sidebar: '#2c1a0c',
-      card: '#332010',
-      bar: '#251508',
-      primary: '#f0e4d0',
-      muted: '#3e2818',
-      border: '#4a3020',
+      bg: '#302117',
+      sidebar: '#3a281c',
+      card: '#433024',
+      bar: '#2a1c13',
+      primary: '#e4c08a',
+      muted: '#5a4333',
+      border: '#70553f',
     },
   },
   {
     value: 'midnight',
     label: 'Midnight',
     colors: {
-      bg: '#0d1120',
-      sidebar: '#111828',
-      card: '#161e30',
-      bar: '#0d1120',
-      primary: '#e8eaf0',
-      muted: '#1c2438',
-      border: '#1e2840',
+      bg: '#0b1634',
+      sidebar: '#112044',
+      card: '#182b56',
+      bar: '#09142f',
+      primary: '#d7e5ff',
+      muted: '#233b70',
+      border: '#30508f',
     },
   },
   {
