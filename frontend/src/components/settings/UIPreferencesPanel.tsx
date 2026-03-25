@@ -36,7 +36,7 @@ const VALID_THEMES = new Set<ThemeValue>([
   'light',
   'system',
   'midnight',
-  'coffee',
+  'sepia',
   'forest',
   'crystal',
 ]);
@@ -45,7 +45,7 @@ const THEME_LABELS: Record<ThemeValue, string> = {
   light: 'Light',
   system: 'System',
   midnight: 'Midnight',
-  coffee: 'Coffee',
+  sepia: 'Sepia',
   forest: 'Forest',
   crystal: 'Crystal',
 };
@@ -56,7 +56,7 @@ function normalizeThemeValue(theme: unknown): ThemeValue {
     theme === 'light' ||
     theme === 'dark' ||
     theme === 'midnight' ||
-    theme === 'coffee' ||
+    theme === 'sepia' ||
     theme === 'forest' ||
     theme === 'crystal'
   )

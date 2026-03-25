@@ -17,7 +17,7 @@ const (
 	ThemeLight    ThemeMode = "light"
 	ThemeSystem   ThemeMode = "system"
 	ThemeMidnight ThemeMode = "midnight"
-	ThemeCoffee   ThemeMode = "coffee"
+	ThemeSepia    ThemeMode = "sepia"
 	ThemeForest   ThemeMode = "forest"
 	ThemeCrystal  ThemeMode = "crystal"
 )
@@ -282,7 +282,7 @@ func isValidTheme(theme ThemeMode) bool {
 		ThemeLight,
 		ThemeSystem,
 		ThemeMidnight,
-		ThemeCoffee,
+		ThemeSepia,
 		ThemeForest,
 		ThemeCrystal:
 		return true

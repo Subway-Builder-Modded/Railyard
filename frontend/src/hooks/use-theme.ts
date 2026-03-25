@@ -7,7 +7,7 @@ type FullTheme =
   | 'light'
   | 'system'
   | 'midnight'
-  | 'coffee'
+  | 'sepia'
   | 'forest'
   | 'crystal';
 
@@ -16,7 +16,7 @@ const VALID_THEMES = new Set<FullTheme>([
   'light',
   'system',
   'midnight',
-  'coffee',
+  'sepia',
   'forest',
   'crystal',
 ]);
@@ -30,10 +30,10 @@ function normalizeTheme(theme: string): FullTheme {
 }
 
 function applyThemeClasses(root: HTMLElement, theme: Exclude<FullTheme, 'system'>) {
-  const isDark = theme === 'dark' || theme === 'midnight' || theme === 'forest' || theme === 'coffee';
+  const isDark = theme === 'dark' || theme === 'midnight' || theme === 'forest' || theme === 'sepia';
   root.classList.toggle('dark', isDark);
   root.classList.toggle('midnight', theme === 'midnight');
-  root.classList.toggle('coffee', theme === 'coffee');
+  root.classList.toggle('sepia', theme === 'sepia');
   root.classList.toggle('forest', theme === 'forest');
   root.classList.toggle('crystal', theme === 'crystal');
 }

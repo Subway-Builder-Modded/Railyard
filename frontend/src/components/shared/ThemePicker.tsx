@@ -6,7 +6,7 @@ export type ThemeValue =
   | 'light'
   | 'system'
   | 'midnight'
-  | 'coffee'
+  | 'sepia'
   | 'forest'
   | 'crystal';
 
@@ -54,8 +54,8 @@ const THEME_OPTIONS: ThemeOption[] = [
     },
   },
   {
-    value: 'coffee',
-    label: 'Coffee',
+    value: 'sepia',
+    label: 'Sepia',
     colors: {
       bg: '#251508',
       sidebar: '#2c1a0c',

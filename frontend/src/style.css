@@ -263,35 +263,35 @@
   --sidebar-hover: var(--sidebar-accent);
 }
 
-/* === Coffee === */
-.coffee {
-  --background: oklch(0.17 0.028 42);
+/* === Sepia === */
+.sepia {
+  --background: oklch(0.15 0.03 42);
   --foreground: oklch(0.92 0.022 78);
-  --card: oklch(0.22 0.028 42);
+  --card: oklch(0.20 0.03 42);
   --card-foreground: oklch(0.92 0.022 78);
-  --popover: oklch(0.22 0.028 42);
+  --popover: oklch(0.20 0.03 42);
   --popover-foreground: oklch(0.92 0.022 78);
   --primary: oklch(0.89 0.020 78);
   --primary-foreground: oklch(0.20 0.028 42);
-  --secondary: oklch(0.28 0.030 42);
+  --secondary: oklch(0.24 0.032 42);
   --secondary-foreground: oklch(0.89 0.020 78);
-  --muted: oklch(0.28 0.030 42);
-  --muted-foreground: oklch(0.62 0.025 58);
-  --accent: oklch(0.32 0.032 42);
+  --muted: oklch(0.24 0.032 42);
+  --muted-foreground: oklch(0.7 0.02 58);
+  --accent: oklch(0.28 0.035 42);
   --accent-foreground: oklch(0.89 0.020 78);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 11%);
-  --ring: oklch(0.55 0.025 55);
-  --surface-raised: oklch(0.22 0.028 42);
-  --surface-sunken: oklch(0.13 0.025 42);
-  --sidebar: oklch(0.20 0.028 42);
+  --border: oklch(0.42 0.02 44 / 38%);
+  --input: oklch(0.46 0.022 44 / 46%);
+  --ring: oklch(0.6 0.03 55);
+  --surface-raised: oklch(0.20 0.03 42);
+  --surface-sunken: oklch(0.12 0.026 42);
+  --sidebar: oklch(0.18 0.03 42);
   --sidebar-foreground: oklch(0.89 0.020 78);
   --sidebar-primary: oklch(0.89 0.020 78);
   --sidebar-primary-foreground: oklch(0.20 0.028 42);
-  --sidebar-accent: oklch(0.32 0.032 42);
+  --sidebar-accent: oklch(0.28 0.035 42);
   --sidebar-accent-foreground: oklch(0.89 0.020 78);
-  --sidebar-border: oklch(1 0 0 / 9%);
-  --sidebar-ring: oklch(0.55 0.025 55);
+  --sidebar-border: oklch(0.42 0.02 44 / 38%);
+  --sidebar-ring: oklch(0.6 0.03 55);
   --local-install: #32d89e;
   --local-install-fg: var(--background);
   --local-uninstall: #d45050;
@@ -318,7 +318,7 @@
   --installed-primary: var(--local-install);
 }
 
-.coffee .railyard-accent {
+.sepia .railyard-accent {
   --primary: var(--suite-accent-dark);
   --primary-foreground: var(--suite-text-inverted-dark);
   --secondary: oklch(0.28 0.030 42);
