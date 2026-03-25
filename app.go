@@ -407,7 +407,7 @@ func (a *App) LaunchGame() types.GenericResponse {
 			bundleName := strings.TrimSuffix(path.Base(exePath), ".app")
 			innerExe = path.Join(exePath, "Contents", "MacOS", bundleName)
 		}
-		args := []string{"/bin/sh", "-c", `ELECTRON_ENABLE_LOGGING=1 exec "$0"`, innerExe}
+		args := []string{"-c", `ELECTRON_ENABLE_LOGGING=1 exec "$0" "$@"`, innerExe}
 		args = append(args, extraSplitArgs...)
 		cmd = exec.Command("/bin/sh", args...)
 		if profile.Status == types.ResponseSuccess {
