@@ -1,5 +1,7 @@
-import type { LucideIcon } from 'lucide-react';
-import { Gamepad2, Github, RefreshCw, TrainTrack } from 'lucide-react';
+import { Gamepad2, RefreshCw, TrainTrack } from 'lucide-react';
+import { type ComponentType, type SVGProps } from 'react';
+
+import { GitHubIcon } from '@/components/icons/social-icons';
 
 import type { types } from '../../../wailsjs/go/models';
 
@@ -10,7 +12,7 @@ export interface SetupStepState {
 }
 
 export interface SetupStep {
-  icon: LucideIcon;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   title: string;
   label: string;
   description: string;
@@ -33,7 +35,7 @@ export const SETUP_STEPS: SetupStep[] = [
     canProceed: (s) => !!s.validation?.executablePathValid,
   },
   {
-    icon: Github,
+    icon: GitHubIcon,
     title: 'GitHub Token',
     label: 'GitHub',
     description:

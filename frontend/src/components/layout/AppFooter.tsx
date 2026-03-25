@@ -1,5 +1,6 @@
-import { BookText, Github, Megaphone } from 'lucide-react';
+import { BookText, Megaphone } from 'lucide-react';
 
+import { DiscordIcon, GitHubIcon } from '@/components/icons/social-icons';
 import {
   APP_SHELL_PADDING_CLASS,
   APP_SHELL_WIDTH_CLASS,
@@ -32,7 +33,7 @@ const COMMUNITY_LINKS = [
     id: 'github',
     label: 'GitHub',
     href: 'https://github.com/Subway-Builder-Modded',
-    icon: Github,
+    icon: GitHubIcon,
   },
 ] as const;
 
@@ -70,17 +71,5 @@ export function AppFooter({ version }: AppFooterProps) {
         </div>
       </div>
     </footer>
-  );
-}
-
-function DiscordIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className={cn('fill-current', className)}
-    >
-      <path d="M20.317 4.369A19.791 19.791 0 0 0 15.885 3c-.191.337-.404.792-.553 1.149a18.266 18.266 0 0 0-5.665 0A11.437 11.437 0 0 0 9.114 3a19.736 19.736 0 0 0-4.433 1.369C1.88 8.557 1.12 12.642 1.5 16.671a19.927 19.927 0 0 0 5.427 2.745c.438-.617.828-1.27 1.17-1.953a12.912 12.912 0 0 1-1.84-.888c.155-.113.307-.23.454-.352a14.184 14.184 0 0 0 10.578 0 8.464 8.464 0 0 0 .454.352c-.588.347-1.203.644-1.84.888.342.683.732 1.336 1.17 1.953A19.868 19.868 0 0 0 22.5 16.67c.445-4.669-.76-8.716-2.183-12.302ZM8.678 14.209c-1.035 0-1.886-.95-1.886-2.112 0-1.162.831-2.112 1.886-2.112 1.062 0 1.9.958 1.886 2.112 0 1.162-.831 2.112-1.886 2.112Zm6.644 0c-1.035 0-1.886-.95-1.886-2.112 0-1.162.831-2.112 1.886-2.112 1.062 0 1.9.958 1.886 2.112 0 1.162-.824 2.112-1.886 2.112Z" />
-    </svg>
   );
 }
