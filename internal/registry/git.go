@@ -2,8 +2,9 @@ package registry
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
+	"strings"
+
+	"railyard/internal/files"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -82,31 +83,39 @@ func (r *Registry) refreshRepo() error {
 
 // forceClone removes any existing directory and performs a fresh clone.
 func (r *Registry) forceClone() error {
-	if err := os.RemoveAll(r.repoPath); err != nil {
-		return fmt.Errorf("failed to remove existing registry directory: %w", err)
+	cloneErrors := make([]string, 0, len(RegistryRepoURLs))
+	for _, repoURL := range RegistryRepoURLs {
+		err := files.WritePathsAtomically([]files.AtomicWrite{
+			files.AtomicDirectoryWrite{
+				Path:  r.repoPath,
+				Label: "registry clone directory",
+				Callback: func(stagingPath string) error {
+					cloneOpts := &git.CloneOptions{
+						URL:           repoURL,
+						ReferenceName: plumbing.NewBranchReferenceName("main"),
+						SingleBranch:  true,
+						Depth:         1,
+					}
+					_, cloneErr := git.PlainClone(stagingPath, false, cloneOpts)
+					return cloneErr
+				},
+			},
+		})
+		if err != nil {
+			cloneErrors = append(cloneErrors, fmt.Sprintf("%s: %v", repoURL, err))
+			r.logger.Warn("Failed to clone registry repository candidate", "repo_url", repoURL, "error", err)
+			continue
+		}
+		if err := r.fetchFromDisk(); err != nil {
+			cloneErrors = append(cloneErrors, fmt.Sprintf("%s: failed to load data after clone: %v", repoURL, err))
+			r.logger.Warn("Failed to load registry data after clone candidate", "repo_url", repoURL, "error", err)
+			continue
+		}
+
+		return nil
 	}
 
-	parent := filepath.Dir(r.repoPath)
-	if err := os.MkdirAll(parent, 0755); err != nil {
-		return fmt.Errorf("failed to create registry parent directory: %w", err)
-	}
-
-	cloneOpts := &git.CloneOptions{
-		URL:           RegistryRepoURL,
-		ReferenceName: plumbing.NewBranchReferenceName("main"),
-		SingleBranch:  true,
-		Depth:         1,
-	}
-
-	_, err := git.PlainClone(r.repoPath, false, cloneOpts)
-	if err != nil {
-		return fmt.Errorf("failed to clone registry repo: %w", err)
-	}
-	if err := r.fetchFromDisk(); err != nil {
-		return fmt.Errorf("failed to load registry data from disk after clone: %w", err)
-	}
-
-	return nil
+	return fmt.Errorf("failed to clone registry repository from all candidates: %s", strings.Join(cloneErrors, "; "))
 }
 
 // fetchAndReset fetches from origin and hard-resets the working tree to

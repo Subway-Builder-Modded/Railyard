@@ -2,7 +2,6 @@ package downloader
 
 import (
 	"archive/zip"
-	"compress/gzip"
 	"io"
 	"os"
 	"path"
@@ -16,6 +15,32 @@ import (
 	"railyard/internal/types"
 	"railyard/internal/utils"
 )
+
+type mapArtifactTarget struct {
+	Key            string
+	DestinationDir func(*Downloader) string
+	Suffix         string
+}
+
+var mapArtifactTargets = []mapArtifactTarget{
+	{
+		Key:            files.MapArchiveKeyTiles,
+		DestinationDir: (*Downloader).getMapTilePath,
+		Suffix:         files.MapTileFileExt,
+	},
+	{
+		Key:            files.MapArchiveKeyThumbnail,
+		DestinationDir: (*Downloader).getMapThumbnailPath,
+		Suffix:         files.MapThumbnailFileExt,
+	},
+}
+
+func reportExtractProgress(fn ExtractProgressFunc, itemID string, extracted int64, total int64) {
+	if fn == nil {
+		return
+	}
+	fn(itemID, extracted, total)
+}
 
 // extractMod processes the downloaded mod zip file, extracts it to the appropriate location.
 func extractMod(d *Downloader, filePath string, modId string, version string) types.AssetInstallResponse {
@@ -37,9 +62,6 @@ func extractMod(d *Downloader, filePath string, modId string, version string) ty
 		if !file.FileInfo().IsDir() {
 			fileCount++
 		}
-	}
-
-	for _, file := range reader.File {
 		if file.Name == constants.MANIFEST_JSON {
 			requiredFiles["manifest"] = types.FileFoundStruct{Found: true, FileObject: file, Required: true}
 		}
@@ -75,79 +97,73 @@ func extractMod(d *Downloader, filePath string, modId string, version string) ty
 		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorInvalidArchive, "Zip file is missing one or more required files", nil, "file_path", filePath, "mod_id", modId)
 	}
 
-	if err := os.MkdirAll(destFolder, os.ModePerm); err != nil {
-		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorFilesystem, "Failed to create destination folder", err, "destination", destFolder, "mod_id", modId)
-	}
-
-	// First pass: create directories to avoid extract errors
-	for _, file := range reader.File {
-		if file.FileInfo().IsDir() {
-			destPath := paths.JoinLocalPath(destFolder, file.Name)
-			if err := os.MkdirAll(destPath, os.ModePerm); err != nil {
-				return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorFilesystem, "Failed to create directory during extraction", err, "directory_path", destPath, "mod_id", modId)
-			}
-		}
-	}
-
-	// Second pass: extract files in parallel
-	var wg sync.WaitGroup
-	errChan := make(chan error, len(reader.File))
-
-	if d.OnExtractProgress != nil {
-		d.OnExtractProgress(modId, 0, int64(fileCount))
-	}
+	reportExtractProgress(d.OnExtractProgress, modId, 0, int64(fileCount))
 	var installCounter atomic.Int64
-	for _, file := range reader.File {
-		if !file.FileInfo().IsDir() {
-			wg.Add(1)
-			go func(file *zip.File) {
-				defer wg.Done()
-
-				destPath := paths.JoinLocalPath(destFolder, file.Name)
-
-				// Ensure parent directory exists
-				parentDir := filepath.Dir(destPath)
-				if err := os.MkdirAll(parentDir, os.ModePerm); err != nil {
-					errChan <- err
-					return
+	if err := files.WritePathsAtomically([]files.AtomicWrite{files.AtomicDirectoryWrite{
+		Path:  destFolder,
+		Label: "mod install directory",
+		Callback: func(stagingFolder string) error {
+			// First pass: create directories to avoid extract errors
+			for _, file := range reader.File {
+				if !file.FileInfo().IsDir() {
+					continue
 				}
-
-				destFile, err := os.Create(destPath)
-				if err != nil {
-					errChan <- err
-					return
+				destPath := paths.JoinLocalPath(stagingFolder, file.Name)
+				if err := os.MkdirAll(destPath, os.ModePerm); err != nil {
+					return err
 				}
-				defer destFile.Close()
+			}
 
-				srcFile, err := file.Open()
-				if err != nil {
-					errChan <- err
-					return
+			// Second pass: extract files in parallel
+			var wg sync.WaitGroup
+			errChan := make(chan error, len(reader.File))
+			for _, file := range reader.File {
+				if file.FileInfo().IsDir() {
+					continue
 				}
-				defer srcFile.Close()
+				wg.Add(1)
+				go func(file *zip.File) {
+					defer wg.Done()
 
-				_, err = io.Copy(destFile, srcFile)
-				if d.OnExtractProgress != nil {
-					d.OnExtractProgress(modId, installCounter.Add(1), int64(fileCount))
-				}
-				if err != nil {
-					errChan <- err
-					return
-				}
-			}(file)
-		}
-	}
+					destPath := paths.JoinLocalPath(stagingFolder, file.Name)
+					parentDir := filepath.Dir(destPath)
+					if err := os.MkdirAll(parentDir, os.ModePerm); err != nil {
+						errChan <- err
+						return
+					}
 
-	wg.Wait()
-	close(errChan)
+					destFile, err := os.Create(destPath)
+					if err != nil {
+						errChan <- err
+						return
+					}
+					defer destFile.Close()
 
-	if len(errChan) > 0 {
-		err := <-errChan
-		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorExtractFailed, "Failed to extract file", err, "file_path", filePath, "mod_id", modId)
-	}
+					srcFile, err := file.Open()
+					if err != nil {
+						errChan <- err
+						return
+					}
+					defer srcFile.Close()
 
-	if err := createAssetMarker(paths.JoinLocalPath(destFolder, constants.RailyardAssetMarker)); err != nil {
-		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorFilesystem, "Failed to create asset marker file", err, "mod_id", modId)
+					_, err = io.Copy(destFile, srcFile)
+					reportExtractProgress(d.OnExtractProgress, modId, installCounter.Add(1), int64(fileCount))
+					if err != nil {
+						errChan <- err
+					}
+				}(file)
+			}
+
+			wg.Wait()
+			close(errChan)
+			if len(errChan) > 0 {
+				return <-errChan
+			}
+
+			return createAssetMarker(paths.JoinLocalPath(stagingFolder, constants.RailyardAssetMarker))
+		},
+	}}); err != nil {
+		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorExtractFailed, "Failed to extract mod zip", err, "file_path", filePath, "mod_id", modId)
 	}
 
 	return d.installSuccess(types.AssetTypeMod, modId, version, types.ConfigData{}, "Mod extracted successfully", "file_path", filePath, "assetId", modId)
@@ -197,9 +213,6 @@ func extractMap(d *Downloader, filePath string, mapId string, version string) ty
 
 	// Create necessary directories first
 	destFolder := paths.JoinLocalPath(d.getMapDataPath(), configData.Code)
-	if err := os.MkdirAll(destFolder, os.ModePerm); err != nil {
-		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorFilesystem, "Failed to create destination folder", err, "destination", destFolder)
-	}
 	if err := os.MkdirAll(d.getMapTilePath(), os.ModePerm); err != nil {
 		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorFilesystem, "Failed to create tiles directory", err, "tiles_path", d.getMapTilePath())
 	}
@@ -207,62 +220,96 @@ func extractMap(d *Downloader, filePath string, mapId string, version string) ty
 		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorFilesystem, "Failed to create thumbnail directory", err, "thumbnail_path", d.getMapThumbnailPath())
 	}
 
-	// Process files in parallel
-	var wg sync.WaitGroup
-	errChan := make(chan error, len(filesFound))
-
 	// Use atomic counter to track progress across routines
 	var extractCount atomic.Int64
-	if d.OnExtractProgress != nil {
-		d.OnExtractProgress(configData.Code, 0, int64(filesCount))
+	reportExtractProgress(d.OnExtractProgress, configData.Code, 0, int64(filesCount))
+	// Determine set of atomic writes needed to be made for the main map directory
+	atomicWrites := []files.AtomicWrite{
+		files.AtomicDirectoryWrite{
+			Path:  destFolder,
+			Label: "map data directory",
+			Callback: func(stagingFolder string) error {
+				var wg sync.WaitGroup
+				errChan := make(chan error, len(filesFound))
+
+				for key, fileStruct := range filesFound {
+					// Skip tile/thumbnail artifacts in the main loop since they are saved in a separate Railyard-managed directory.
+					if !fileStruct.Found || key == files.MapArchiveKeyTiles || key == files.MapArchiveKeyThumbnail {
+						continue
+					}
+
+					wg.Add(1)
+					go func(key string, fileStruct types.FileFoundStruct) {
+						defer wg.Done()
+
+						srcFile, err := fileStruct.FileObject.Open()
+						if err != nil {
+							errChan <- err
+							return
+						}
+						defer srcFile.Close()
+
+						outputFileName := path.Base(fileStruct.FileObject.Name)
+						destinationPath := paths.JoinLocalPath(stagingFolder, outputFileName+".gz")
+						shouldArchive := true
+						// Extract out config.json for future bootstrapping from installed state, in particular for local maps.
+						if key == files.MapArchiveKeyConfig {
+							destinationPath = paths.JoinLocalPath(stagingFolder, files.MapConfigFileName)
+							shouldArchive = false
+						}
+
+						if err := files.WriteArchiveStream(destinationPath, srcFile, shouldArchive); err != nil {
+							errChan <- err
+							return
+						}
+						reportExtractProgress(d.OnExtractProgress, configData.Code, extractCount.Add(1), int64(filesCount))
+					}(key, fileStruct)
+				}
+
+				wg.Wait()
+				close(errChan)
+				if len(errChan) > 0 {
+					return <-errChan
+				}
+
+				return createAssetMarker(paths.JoinLocalPath(stagingFolder, constants.RailyardAssetMarker))
+			},
+		},
 	}
-	for key, fileStruct := range filesFound {
-		if !fileStruct.Found {
+
+	stagedTempPaths := make([]string, 0, 2)
+	defer func() {
+		for _, tempPath := range stagedTempPaths {
+			_ = os.Remove(tempPath)
+		}
+	}()
+
+	// Append atomic writes for file and thumbnail paths
+	for _, stagedFile := range mapArtifactTargets {
+		fileStruct, ok := filesFound[stagedFile.Key]
+		if !ok || !fileStruct.Found {
 			continue
 		}
 
-		wg.Add(1)
-		go func(key string, fileStruct types.FileFoundStruct) {
-			defer wg.Done()
-
-			srcFile, err := fileStruct.FileObject.Open()
-			if err != nil {
-				errChan <- err
-				return
-			}
-			defer srcFile.Close()
-
-			outputFileName := path.Base(fileStruct.FileObject.Name)
-			destinationPath := paths.JoinLocalPath(destFolder, outputFileName+".gz")
-			shouldArchive := true
-
-			switch key {
-			// Extract out config.json for future bootstrapping from installed state, in particular for local maps
-			case files.MapArchiveKeyConfig:
-				destinationPath = paths.JoinLocalPath(destFolder, files.MapConfigFileName)
-				shouldArchive = false
-			case files.MapArchiveKeyTiles:
-				destinationPath = paths.JoinLocalPath(d.getMapTilePath(), configData.Code+files.MapTileFileExt)
-				shouldArchive = false
-			case files.MapArchiveKeyThumbnail:
-				destinationPath = paths.JoinLocalPath(d.getMapThumbnailPath(), configData.Code+files.MapThumbnailFileExt)
-				shouldArchive = false
-			}
-
-			extractFileMap(destinationPath, srcFile, errChan, shouldArchive)
-			if d.OnExtractProgress != nil {
-				d.OnExtractProgress(configData.Code, extractCount.Add(1), int64(filesCount))
-			}
-		}(key, fileStruct)
+		destinationPath := paths.JoinLocalPath(stagedFile.DestinationDir(d), configData.Code+stagedFile.Suffix)
+		stagedPath, err := files.StageArchiveForAtomicWrite(destinationPath, fileStruct.FileObject, false)
+		if err != nil {
+			return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorExtractFailed, "Failed to stage map artifact", err, "file_path", filePath, "artifact_key", stagedFile.Key)
+		}
+		stagedTempPaths = append(stagedTempPaths, stagedPath)
+		atomicWrites = append(atomicWrites, files.AtomicFileWrite{
+			Path:       destinationPath,
+			Label:      "map artifact",
+			StagedPath: stagedPath,
+		})
+		reportExtractProgress(d.OnExtractProgress, configData.Code, extractCount.Add(1), int64(filesCount))
 	}
 
-	wg.Wait()
-	close(errChan)
-
-	if len(errChan) > 0 {
-		err := <-errChan
-		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorExtractFailed, "Failed to extract file", err, "file_path", filePath)
+	// Perform atomic writes to move all staged files to the final location.
+	if err := files.WritePathsAtomically(atomicWrites); err != nil {
+		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorExtractFailed, "Failed to atomically install map artifacts", err, "file_path", filePath)
 	}
+
 	if fileStruct, ok := filesFound[files.MapArchiveKeyThumbnail]; (!ok || !fileStruct.Found) && configData.ThumbnailBbox != nil {
 		srv, port, srvErr := utils.StartTempPMTilesServer()
 		if srvErr != nil {
@@ -286,48 +333,12 @@ func extractMap(d *Downloader, filePath string, mapId string, version string) ty
 		}); err != nil {
 			return d.installWarn(types.AssetTypeMap, mapId, version, configData, nil, "Failed to save generated thumbnail, but map was extracted successfully. You can try generating the thumbnail later from the map details page.", "file_path", filePath, "map_code", configData.Code, "thumbnail_path", thumbnailPath)
 		}
-		if d.OnExtractProgress != nil {
-			d.OnExtractProgress(configData.Code, extractCount.Add(1), int64(filesCount))
-		}
-	}
-
-	if err := createAssetMarker(paths.JoinLocalPath(destFolder, constants.RailyardAssetMarker)); err != nil {
-		return d.installError(types.AssetTypeMap, mapId, version, configData, types.InstallErrorFilesystem, "Failed to create asset marker file", err, "assetId", mapId)
+		reportExtractProgress(d.OnExtractProgress, configData.Code, extractCount.Add(1), int64(filesCount))
 	}
 
 	return d.installSuccess(types.AssetTypeMap, mapId, version, configData, "Map extracted successfully", "file_path", filePath, "map_code", configData.Code)
 }
 
-func extractFileMap(path string, srcFile io.ReadCloser, errChan chan<- error, useGzip bool) {
-	destFile, err := os.Create(path)
-	if err != nil {
-		errChan <- err
-		return
-	}
-
-	defer destFile.Close()
-
-	if useGzip {
-		gzipWriter := gzip.NewWriter(destFile)
-		defer gzipWriter.Close()
-		_, err = io.Copy(gzipWriter, srcFile)
-		if err != nil {
-			errChan <- err
-			return
-		}
-	} else {
-		_, err = io.Copy(destFile, srcFile)
-		if err != nil {
-			errChan <- err
-			return
-		}
-	}
-}
-
 func createAssetMarker(path string) error {
-	file, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	return file.Close()
+	return os.WriteFile(path, nil, 0o644)
 }

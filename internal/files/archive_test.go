@@ -2,7 +2,9 @@ package files
 
 import (
 	"archive/tar"
+	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,6 +14,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+type archiveEntryStub struct {
+	data []byte
+}
+
+func (s archiveEntryStub) Open() (io.ReadCloser, error) {
+	return io.NopCloser(bytes.NewReader(s.data)), nil
+}
 
 func TestCopyFileToArchiveAndExtractArchiveToDir(t *testing.T) {
 	sourceDir := t.TempDir()
@@ -187,4 +197,26 @@ func TestWriteArchiveJSON(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, payload, actual)
+}
+
+func TestStageArchiveForAtomicWriteUsesManagedStagingRoot(t *testing.T) {
+	root := t.TempDir()
+	targetRoot := filepath.Join(root, "metro")
+	stagingRoot := filepath.Join(root, ".railyard", "atomic-staging")
+	configureAtomicStagingRootsForTest(t, []StagingRoot{
+		{
+			TargetRoot:  targetRoot,
+			StagingRoot: stagingRoot,
+		},
+	})
+
+	destinationPath := filepath.Join(targetRoot, "public", "data", "city-maps", "AAA.svg")
+	stagedPath, err := StageArchiveForAtomicWrite(destinationPath, archiveEntryStub{data: []byte("svg-data")}, false)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Remove(stagedPath) })
+
+	require.True(t, pathWithinRoot(stagedPath, stagingRoot))
+	data, readErr := os.ReadFile(stagedPath)
+	require.NoError(t, readErr)
+	require.Equal(t, "svg-data", string(data))
 }

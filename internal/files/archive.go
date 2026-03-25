@@ -2,6 +2,7 @@ package files
 
 import (
 	"archive/tar"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +12,57 @@ import (
 	"railyard/internal/types"
 	"strings"
 )
+
+// WriteArchiveStream writes an archive entry stream to a destination path, conditionally using gzip compression based on the useGzip flag.
+func WriteArchiveStream(destinationPath string, src io.Reader, useGzip bool) error {
+	destFile, err := os.Create(destinationPath)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	if useGzip {
+		gzipWriter := gzip.NewWriter(destFile)
+		defer gzipWriter.Close()
+		_, err = io.Copy(gzipWriter, src)
+		return err
+	}
+
+	_, err = io.Copy(destFile, src)
+	return err
+}
+
+func stageArchive(destinationPath string, src io.Reader, useGzip bool) (string, error) {
+	tempFile, err := createManagedTempFile(destinationPath)
+	if err != nil {
+		return "", err
+	}
+	tempPath := tempFile.Name()
+	if closeErr := tempFile.Close(); closeErr != nil {
+		_ = os.Remove(tempPath)
+		return "", closeErr
+	}
+
+	if err := WriteArchiveStream(tempPath, src, useGzip); err != nil {
+		_ = os.Remove(tempPath)
+		return "", err
+	}
+
+	return tempPath, nil
+}
+
+// StageArchiveForAtomicWrite opens an archive entry, stages it to a temporary file and returns the staged path for later atomic commit.
+func StageArchiveForAtomicWrite(destinationPath string, entry interface {
+	Open() (io.ReadCloser, error)
+}, useGzip bool) (string, error) {
+	src, err := entry.Open()
+	if err != nil {
+		return "", err
+	}
+	defer src.Close()
+
+	return stageArchive(destinationPath, src, useGzip)
+}
 
 // CopyFileToArchive adds a file to the tar archive
 func CopyFileToArchive(archive *tar.Writer, filePath string) error {

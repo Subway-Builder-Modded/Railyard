@@ -22,7 +22,7 @@ func ReadJSON[T any](path string, label string, opts JSONReadOptions) (T, error)
 	data, err := os.ReadFile(path)
 	// If the file is missing, attempt to recover from backup if allowed, then try reading again. If still missing and AllowMissing is true, return zero value without error.
 	if errors.Is(err, fs.ErrNotExist) {
-		if recoverErr := recoverAtomicBackup(path, label); recoverErr != nil {
+		if recoverErr := recoverAtomicBackup(path, label, false); recoverErr != nil {
 			return zero, recoverErr
 		}
 		data, err = os.ReadFile(path)

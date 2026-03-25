@@ -29,6 +29,10 @@ const (
 	PrevLogFileName = "railyard.old.log"
 	// LockFile is the name of the temporary file created to check if the app is already running.
 	LockFile = "railyard.lock"
+	// AtomicStagingDirName is the directory under a managed root used for atomic-write staging artifacts.
+	AtomicStagingDirName = "atomic_staging"
+	// MetroMakerRailyardDirName is the hidden directory under MetroMaker data root for Railyard-managed metadata.
+	MetroMakerRailyardDirName = ".railyard"
 )
 
 // UserConfigRoot resolves the base user config directory with a home-directory fallback.
@@ -90,6 +94,16 @@ func PrevLogFilePath() string {
 
 func LockFilePath() string {
 	return filepath.Join(AppDataRoot(), LockFile)
+}
+
+// AppTmpStagingPath returns the managed temporary staging directory under AppData.
+func AppTmpStagingPath() string {
+	return filepath.Join(AppDataRoot(), AtomicStagingDirName)
+}
+
+// MetroMakerTmpStagingPath returns the managed temporary staging directory under MetroMaker data root.
+func MetroMakerTmpStagingPath(metroMakerDataPath string) string {
+	return JoinLocalPath(metroMakerDataPath, MetroMakerRailyardDirName, AtomicStagingDirName)
 }
 
 // NormalizeLocalPath normalizes a local filesystem path for the current OS.

@@ -926,6 +926,90 @@ func TestInstallMapWritesDownloadedContractFiles(t *testing.T) {
 	require.NoError(t, err, "downloaded map should write thumbnail when present")
 }
 
+func TestUpdateMapIsAtomic(t *testing.T) {
+	cfg := config.NewConfig(testutil.TestLogSink{})
+	reg := registry.NewRegistry(testutil.TestLogSink{}, cfg)
+	configureDownloaderConfig(t, cfg)
+
+	d := &Downloader{
+		Registry: reg,
+		Config:   cfg,
+		Logger:   logger.LoggerAtPath(""),
+	}
+	d.tempPath = t.TempDir()
+	d.mapTilePath = t.TempDir()
+
+	cleanup := registrytest.MockRegistryServer(t, reg, []registrytest.UpdateFixture{
+		{AssetID: "map-a", AssetType: types.AssetTypeMap, Versions: []string{"1.0.0"}, MapCode: "AAA"},
+	})
+	defer cleanup()
+
+	firstResp := d.InstallAsset(types.InstallAssetRequest{
+		AssetType: types.AssetTypeMap,
+		AssetID:   "map-a",
+		Version:   "1.0.0",
+	})
+	require.Equal(t, types.ResponseSuccess, firstResp.Status, firstResp.Message)
+
+	mapDir := filepath.Join(d.getMapDataPath(), "AAA")
+	stalePath := filepath.Join(mapDir, "stale.tmp")
+	require.NoError(t, os.WriteFile(stalePath, []byte("stale"), 0o644))
+
+	reg.RemoveInstalledMap("map-a")
+	secondResp := d.InstallAsset(types.InstallAssetRequest{
+		AssetType: types.AssetTypeMap,
+		AssetID:   "map-a",
+		Version:   "1.0.0",
+	})
+	require.Equal(t, types.ResponseSuccess, secondResp.Status, secondResp.Message)
+
+	// Validate that the stale file written before the second install is removed, indicating that the directory replace during install was atomic
+	_, staleErr := os.Stat(stalePath)
+	require.True(t, errors.Is(staleErr, fs.ErrNotExist), "stale map file should be removed during atomic directory replace")
+}
+
+func TestUpdateModIsAtomic(t *testing.T) {
+	cfg := config.NewConfig(testutil.TestLogSink{})
+	reg := registry.NewRegistry(testutil.TestLogSink{}, cfg)
+	configureDownloaderConfig(t, cfg)
+
+	d := &Downloader{
+		Registry: reg,
+		Config:   cfg,
+		Logger:   logger.LoggerAtPath(""),
+	}
+	d.tempPath = t.TempDir()
+	d.mapTilePath = t.TempDir()
+
+	cleanup := registrytest.MockRegistryServer(t, reg, []registrytest.UpdateFixture{
+		{AssetID: "mod-a", AssetType: types.AssetTypeMod, Versions: []string{"1.0.0"}},
+	})
+	defer cleanup()
+
+	firstResp := d.InstallAsset(types.InstallAssetRequest{
+		AssetType: types.AssetTypeMod,
+		AssetID:   "mod-a",
+		Version:   "1.0.0",
+	})
+	require.Equal(t, types.ResponseSuccess, firstResp.Status, firstResp.Message)
+
+	modDir := filepath.Join(d.getModPath(), "mod-a")
+	stalePath := filepath.Join(modDir, "stale.tmp")
+	require.NoError(t, os.WriteFile(stalePath, []byte("stale"), 0o644))
+
+	reg.RemoveInstalledMod("mod-a")
+	secondResp := d.InstallAsset(types.InstallAssetRequest{
+		AssetType: types.AssetTypeMod,
+		AssetID:   "mod-a",
+		Version:   "1.0.0",
+	})
+	require.Equal(t, types.ResponseSuccess, secondResp.Status, secondResp.Message)
+
+	// Validate that the stale file written before the second install is removed, indicating that the directory replace during install was atomic
+	_, staleErr := os.Stat(stalePath)
+	require.True(t, errors.Is(staleErr, fs.ErrNotExist), "stale mod file should be removed during atomic directory replace")
+}
+
 func TestImportMapWritesLocalContractFiles(t *testing.T) {
 	cfg := config.NewConfig(testutil.TestLogSink{})
 	reg := registry.NewRegistry(testutil.TestLogSink{}, cfg)

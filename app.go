@@ -22,6 +22,7 @@ import (
 	"railyard/internal/config"
 	"railyard/internal/constants"
 	"railyard/internal/downloader"
+	"railyard/internal/files"
 	"railyard/internal/logger"
 	"railyard/internal/paths"
 	"railyard/internal/profiles"
@@ -141,6 +142,8 @@ func (a *App) startup(ctx context.Context) {
 	if err := a.Logger.Start(); err != nil {
 		log.Printf("[WARN]: Failed to start app logger: %v", err)
 	}
+	a.configureTmpStagingRoots()
+	a.cleanupTmpStaging("startup")
 
 	activeProfile := resolveStartupProfile(a)
 	a.Logger.Info("Active user profile loaded on startup", "profile_id", activeProfile.ID)
@@ -202,6 +205,8 @@ func (a *App) shutdown(ctx context.Context) {
 	if res.Status == types.ResponseError {
 		log.Printf("Warning: failed to stop game on shutdown: %s", res.Message)
 	}
+
+	a.cleanupTmpStaging("shutdown")
 }
 
 func resolveStartupProfile(a *App) types.UserProfile {
@@ -262,6 +267,30 @@ func (a *App) bootstrapInstalledState(activeProfile types.UserProfile) {
 	if err != nil {
 		// This should not be blocking as we are already in an error state
 		a.Logger.Error("Failed to bootstrap installed asset state on startup", err, "profile_id", activeProfile.ID)
+	}
+}
+
+func (a *App) configureTmpStagingRoots() {
+	cfgResult := a.Config.GetConfig()
+	// Set separate staging roots for app data and MetroMaker data to allow atomic operations (and avoid cross-drive issues) for both locations
+	roots := []files.StagingRoot{
+		{
+			TargetRoot:  paths.AppDataRoot(),
+			StagingRoot: paths.AppTmpStagingPath(),
+		},
+	}
+	if cfgResult.Config.MetroMakerDataPath != "" {
+		roots = append(roots, files.StagingRoot{
+			TargetRoot:  cfgResult.Config.MetroMakerDataPath,
+			StagingRoot: paths.MetroMakerTmpStagingPath(cfgResult.Config.MetroMakerDataPath),
+		})
+	}
+	files.ConfigureTmpStagingRoots(roots)
+}
+
+func (a *App) cleanupTmpStaging(stage string) {
+	if err := files.CleanupTmpStagingRoots(); err != nil {
+		a.Logger.Warn("Failed to cleanup managed atomic staging directories", "stage", stage, "error", err)
 	}
 }
 

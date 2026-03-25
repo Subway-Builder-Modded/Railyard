@@ -15,7 +15,15 @@ import (
 	"railyard/internal/types"
 )
 
-const RegistryRepoURL = "https://github.com/Subway-Builder-Modded/The-Railyard"
+const RegistryPrimaryRepoURL = "https://github.com/Subway-Builder-Modded/registry"
+const RegistryLegacyRepoURL = "https://github.com/Subway-Builder-Modded/The-Railyard"
+
+// RegistryRepoURLs is ordered by resolution priority.
+// TODO: Remove RegistryLegacyRepoURL fallback once we confirm that all (or most users) have migrated to 0.2.0 and once the repo is renamed to "registry" instead of "The-Railyard"
+var RegistryRepoURLs = []string{
+	RegistryPrimaryRepoURL,
+	RegistryLegacyRepoURL,
+}
 
 type logSink interface {
 	Info(msg string, attrs ...any)
@@ -23,7 +31,7 @@ type logSink interface {
 	Error(msg string, err error, attrs ...any)
 }
 
-// Registry manages the local clone of The Railyard registry repository.
+// Registry manages the local clone of the Subway Builder Modded registry repository.
 type Registry struct {
 	repoPath       string
 	httpClient     *http.Client
