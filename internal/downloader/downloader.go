@@ -817,7 +817,7 @@ func (d *Downloader) installModNow(ctx context.Context, modId string, version st
 			"version", version,
 		)
 	}
-	skipDependencies := shouldSkipModDependencies(modOptions)
+	skipDependencies := modOptions != nil && modOptions.SkipDependencies
 	if !d.Config.GetConfig().Validation.IsValid() {
 		return d.installConfigError(types.AssetTypeMod, modId, version)
 	}
@@ -886,10 +886,6 @@ func (d *Downloader) installModNow(ctx context.Context, modId string, version st
 	}
 	d.Logger.Info("InstallMod completed", "mod_id", modId, "version", version)
 	return d.installSuccess(types.AssetTypeMod, modId, version, types.ConfigData{}, "Mod installed successfully", "mod_id", modId, "version", version)
-}
-
-func shouldSkipModDependencies(modOptions *types.ModInstallOptions) bool {
-	return modOptions != nil && modOptions.SkipDependencies
 }
 
 func (d *Downloader) ensureModDependencies(ctx context.Context, modID string, version string, versionInfo types.VersionInfo, skipDependencies bool) *types.AssetInstallResponse {
