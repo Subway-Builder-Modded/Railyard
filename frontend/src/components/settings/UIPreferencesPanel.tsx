@@ -35,19 +35,19 @@ const VALID_THEMES = new Set<ThemeValue>([
   'dark',
   'light',
   'system',
-  'soft-dark',
-  'soft-light',
-  'hc-dark',
-  'hc-light',
+  'dark_low',
+  'dark_high',
+  'light_low',
+  'light_high',
 ]);
 const THEME_LABELS: Record<ThemeValue, string> = {
   dark: 'Dark',
   light: 'Light',
   system: 'System',
-  'soft-dark': 'Soft Dark',
-  'soft-light': 'Soft Light',
-  'hc-dark': 'HC Dark',
-  'hc-light': 'HC Light',
+  dark_low: 'Soft Dark',
+  dark_high: 'HC Dark',
+  light_low: 'Soft Light',
+  light_high: 'HC Light',
 };
 
 function normalizeThemeValue(theme: unknown): ThemeValue {
@@ -55,18 +55,14 @@ function normalizeThemeValue(theme: unknown): ThemeValue {
     theme === 'system' ||
     theme === 'light' ||
     theme === 'dark' ||
-    theme === 'soft-dark' ||
-    theme === 'soft-light' ||
-    theme === 'hc-dark' ||
-    theme === 'hc-light'
+    theme === 'dark_low' ||
+    theme === 'dark_high' ||
+    theme === 'light_low' ||
+    theme === 'light_high'
   )
     return theme;
   if (typeof theme === 'string') {
     const lowered = theme.toLowerCase();
-    if (lowered.startsWith('soft-dark') || lowered === 'softdark') return 'soft-dark';
-    if (lowered.startsWith('soft-light') || lowered === 'softlight') return 'soft-light';
-    if (lowered.startsWith('hc-dark') || lowered === 'hcdark') return 'hc-dark';
-    if (lowered.startsWith('hc-light') || lowered === 'hclight') return 'hc-light';
     if (lowered.startsWith('light')) return 'light';
     if (lowered.startsWith('dark')) return 'dark';
   }

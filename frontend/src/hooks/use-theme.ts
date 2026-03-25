@@ -6,40 +6,36 @@ type FullTheme =
   | 'dark'
   | 'light'
   | 'system'
-  | 'soft-dark'
-  | 'soft-light'
-  | 'hc-dark'
-  | 'hc-light';
+  | 'dark_low'
+  | 'dark_high'
+  | 'light_low'
+  | 'light_high';
 
 const VALID_THEMES = new Set<FullTheme>([
   'dark',
   'light',
   'system',
-  'soft-dark',
-  'soft-light',
-  'hc-dark',
-  'hc-light',
+  'dark_low',
+  'dark_high',
+  'light_low',
+  'light_high',
 ]);
 
 function normalizeTheme(theme: string): FullTheme {
   if (VALID_THEMES.has(theme as FullTheme)) return theme as FullTheme;
   const lowered = theme.toLowerCase();
-  if (lowered.startsWith('soft-dark') || lowered === 'softdark') return 'soft-dark';
-  if (lowered.startsWith('soft-light') || lowered === 'softlight') return 'soft-light';
-  if (lowered.startsWith('hc-dark') || lowered === 'hcdark') return 'hc-dark';
-  if (lowered.startsWith('hc-light') || lowered === 'hclight') return 'hc-light';
   if (lowered.startsWith('dark')) return 'dark';
   if (lowered.startsWith('light')) return 'light';
   return 'system';
 }
 
 function applyThemeClasses(root: HTMLElement, theme: Exclude<FullTheme, 'system'>) {
-  const isDark = theme === 'dark' || theme === 'soft-dark' || theme === 'hc-dark';
+  const isDark = theme === 'dark' || theme === 'dark_low' || theme === 'dark_high';
   root.classList.toggle('dark', isDark);
-  root.classList.toggle('soft-light', theme === 'soft-light');
-  root.classList.toggle('soft-dark', theme === 'soft-dark');
-  root.classList.toggle('hc-light', theme === 'hc-light');
-  root.classList.toggle('hc-dark', theme === 'hc-dark');
+  root.classList.toggle('soft-light', theme === 'light_low');
+  root.classList.toggle('soft-dark', theme === 'dark_low');
+  root.classList.toggle('hc-light', theme === 'light_high');
+  root.classList.toggle('hc-dark', theme === 'dark_high');
 }
 
 export function useTheme() {

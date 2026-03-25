@@ -5,10 +5,10 @@ export type ThemeValue =
   | 'dark'
   | 'light'
   | 'system'
-  | 'soft-dark'
-  | 'soft-light'
-  | 'hc-dark'
-  | 'hc-light';
+  | 'dark_low'
+  | 'dark_high'
+  | 'light_low'
+  | 'light_high';
 
 interface ThemePreviewColors {
   bg: string;
@@ -54,7 +54,7 @@ const THEME_OPTIONS: ThemeOption[] = [
     },
   },
   {
-    value: 'soft-light',
+    value: 'light_low',
     label: 'Soft Light',
     colors: {
       bg: '#f4ede3',
@@ -67,7 +67,7 @@ const THEME_OPTIONS: ThemeOption[] = [
     },
   },
   {
-    value: 'soft-dark',
+    value: 'dark_low',
     label: 'Soft Dark',
     colors: {
       bg: '#302820',
@@ -80,7 +80,7 @@ const THEME_OPTIONS: ThemeOption[] = [
     },
   },
   {
-    value: 'hc-light',
+    value: 'light_high',
     label: 'HC Light',
     colors: {
       bg: '#ffffff',
@@ -93,7 +93,7 @@ const THEME_OPTIONS: ThemeOption[] = [
     },
   },
   {
-    value: 'hc-dark',
+    value: 'dark_high',
     label: 'HC Dark',
     colors: {
       bg: '#0a0a0a',
