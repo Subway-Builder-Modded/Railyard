@@ -784,63 +784,7 @@ func (d *Downloader) InstallAsset(req types.InstallAssetRequest) types.AssetInst
 		case types.AssetTypeMap:
 			return operationResult{assetInstallResponse: d.installMapNow(opCtx, req.AssetID, req.Version, replaceOnConflict)}
 		case types.AssetTypeMod:
-			skipDeps := req.Mod != nil && req.Mod.SkipDependencies
-			var version types.VersionInfo
-			// Initialize version info
-			var versions []types.VersionInfo
-			modInfo, err := d.Registry.GetMod(req.AssetID)
-			if err != nil {
-				return operationResult{assetInstallResponse: d.installError(types.AssetTypeMod, req.AssetID, req.Version, types.ConfigData{}, types.InstallErrorRegistryLookup, "Failed to get mod info from registry", err, "mod_id", req.AssetID)}
-			}
-			source := modInfo.Update.URL
-			if modInfo.Update.Type == "github" {
-				source = modInfo.Update.Repo
-			} else {
-				source = modInfo.Update.URL
-			}
-			versions, err = d.Registry.GetVersions(modInfo.Update.Type, source)
-			if err != nil {
-				return operationResult{assetInstallResponse: d.installError(types.AssetTypeMod, req.AssetID, req.Version, types.ConfigData{}, types.InstallErrorVersionLookup, "Failed to get mod versions from registry", err, "mod_id", req.AssetID)}
-			}
-			for _, v := range versions {
-				if v.Version == req.Version {
-					version = v
-					break
-				}
-			}
-			gameVersionResp := d.GetGameVersion()
-			if gameVersionResp.Status == types.ResponseSuccess {
-				if subwayBuilderDep, ok := version.Dependencies["subway-builder"]; ok {
-					constraint, err := semver.NewConstraint(strings.TrimPrefix(subwayBuilderDep, "v"))
-					if err != nil {
-						return operationResult{assetInstallResponse: d.installError(types.AssetTypeMod, req.AssetID, req.Version, types.ConfigData{}, types.InstallErrorDependencyResolutionFailed, "Failed to parse mod dependency version constraint", err, "mod_id", req.AssetID, "dependency", "subway-builder", "constraint", subwayBuilderDep)}
-					}
-					if !constraint.Check(semver.MustParse(strings.TrimPrefix(gameVersionResp.Version, "v"))) {
-						return operationResult{assetInstallResponse: d.installError(types.AssetTypeMod, req.AssetID, req.Version, types.ConfigData{}, types.InstallErrorDependencyResolutionFailed, "Mod is not compatible with current game version", nil, "mod_id", req.AssetID, "dependency", "subway-builder", "constraint", subwayBuilderDep, "game_version", gameVersionResp.Version)}
-					}
-				}
-			}
-			if !skipDeps {
-				deps := d.ComputeDependencyList(req.AssetID, version)
-				if deps.Status == types.ResponseError {
-					return operationResult{assetInstallResponse: d.installError(types.AssetTypeMod, req.AssetID, req.Version, types.ConfigData{}, types.InstallErrorDependencyResolutionFailed, "Failed to resolve mod dependencies", nil, "mod_id", req.AssetID, "version", req.Version)}
-				}
-				d.Logger.Info("Resolved mod dependencies", "mod_id", req.AssetID, "version", req.Version, "dependencies", deps.InstallList)
-				for key, dep := range deps.InstallList {
-					d.Logger.Info("Installing mod dependency", "mod_id", req.AssetID, "version", req.Version, "dependency_id", key, "dependency_version", dep.InstallCandidate.Version)
-					if key == req.AssetID {
-						d.Logger.Info("Skipping installation of mod dependency that matches target mod", "mod_id", req.AssetID, "version", req.Version)
-						continue
-					}
-					d.installModNow(opCtx, key, dep.InstallCandidate.Version, true)
-					if d.InstallDependency != nil {
-						depID := key
-						depVersion := types.Version(dep.InstallCandidate.Version)
-						go d.InstallDependency(depID, types.AssetTypeMod, depVersion)
-					}
-				}
-			}
-			return operationResult{assetInstallResponse: d.installModNow(opCtx, req.AssetID, req.Version, false)}
+			return operationResult{assetInstallResponse: d.installModNow(opCtx, req.AssetID, req.Version, req.Mod)}
 		default:
 			return operationResult{assetInstallResponse: d.installError(
 				req.AssetType,
@@ -858,7 +802,7 @@ func (d *Downloader) InstallAsset(req types.InstallAssetRequest) types.AssetInst
 }
 
 // installModNow handles the installation of a mod given its ID and version, including downloading, extracting, and updating the registry.
-func (d *Downloader) installModNow(ctx context.Context, modId string, version string, isDep bool) types.AssetInstallResponse {
+func (d *Downloader) installModNow(ctx context.Context, modId string, version string, modOptions *types.ModInstallOptions) types.AssetInstallResponse {
 	d.Logger.Info("InstallMod started", "mod_id", modId, "version", version)
 	if state, installed := d.getInstalledState(types.AssetTypeMod, modId); installed && state.version == version {
 		return d.installWarn(
@@ -873,6 +817,7 @@ func (d *Downloader) installModNow(ctx context.Context, modId string, version st
 			"version", version,
 		)
 	}
+	skipDependencies := modOptions != nil && modOptions.SkipDependencies
 	if !d.Config.GetConfig().Validation.IsValid() {
 		return d.installConfigError(types.AssetTypeMod, modId, version)
 	}
@@ -907,6 +852,9 @@ func (d *Downloader) installModNow(ctx context.Context, modId string, version st
 	if versionInfo == nil {
 		return d.installError(types.AssetTypeMod, modId, version, types.ConfigData{}, types.InstallErrorVersionNotFound, "Specified version not found for mod", nil, "mod_id", modId, "version", version, "available_versions", availableVersions)
 	}
+	if depErr := d.ensureModDependencies(ctx, modId, version, *versionInfo, skipDependencies); depErr != nil {
+		return *depErr
+	}
 
 	d.Logger.Info("Downloading mod", "mod_id", modId, "version", version, "download_url", versionInfo.DownloadURL)
 	// Pass in context to the download function so that it can be cancelled if the operation is no longer needed
@@ -938,6 +886,58 @@ func (d *Downloader) installModNow(ctx context.Context, modId string, version st
 	}
 	d.Logger.Info("InstallMod completed", "mod_id", modId, "version", version)
 	return d.installSuccess(types.AssetTypeMod, modId, version, types.ConfigData{}, "Mod installed successfully", "mod_id", modId, "version", version)
+}
+
+func (d *Downloader) ensureModDependencies(ctx context.Context, modID string, version string, versionInfo types.VersionInfo, skipDependencies bool) *types.AssetInstallResponse {
+	if d.GetGameVersion != nil {
+		gameVersionResp := d.GetGameVersion()
+		if gameVersionResp.Status == types.ResponseSuccess {
+			if subwayBuilderDep, ok := versionInfo.Dependencies["subway-builder"]; ok {
+				constraint, err := semver.NewConstraint(strings.TrimPrefix(subwayBuilderDep, "v"))
+				if err != nil {
+					resp := d.installError(types.AssetTypeMod, modID, version, types.ConfigData{}, types.InstallErrorDependencyResolutionFailed, "Failed to parse mod dependency version constraint", err, "mod_id", modID, "dependency", "subway-builder", "constraint", subwayBuilderDep)
+					return &resp
+				}
+				if !constraint.Check(semver.MustParse(strings.TrimPrefix(gameVersionResp.Version, "v"))) {
+					resp := d.installError(types.AssetTypeMod, modID, version, types.ConfigData{}, types.InstallErrorDependencyResolutionFailed, "Mod is not compatible with current game version", nil, "mod_id", modID, "dependency", "subway-builder", "constraint", subwayBuilderDep, "game_version", gameVersionResp.Version)
+					return &resp
+				}
+			}
+		}
+	}
+	if skipDependencies {
+		return nil
+	}
+	return d.installModDependencies(ctx, modID, version, versionInfo)
+}
+
+func (d *Downloader) installModDependencies(ctx context.Context, modID string, version string, versionInfo types.VersionInfo) *types.AssetInstallResponse {
+	deps := d.ComputeDependencyList(modID, versionInfo)
+	if deps.Status == types.ResponseError {
+		resp := d.installError(types.AssetTypeMod, modID, version, types.ConfigData{}, types.InstallErrorDependencyResolutionFailed, "Failed to resolve mod dependencies", nil, "mod_id", modID, "version", version)
+		return &resp
+	}
+
+	d.Logger.Info("Resolved mod dependencies", "mod_id", modID, "version", version, "dependencies", deps.InstallList)
+	for depID, dep := range deps.InstallList {
+		d.Logger.Info("Installing mod dependency", "mod_id", modID, "version", version, "dependency_id", depID, "dependency_version", dep.InstallCandidate.Version)
+		if depID == modID {
+			d.Logger.Info("Skipping installation of mod dependency that matches target mod", "mod_id", modID, "version", version)
+			continue
+		}
+		if d.InstallDependency != nil {
+			// Persist dependency subscription intent before installation so profile desired state is source-of-truth.
+			depVersion := types.Version(dep.InstallCandidate.Version)
+			d.InstallDependency(depID, types.AssetTypeMod, depVersion)
+		}
+
+		depInstallResp := d.installModNow(ctx, depID, dep.InstallCandidate.Version, &types.ModInstallOptions{SkipDependencies: true})
+		if depInstallResp.Status == types.ResponseError {
+			resp := d.installError(types.AssetTypeMod, modID, version, types.ConfigData{}, types.InstallErrorDependencyResolutionFailed, "Failed to install mod dependency", nil, "mod_id", modID, "dependency_id", depID, "dependency_version", dep.InstallCandidate.Version, "dependency_message", depInstallResp.Message)
+			return &resp
+		}
+	}
+	return nil
 }
 
 // installMapNow handles the installation of a map given its ID and version, including downloading, extracting, validating files, and updating the registry.

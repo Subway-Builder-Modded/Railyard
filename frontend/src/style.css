@@ -148,27 +148,27 @@
   --card-foreground: oklch(0.15 0.055 200);
   --popover: oklch(0.98 0.022 192);
   --popover-foreground: oklch(0.15 0.055 200);
-  --primary: oklch(0.20 0.060 200);
+  --primary: oklch(0.2 0.06 200);
   --primary-foreground: oklch(0.96 0.024 192);
   --secondary: oklch(0.89 0.032 192);
-  --secondary-foreground: oklch(0.20 0.060 200);
+  --secondary-foreground: oklch(0.2 0.06 200);
   --muted: oklch(0.89 0.032 192);
   --muted-foreground: oklch(0.48 0.042 196);
   --accent: oklch(0.85 0.038 192);
   --accent-foreground: oklch(0.18 0.058 200);
   --border: oklch(0.77 0.036 192);
   --input: oklch(0.77 0.036 192);
-  --ring: oklch(0.50 0.050 196);
-  --surface-raised: oklch(0.94 0.030 192);
+  --ring: oklch(0.5 0.05 196);
+  --surface-raised: oklch(0.94 0.03 192);
   --surface-sunken: oklch(0.88 0.034 192);
-  --sidebar: oklch(0.93 0.030 192);
+  --sidebar: oklch(0.93 0.03 192);
   --sidebar-foreground: oklch(0.15 0.055 200);
-  --sidebar-primary: oklch(0.20 0.060 200);
+  --sidebar-primary: oklch(0.2 0.06 200);
   --sidebar-primary-foreground: oklch(0.96 0.024 192);
   --sidebar-accent: oklch(0.85 0.038 192);
   --sidebar-accent-foreground: oklch(0.18 0.058 200);
   --sidebar-border: oklch(0.77 0.036 192);
-  --sidebar-ring: oklch(0.50 0.050 196);
+  --sidebar-ring: oklch(0.5 0.05 196);
   --local-install: #0a9070;
   --local-install-fg: var(--background);
   --local-uninstall: #b82020;
@@ -196,7 +196,11 @@
 }
 
 .crystal .railyard-accent {
-  --accent: color-mix(in srgb, var(--suite-accent-light) 18%, oklch(0.96 0.028 192));
+  --accent: color-mix(
+    in srgb,
+    var(--suite-accent-light) 18%,
+    oklch(0.96 0.028 192)
+  );
   --accent-foreground: color-mix(in srgb, var(--suite-accent-light) 72%, black);
   --ring: color-mix(in srgb, var(--suite-accent-light) 48%, transparent);
   --sidebar-accent: var(--accent);
@@ -267,29 +271,29 @@
 .sepia {
   --background: oklch(0.15 0.03 42);
   --foreground: oklch(0.92 0.022 78);
-  --card: oklch(0.20 0.03 42);
+  --card: oklch(0.2 0.03 42);
   --card-foreground: oklch(0.92 0.022 78);
-  --popover: oklch(0.20 0.03 42);
+  --popover: oklch(0.2 0.03 42);
   --popover-foreground: oklch(0.92 0.022 78);
-  --primary: oklch(0.89 0.020 78);
-  --primary-foreground: oklch(0.20 0.028 42);
+  --primary: oklch(0.89 0.02 78);
+  --primary-foreground: oklch(0.2 0.028 42);
   --secondary: oklch(0.24 0.032 42);
-  --secondary-foreground: oklch(0.89 0.020 78);
+  --secondary-foreground: oklch(0.89 0.02 78);
   --muted: oklch(0.24 0.032 42);
   --muted-foreground: oklch(0.7 0.02 58);
   --accent: oklch(0.28 0.035 42);
-  --accent-foreground: oklch(0.89 0.020 78);
+  --accent-foreground: oklch(0.89 0.02 78);
   --border: oklch(0.42 0.02 44 / 38%);
   --input: oklch(0.46 0.022 44 / 46%);
   --ring: oklch(0.6 0.03 55);
-  --surface-raised: oklch(0.20 0.03 42);
+  --surface-raised: oklch(0.2 0.03 42);
   --surface-sunken: oklch(0.12 0.026 42);
   --sidebar: oklch(0.18 0.03 42);
-  --sidebar-foreground: oklch(0.89 0.020 78);
-  --sidebar-primary: oklch(0.89 0.020 78);
-  --sidebar-primary-foreground: oklch(0.20 0.028 42);
+  --sidebar-foreground: oklch(0.89 0.02 78);
+  --sidebar-primary: oklch(0.89 0.02 78);
+  --sidebar-primary-foreground: oklch(0.2 0.028 42);
   --sidebar-accent: oklch(0.28 0.035 42);
-  --sidebar-accent-foreground: oklch(0.89 0.020 78);
+  --sidebar-accent-foreground: oklch(0.89 0.02 78);
   --sidebar-border: oklch(0.42 0.02 44 / 38%);
   --sidebar-ring: oklch(0.6 0.03 55);
   --local-install: #32d89e;
@@ -321,11 +325,15 @@
 .sepia .railyard-accent {
   --primary: var(--suite-accent-dark);
   --primary-foreground: var(--suite-text-inverted-dark);
-  --secondary: oklch(0.28 0.030 42);
-  --secondary-foreground: oklch(0.89 0.020 78);
-  --muted: oklch(0.28 0.030 42);
+  --secondary: oklch(0.28 0.03 42);
+  --secondary-foreground: oklch(0.89 0.02 78);
+  --muted: oklch(0.28 0.03 42);
   --muted-foreground: oklch(0.62 0.025 58);
-  --accent: color-mix(in srgb, var(--suite-accent-dark) 22%, oklch(0.22 0.028 42));
+  --accent: color-mix(
+    in srgb,
+    var(--suite-accent-dark) 22%,
+    oklch(0.22 0.028 42)
+  );
   --accent-foreground: color-mix(in srgb, var(--suite-accent-dark) 72%, white);
   --ring: color-mix(in srgb, var(--suite-accent-dark) 48%, transparent);
   --sidebar-hover: var(--sidebar-accent);
@@ -333,33 +341,33 @@
 
 /* === Midnight === */
 .midnight {
-  --background: oklch(0.09 0.020 255);
-  --foreground: oklch(0.93 0.010 230);
+  --background: oklch(0.09 0.02 255);
+  --foreground: oklch(0.93 0.01 230);
   --card: oklch(0.14 0.018 255);
-  --card-foreground: oklch(0.93 0.010 230);
+  --card-foreground: oklch(0.93 0.01 230);
   --popover: oklch(0.14 0.018 255);
-  --popover-foreground: oklch(0.93 0.010 230);
-  --primary: oklch(0.91 0.010 230);
+  --popover-foreground: oklch(0.93 0.01 230);
+  --primary: oklch(0.91 0.01 230);
   --primary-foreground: oklch(0.14 0.018 255);
-  --secondary: oklch(0.19 0.020 255);
-  --secondary-foreground: oklch(0.91 0.010 230);
-  --muted: oklch(0.19 0.020 255);
+  --secondary: oklch(0.19 0.02 255);
+  --secondary-foreground: oklch(0.91 0.01 230);
+  --muted: oklch(0.19 0.02 255);
   --muted-foreground: oklch(0.58 0.012 240);
   --accent: oklch(0.22 0.022 255);
-  --accent-foreground: oklch(0.91 0.010 230);
+  --accent-foreground: oklch(0.91 0.01 230);
   --border: oklch(1 0 0 / 8%);
   --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.50 0.012 240);
+  --ring: oklch(0.5 0.012 240);
   --surface-raised: oklch(0.14 0.018 255);
   --surface-sunken: oklch(0.06 0.018 255);
-  --sidebar: oklch(0.12 0.020 255);
-  --sidebar-foreground: oklch(0.91 0.010 230);
-  --sidebar-primary: oklch(0.91 0.010 230);
+  --sidebar: oklch(0.12 0.02 255);
+  --sidebar-foreground: oklch(0.91 0.01 230);
+  --sidebar-primary: oklch(0.91 0.01 230);
   --sidebar-primary-foreground: oklch(0.14 0.018 255);
   --sidebar-accent: oklch(0.22 0.022 255);
-  --sidebar-accent-foreground: oklch(0.91 0.010 230);
+  --sidebar-accent-foreground: oklch(0.91 0.01 230);
   --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.50 0.012 240);
+  --sidebar-ring: oklch(0.5 0.012 240);
   --local-install: #28d8a8;
   --local-install-fg: var(--background);
   --local-uninstall: #c83860;
@@ -375,11 +383,15 @@
 .midnight .railyard-accent {
   --primary: var(--suite-accent-dark);
   --primary-foreground: var(--suite-text-inverted-dark);
-  --secondary: oklch(0.19 0.020 255);
-  --secondary-foreground: oklch(0.91 0.010 230);
-  --muted: oklch(0.19 0.020 255);
+  --secondary: oklch(0.19 0.02 255);
+  --secondary-foreground: oklch(0.91 0.01 230);
+  --muted: oklch(0.19 0.02 255);
   --muted-foreground: oklch(0.58 0.012 240);
-  --accent: color-mix(in srgb, var(--suite-accent-dark) 22%, oklch(0.14 0.018 255));
+  --accent: color-mix(
+    in srgb,
+    var(--suite-accent-dark) 22%,
+    oklch(0.14 0.018 255)
+  );
   --accent-foreground: color-mix(in srgb, var(--suite-accent-dark) 72%, white);
   --ring: color-mix(in srgb, var(--suite-accent-dark) 48%, transparent);
   --sidebar-hover: var(--sidebar-accent);
@@ -395,25 +407,25 @@
   --popover-foreground: oklch(0.92 0.018 145);
   --primary: oklch(0.88 0.018 145);
   --primary-foreground: oklch(0.14 0.028 152);
-  --secondary: oklch(0.20 0.028 152);
+  --secondary: oklch(0.2 0.028 152);
   --secondary-foreground: oklch(0.88 0.018 145);
-  --muted: oklch(0.20 0.028 152);
+  --muted: oklch(0.2 0.028 152);
   --muted-foreground: oklch(0.58 0.018 148);
-  --accent: oklch(0.23 0.030 152);
+  --accent: oklch(0.23 0.03 152);
   --accent-foreground: oklch(0.88 0.018 145);
   --border: oklch(1 0 0 / 9%);
   --input: oklch(1 0 0 / 11%);
-  --ring: oklch(0.52 0.020 148);
+  --ring: oklch(0.52 0.02 148);
   --surface-raised: oklch(0.16 0.028 152);
   --surface-sunken: oklch(0.08 0.025 152);
   --sidebar: oklch(0.14 0.028 152);
   --sidebar-foreground: oklch(0.88 0.018 145);
   --sidebar-primary: oklch(0.88 0.018 145);
   --sidebar-primary-foreground: oklch(0.14 0.028 152);
-  --sidebar-accent: oklch(0.23 0.030 152);
+  --sidebar-accent: oklch(0.23 0.03 152);
   --sidebar-accent-foreground: oklch(0.88 0.018 145);
   --sidebar-border: oklch(1 0 0 / 9%);
-  --sidebar-ring: oklch(0.52 0.020 148);
+  --sidebar-ring: oklch(0.52 0.02 148);
   --local-install: #32e8b0;
   --local-install-fg: var(--background);
   --local-uninstall: #f07060;
@@ -429,11 +441,15 @@
 .forest .railyard-accent {
   --primary: var(--suite-accent-dark);
   --primary-foreground: var(--suite-text-inverted-dark);
-  --secondary: oklch(0.20 0.028 152);
+  --secondary: oklch(0.2 0.028 152);
   --secondary-foreground: oklch(0.88 0.018 145);
-  --muted: oklch(0.20 0.028 152);
+  --muted: oklch(0.2 0.028 152);
   --muted-foreground: oklch(0.58 0.018 148);
-  --accent: color-mix(in srgb, var(--suite-accent-dark) 25%, oklch(0.16 0.028 152));
+  --accent: color-mix(
+    in srgb,
+    var(--suite-accent-dark) 25%,
+    oklch(0.16 0.028 152)
+  );
   --accent-foreground: color-mix(in srgb, var(--suite-accent-dark) 72%, white);
   --ring: color-mix(in srgb, var(--suite-accent-dark) 52%, transparent);
   --sidebar-hover: var(--sidebar-accent);

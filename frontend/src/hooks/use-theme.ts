@@ -29,8 +29,15 @@ function normalizeTheme(theme: string): FullTheme {
   return 'system';
 }
 
-function applyThemeClasses(root: HTMLElement, theme: Exclude<FullTheme, 'system'>) {
-  const isDark = theme === 'dark' || theme === 'midnight' || theme === 'forest' || theme === 'sepia';
+function applyThemeClasses(
+  root: HTMLElement,
+  theme: Exclude<FullTheme, 'system'>,
+) {
+  const isDark =
+    theme === 'dark' ||
+    theme === 'midnight' ||
+    theme === 'forest' ||
+    theme === 'sepia';
   root.classList.toggle('dark', isDark);
   root.classList.toggle('midnight', theme === 'midnight');
   root.classList.toggle('sepia', theme === 'sepia');

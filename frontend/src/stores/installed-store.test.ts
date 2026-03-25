@@ -58,7 +58,7 @@ function validateProfilesRequest(expected: ProfilesRequest) {
   const request = mockUpdateSubscriptions.mock.calls[0][0];
   expect(request.profileId).toBe(expected.profileId);
   expect(request.action).toBe(expected.action);
-  expect(request.forceSync).toBe(true);
+  expect(request.applyMode).toBe('persist_and_sync');
   expect(request.assets[expected.assetId].type).toBe(expected.assetType);
   expect(request.assets[expected.assetId].version).toBe(expected.version);
 }

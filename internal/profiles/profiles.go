@@ -10,7 +10,6 @@ import (
 	"railyard/internal/logger"
 	"railyard/internal/registry"
 	"railyard/internal/types"
-	"railyard/internal/utils"
 )
 
 type UserProfiles struct {
@@ -116,6 +115,14 @@ func profileNotFoundError(profileID string) types.UserProfilesError {
 	return userProfilesError(profileID, "", "", types.ErrorProfileNotFound, "", fmt.Sprintf("Profile %q not found", profileID))
 }
 
+func profileStateErrorResult(message string, profile types.UserProfile, errs ...types.UserProfilesError) types.UserProfileResult {
+	return types.UserProfileResult{
+		GenericResponse: types.ErrorResponse(message),
+		Profile:         profile,
+		Errors:          errs,
+	}
+}
+
 func profileFromState(state types.UserProfilesState, profileID string) (types.UserProfile, *types.UserProfilesError) {
 	profile, ok := state.Profiles[profileID]
 	if !ok {
@@ -125,19 +132,24 @@ func profileFromState(state types.UserProfilesState, profileID string) (types.Us
 	return profile, nil
 }
 
+func profileSnapshotFromState(state types.UserProfilesState, profileID string) (types.UserProfile, *types.UserProfilesError) {
+	profile, profileErr := profileFromState(state, profileID)
+	if profileErr != nil {
+		return types.UserProfile{}, profileErr
+	}
+	cloneProfileSubscriptions(&profile)
+	return profile, nil
+}
+
 func (s *UserProfiles) profileSnapshot(profileID string) (types.UserProfile, uint64, *types.UserProfilesError) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	// Read a snapshot of current subscriptions at invocation time.
-	profile, profileErr := profileFromState(s.state, profileID)
+	profile, profileErr := profileSnapshotFromState(s.state, profileID)
 	if profileErr != nil {
 		return types.UserProfile{}, 0, profileErr
 	}
-
-	profile.Subscriptions.Maps = utils.CloneMap(profile.Subscriptions.Maps)
-	profile.Subscriptions.LocalMaps = utils.CloneMap(profile.Subscriptions.LocalMaps)
-	profile.Subscriptions.Mods = utils.CloneMap(profile.Subscriptions.Mods)
 	return profile, s.stateVersion, nil
 }
 

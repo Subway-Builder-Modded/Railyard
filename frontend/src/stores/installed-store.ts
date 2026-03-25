@@ -201,7 +201,7 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
       profileId: profileID,
       assets,
       action,
-      forceSync: true,
+      applyMode: 'persist_and_sync',
       replaceOnConflict: replaceOnConflict,
     });
     const result = await UpdateSubscriptions(request);

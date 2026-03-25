@@ -2,6 +2,7 @@ package files
 
 import (
 	"archive/tar"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -106,4 +107,84 @@ func TestCopyFile(t *testing.T) {
 	data, err := os.ReadFile(dst)
 	require.NoError(t, err)
 	require.Equal(t, "abc", string(data))
+}
+
+func TestReadJSONFromTarArchive(t *testing.T) {
+	sourceDir := t.TempDir()
+	payloadPath := filepath.Join(sourceDir, "meta", "profile_subscriptions.json")
+	require.NoError(t, os.MkdirAll(filepath.Dir(payloadPath), 0o755))
+
+	expected := types.Subscriptions{
+		Maps:      map[string]string{"map-a": "1.0.0"},
+		LocalMaps: map[string]string{"ABC": "0.0.0"},
+		Mods:      map[string]string{"mod-a": "2.0.0"},
+	}
+	raw, err := json.Marshal(expected)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(payloadPath, raw, 0o644))
+
+	archivePath := filepath.Join(t.TempDir(), "subs.tar")
+	rawArchive, err := os.Create(archivePath)
+	require.NoError(t, err)
+
+	writer := tar.NewWriter(rawArchive)
+	require.NoError(t, AddDirToArchive(writer, sourceDir, sourceDir))
+	require.NoError(t, writer.Close())
+	require.NoError(t, rawArchive.Close())
+
+	actual, found, readErr := ReadJSONFromTarArchive[types.Subscriptions](archivePath, "profile_subscriptions.json")
+	require.NoError(t, readErr)
+	require.True(t, found)
+	require.Equal(t, expected, actual)
+}
+
+func TestReadJSONFromTarArchiveReturnsNotFound(t *testing.T) {
+	sourceDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "sample.txt"), []byte("hello"), 0o644))
+
+	archivePath := filepath.Join(t.TempDir(), "missing-json.tar")
+	rawArchive, err := os.Create(archivePath)
+	require.NoError(t, err)
+	writer := tar.NewWriter(rawArchive)
+	require.NoError(t, AddDirToArchive(writer, sourceDir, sourceDir))
+	require.NoError(t, writer.Close())
+	require.NoError(t, rawArchive.Close())
+
+	actual, found, readErr := ReadJSONFromTarArchive[types.Subscriptions](archivePath, "profile_subscriptions.json")
+	require.NoError(t, readErr)
+	require.False(t, found)
+	require.Equal(t, types.Subscriptions{}, actual)
+}
+
+func TestReadJSONFromTarArchiveReturnsDecodeError(t *testing.T) {
+	sourceDir := t.TempDir()
+	payloadPath := filepath.Join(sourceDir, "meta", "profile_subscriptions.json")
+	require.NoError(t, os.MkdirAll(filepath.Dir(payloadPath), 0o755))
+	require.NoError(t, os.WriteFile(payloadPath, []byte("{invalid"), 0o644))
+
+	archivePath := filepath.Join(t.TempDir(), "invalid-json.tar")
+	rawArchive, err := os.Create(archivePath)
+	require.NoError(t, err)
+	writer := tar.NewWriter(rawArchive)
+	require.NoError(t, AddDirToArchive(writer, sourceDir, sourceDir))
+	require.NoError(t, writer.Close())
+	require.NoError(t, rawArchive.Close())
+
+	_, found, readErr := ReadJSONFromTarArchive[types.Subscriptions](archivePath, "profile_subscriptions.json")
+	require.Error(t, readErr)
+	require.False(t, found)
+}
+
+func TestWriteArchiveJSON(t *testing.T) {
+	tempDir := t.TempDir()
+	payload := map[string]string{"map-a": "1.0.0"}
+	require.NoError(t, WriteArchiveJSON(tempDir, "profile_subscriptions.json", "profile subscriptions", payload))
+
+	actual, err := ReadJSON[map[string]string](
+		filepath.Join(tempDir, "profile_subscriptions.json"),
+		"profile subscriptions",
+		JSONReadOptions{},
+	)
+	require.NoError(t, err)
+	require.Equal(t, payload, actual)
 }

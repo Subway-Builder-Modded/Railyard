@@ -229,6 +229,108 @@ export namespace types {
 	        this.executablePathValid = source["executablePathValid"];
 	    }
 	}
+	export class Favorites {
+	    authors: string[];
+	    maps: string[];
+	    mods: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Favorites(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.authors = source["authors"];
+	        this.maps = source["maps"];
+	        this.mods = source["mods"];
+	    }
+	}
+	export class Subscriptions {
+	    maps: Record<string, string>;
+	    localMaps: Record<string, string>;
+	    mods: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new Subscriptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.maps = source["maps"];
+	        this.localMaps = source["localMaps"];
+	        this.mods = source["mods"];
+	    }
+	}
+	export class SystemPreferences {
+	    refreshRegistryOnStartup: boolean;
+	    extraMemorySize?: number;
+	    useDevTools?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SystemPreferences(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.refreshRegistryOnStartup = source["refreshRegistryOnStartup"];
+	        this.extraMemorySize = source["extraMemorySize"];
+	        this.useDevTools = source["useDevTools"];
+	    }
+	}
+	export class UIPreferences {
+	    theme: string;
+	    defaultPerPage: number;
+	    searchViewMode: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UIPreferences(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.theme = source["theme"];
+	        this.defaultPerPage = source["defaultPerPage"];
+	        this.searchViewMode = source["searchViewMode"];
+	    }
+	}
+	export class CreateProfileRequest {
+	    name: string;
+	    uiPreferences?: UIPreferences;
+	    systemPreferences?: SystemPreferences;
+	    subscriptions?: Subscriptions;
+	    favorites?: Favorites;
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateProfileRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.uiPreferences = this.convertValues(source["uiPreferences"], UIPreferences);
+	        this.systemPreferences = this.convertValues(source["systemPreferences"], SystemPreferences);
+	        this.subscriptions = this.convertValues(source["subscriptions"], Subscriptions);
+	        this.favorites = this.convertValues(source["favorites"], Favorites);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class DeepLinkTarget {
 	    type: string;
 	    id: string;
@@ -394,22 +496,7 @@ export namespace types {
 	        this.counts = source["counts"];
 	    }
 	}
-	export class Favorites {
-	    authors: string[];
-	    maps: string[];
-	    mods: string[];
 	
-	    static createFrom(source: any = {}) {
-	        return new Favorites(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.authors = source["authors"];
-	        this.maps = source["maps"];
-	        this.mods = source["mods"];
-	    }
-	}
 	export class GalleryImageResponse {
 	    status: string;
 	    message: string;
@@ -1353,20 +1440,19 @@ export namespace types {
 	        this.type = source["type"];
 	    }
 	}
-	export class Subscriptions {
-	    maps: Record<string, string>;
-	    localMaps: Record<string, string>;
-	    mods: Record<string, string>;
+	
+	export class SwapProfileRequest {
+	    profileId: string;
+	    forceSwap: boolean;
 	
 	    static createFrom(source: any = {}) {
-	        return new Subscriptions(source);
+	        return new SwapProfileRequest(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.maps = source["maps"];
-	        this.localMaps = source["localMaps"];
-	        this.mods = source["mods"];
+	        this.profileId = source["profileId"];
+	        this.forceSwap = source["forceSwap"];
 	    }
 	}
 	export class UserProfilesError {
@@ -1429,44 +1515,14 @@ export namespace types {
 		    return a;
 		}
 	}
-	export class SystemPreferences {
-	    refreshRegistryOnStartup: boolean;
-	    extraMemorySize?: number;
-	    useDevTools?: boolean;
 	
-	    static createFrom(source: any = {}) {
-	        return new SystemPreferences(source);
-	    }
 	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.refreshRegistryOnStartup = source["refreshRegistryOnStartup"];
-	        this.extraMemorySize = source["extraMemorySize"];
-	        this.useDevTools = source["useDevTools"];
-	    }
-	}
-	export class UIPreferences {
-	    theme: string;
-	    defaultPerPage: number;
-	    searchViewMode: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new UIPreferences(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.theme = source["theme"];
-	        this.defaultPerPage = source["defaultPerPage"];
-	        this.searchViewMode = source["searchViewMode"];
-	    }
-	}
 	
 	export class UpdateSubscriptionsRequest {
 	    profileId: string;
 	    assets: Record<string, SubscriptionUpdateItem>;
 	    action: string;
-	    forceSync: boolean;
+	    applyMode: string;
 	    replaceOnConflict: boolean;
 	    skipDependencyInstall?: boolean;
 	
@@ -1479,7 +1535,7 @@ export namespace types {
 	        this.profileId = source["profileId"];
 	        this.assets = this.convertValues(source["assets"], SubscriptionUpdateItem, true);
 	        this.action = source["action"];
-	        this.forceSync = source["forceSync"];
+	        this.applyMode = source["applyMode"];
 	        this.replaceOnConflict = source["replaceOnConflict"];
 	        this.skipDependencyInstall = source["skipDependencyInstall"];
 	    }

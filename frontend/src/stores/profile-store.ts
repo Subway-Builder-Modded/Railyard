@@ -152,7 +152,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       profileId: freshProfile.id,
       assets: { [id]: new types.SubscriptionUpdateItem({ version, type }) },
       action,
-      forceSync: true,
+      applyMode: 'persist_and_sync',
     });
 
     const result = await UpdateSubscriptions(request);

@@ -43,3 +43,22 @@ func CloneNestedMap[K1 comparable, K2 comparable, V any](value map[K1]map[K2]V) 
 	}
 	return cloned
 }
+
+// CloneStringMap returns a shallow copy of map[string]string.
+func CloneStringMap(value map[string]string) map[string]string {
+	return CloneMap(value)
+}
+
+// MapEqual returns true when both maps contain exactly the same keys and values.
+func MapEqual[K comparable, V comparable](left map[K]V, right map[K]V) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for key, value := range left {
+		rightValue, ok := right[key]
+		if !ok || rightValue != value {
+			return false
+		}
+	}
+	return true
+}
