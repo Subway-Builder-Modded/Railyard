@@ -10,6 +10,7 @@ import (
 	"railyard/internal/paths"
 	"railyard/internal/types"
 	"railyard/internal/utils"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -104,6 +105,64 @@ func (s *UserProfiles) GetActiveProfile() types.UserProfileResult {
 		s.Logger.MultipleError("Failed to get active profile", logger.AsErrors(result.Errors), "active_profile_id", s.state.ActiveProfileID)
 	}
 	return result
+}
+
+func (s *UserProfiles) ListProfiles() types.UserProfilesListResult {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.logRequest("ListProfiles")
+
+	if !s.loaded {
+		return types.UserProfilesListResult{
+			GenericResponse: types.ErrorResponse("Profiles state not loaded"),
+			ActiveProfileID: "",
+			Profiles:        []types.UserProfile{},
+			ArchiveSizes:    map[string]int64{},
+			Errors: []types.UserProfilesError{
+				userProfilesError("", "", "", types.ErrorProfilesNotLoaded, "", "Profiles state not loaded"),
+			},
+		}
+	}
+
+	profiles := make([]types.UserProfile, 0, len(s.state.Profiles))
+	for _, profile := range s.state.Profiles {
+		profiles = append(profiles, profile)
+	}
+	sort.Slice(profiles, func(i, j int) bool {
+		if profiles[i].ID == types.DefaultProfileID {
+			return true
+		}
+		if profiles[j].ID == types.DefaultProfileID {
+			return false
+		}
+		return strings.ToLower(profiles[i].Name) < strings.ToLower(profiles[j].Name)
+	})
+
+	archiveSizes := make(map[string]int64, len(profiles))
+	for _, profile := range profiles {
+		info, err := os.Stat(profileArchivePath(profile.UUID))
+		if err == nil {
+			archiveSizes[profile.ID] = info.Size()
+			continue
+		}
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		s.Logger.Warn(
+			"Failed to stat profile archive while listing profiles",
+			"profile_id", profile.ID,
+			"archive_path", profileArchivePath(profile.UUID),
+			"error", err,
+		)
+	}
+
+	return types.UserProfilesListResult{
+		GenericResponse: types.SuccessResponse("Profiles resolved"),
+		ActiveProfileID: s.state.ActiveProfileID,
+		Profiles:        profiles,
+		ArchiveSizes:    archiveSizes,
+		Errors:          []types.UserProfilesError{},
+	}
 }
 
 func (s *UserProfiles) resolveActiveProfile() types.UserProfileResult {
@@ -275,14 +334,12 @@ func (s *UserProfiles) CreateProfile(req types.CreateProfileRequest) types.UserP
 	}
 
 	// enforce unique profile names (case-insensitive)
-	for _, profile := range s.state.Profiles {
-		if strings.EqualFold(strings.TrimSpace(profile.Name), name) {
-			return profileStateErrorResult(
-				"Profile name already exists",
-				types.UserProfile{},
-				userProfilesError("", "", "", types.ErrorDuplicateName, "", fmt.Sprintf("Profile name %q already exists", name)),
-			)
-		}
+	if hasDuplicateProfileName(s.state.Profiles, name, "") {
+		return profileStateErrorResult(
+			"Profile name already exists",
+			types.UserProfile{},
+			userProfilesError("", "", "", types.ErrorDuplicateName, "", fmt.Sprintf("Profile name %q already exists", name)),
+		)
 	}
 
 	nextState := copyProfilesState(s.state)
@@ -302,6 +359,52 @@ func (s *UserProfiles) CreateProfile(req types.CreateProfileRequest) types.UserP
 	return types.UserProfileResult{
 		GenericResponse: types.SuccessResponse("Profile created"),
 		Profile:         validatedState.Profiles[profile.ID],
+		Errors:          []types.UserProfilesError{},
+	}
+}
+
+func (s *UserProfiles) RenameProfile(profileID string, name string) types.UserProfileResult {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.logRequest("RenameProfile", "profile_id", profileID)
+
+	profileID = strings.TrimSpace(profileID)
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return profileStateErrorResult(
+			"Invalid profile name",
+			types.UserProfile{},
+			userProfilesError(profileID, "", "", types.ErrorInvalidProfileName, "", "Profile name is required"),
+		)
+	}
+
+	profile, exists := s.state.Profiles[profileID]
+	if !exists {
+		err := profileNotFoundError(profileID)
+		return profileStateErrorResult("Profile not found", types.UserProfile{}, err)
+	}
+
+	if hasDuplicateProfileName(s.state.Profiles, name, profileID) {
+		return profileStateErrorResult(
+			"Profile name already exists",
+			profile,
+			userProfilesError(profileID, "", "", types.ErrorDuplicateName, "", fmt.Sprintf("Profile name %q already exists", name)),
+		)
+	}
+
+	nextState := copyProfilesState(s.state)
+	profile.Name = name
+	nextState.Profiles[profileID] = profile
+
+	validatedState, validationErrResult := s.validateAndPersistProfileState(nextState, "rename", profileID, profile)
+	if validationErrResult != nil {
+		return *validationErrResult
+	}
+
+	s.setState(validatedState)
+	return types.UserProfileResult{
+		GenericResponse: types.SuccessResponse("Profile renamed"),
+		Profile:         validatedState.Profiles[profileID],
 		Errors:          []types.UserProfilesError{},
 	}
 }
@@ -393,32 +496,37 @@ func (s *UserProfiles) SwapProfile(req types.SwapProfileRequest) types.UserProfi
 			)
 		}
 	}
-	// Validate target profile archive status
-	isTargetArchiveFresh, targetErrResult := s.resolveProfileArchiveFreshness(targetProfile, currentProfile, "target")
-	if targetErrResult != nil {
-		return *targetErrResult
-	}
-	// If the target archive is not fresh, request a confirmation from the frontend before proceeding with the swap, as swapping to a profile with a stale or missing archive would result in potential download and sync operations post-swap
-	if !isTargetArchiveFresh && !req.ForceSwap {
-		errorType := types.ErrorArchiveStale
-		exists, statErr := profileArchiveExists(targetProfile.UUID)
-		if statErr == nil && !exists {
-			errorType = types.ErrorArchiveMissing
+	shouldHydrateTarget := profileHasSubscriptions(targetProfile)
+	isTargetArchiveFresh := false
+	if shouldHydrateTarget {
+		// Validate target profile archive status
+		targetArchiveFresh, targetErrResult := s.resolveProfileArchiveFreshness(targetProfile, currentProfile, "target")
+		if targetErrResult != nil {
+			return *targetErrResult
 		}
-		s.Logger.Warn("Target profile archive is missing or stale, confirming with user before swap", "profile_id", targetProfile.ID, "archive_exists", exists, "stat_error", statErr)
-		return types.UserProfileResult{
-			GenericResponse: types.WarnResponse("Target profile archive is missing or stale; confirm swap to continue"),
-			Profile:         currentProfile,
-			Errors: []types.UserProfilesError{
-				userProfilesError(
-					targetProfile.ID,
-					"",
-					"",
-					errorType,
-					"",
-					fmt.Sprintf("Archive for profile %q is missing or stale", targetProfile.ID),
-				),
-			},
+		isTargetArchiveFresh = targetArchiveFresh
+		// If the target archive is not fresh, request a confirmation from the frontend before proceeding with the swap, as swapping to a profile with a stale or missing archive would result in potential download and sync operations post-swap
+		if !isTargetArchiveFresh && !req.ForceSwap {
+			errorType := types.ErrorArchiveStale
+			exists, statErr := profileArchiveExists(targetProfile.UUID)
+			if statErr == nil && !exists {
+				errorType = types.ErrorArchiveMissing
+			}
+			s.Logger.Warn("Target profile archive is missing or stale, confirming with user before swap", "profile_id", targetProfile.ID, "archive_exists", exists, "stat_error", statErr)
+			return types.UserProfileResult{
+				GenericResponse: types.WarnResponse("Target profile archive is missing or stale; confirm swap to continue"),
+				Profile:         currentProfile,
+				Errors: []types.UserProfilesError{
+					userProfilesError(
+						targetProfile.ID,
+						"",
+						"",
+						errorType,
+						"",
+						fmt.Sprintf("Archive for profile %q is missing or stale", targetProfile.ID),
+					),
+				},
+			}
 		}
 	}
 
@@ -433,7 +541,16 @@ func (s *UserProfiles) SwapProfile(req types.SwapProfileRequest) types.UserProfi
 		)
 	}
 
-	// If the target archive is fresh, we can skip the restore/sync steps
+	// Profiles with no subscriptions need no restore/sync hydration.
+	if !shouldHydrateTarget {
+		return types.UserProfileResult{
+			GenericResponse: types.SuccessResponse("Profile swapped successfully"),
+			Profile:         swappedProfile,
+			Errors:          []types.UserProfilesError{},
+		}
+	}
+
+	// If the target archive is fresh, we can restore from archive.
 	if isTargetArchiveFresh {
 		restoreResult := s.RestoreProfileArchive(targetProfile.ID)
 		if restoreResult.Status == types.ResponseError {
@@ -589,6 +706,24 @@ func nextGeneratedProfileID(profiles map[string]types.UserProfile) string {
 		}
 	}
 	return fmt.Sprintf("profile_%d", maxID+1)
+}
+
+func hasDuplicateProfileName(profiles map[string]types.UserProfile, name string, excludeProfileID string) bool {
+	for profileID, profile := range profiles {
+		if excludeProfileID != "" && profileID == excludeProfileID {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(profile.Name), name) {
+			return true
+		}
+	}
+	return false
+}
+
+func profileHasSubscriptions(profile types.UserProfile) bool {
+	return len(profile.Subscriptions.Maps) > 0 ||
+		len(profile.Subscriptions.LocalMaps) > 0 ||
+		len(profile.Subscriptions.Mods) > 0
 }
 
 func (s *UserProfiles) swapProfilesSnapshot(profileID string) (types.UserProfile, types.UserProfile, types.UserProfileResult, bool) {

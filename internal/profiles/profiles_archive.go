@@ -236,6 +236,9 @@ func (s *UserProfiles) restoreMapsFromArchive(tempDir, profileID string) (types.
 
 		// Create city data directory
 		cityDataPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "cities", "data", code)
+		if err := clearRestoreDestination(cityDataPath); err != nil {
+			return s.archiveError("Failed to clear city data before restore", "failed to clear city data before restore", err, "profile_id", profileID, "map_id", code)
+		}
 		// Copy city data
 		archiveMapDataPath := paths.JoinLocalPath(tempDir, "maps", code, "data")
 		if err := files.CopyDirFromFS(cityDataPath, os.DirFS(archiveMapDataPath)); err != nil {
@@ -263,6 +266,9 @@ func (s *UserProfiles) restoreMapsFromArchive(tempDir, profileID string) (types.
 func (s *UserProfiles) restoreModsFromArchive(tempDir, profileID string) (types.GenericResponse, bool) {
 	for _, modInfo := range s.Registry.GetInstalledMods() {
 		modDest := paths.JoinLocalPath(s.Config.Cfg.GetModsFolderPath(), modInfo.ID)
+		if err := clearRestoreDestination(modDest); err != nil {
+			return s.archiveError("Failed to clear mod data before restore", "failed to clear mod data before restore", err, "profile_id", profileID, "mod_id", modInfo.ID)
+		}
 
 		archiveModDataPath := paths.JoinLocalPath(tempDir, "mods", modInfo.ID, "data")
 		if err := files.CopyDirFromFS(modDest, os.DirFS(archiveModDataPath)); err != nil {
@@ -312,4 +318,11 @@ func areSubscriptionsEqual(left types.Subscriptions, right types.Subscriptions) 
 	return utils.MapEqual(left.Maps, right.Maps) &&
 		utils.MapEqual(left.LocalMaps, right.LocalMaps) &&
 		utils.MapEqual(left.Mods, right.Mods)
+}
+
+func clearRestoreDestination(dirPath string) error {
+	if err := os.RemoveAll(dirPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
 }

@@ -3,7 +3,8 @@ export type LocalAccentTone =
   | 'uninstall'
   | 'update'
   | 'import'
-  | 'files';
+  | 'files'
+  | 'profiles';
 
 type LocalAccentVariantClasses = {
   solidButton: string;
@@ -64,6 +65,8 @@ const LOCAL_ACCENT_TONE_VARS = {
     '[--local-tone-primary:var(--import-primary)] [--local-tone-foreground:var(--import-foreground)]',
   files:
     '[--local-tone-primary:var(--files-primary)] [--local-tone-foreground:var(--files-foreground)]',
+  profiles:
+    '[--local-tone-primary:var(--profiles-primary)] [--local-tone-foreground:var(--profiles-foreground)]',
 } satisfies Record<LocalAccentTone, string>;
 
 const LOCAL_ACCENT_TONE_CLASSES = buildLocalAccentToneClasses(

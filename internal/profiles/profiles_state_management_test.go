@@ -117,6 +117,39 @@ func TestDeleteProfileRemovesArchive(t *testing.T) {
 	require.False(t, exists)
 }
 
+func TestRenameProfileSuccess(t *testing.T) {
+	testutil.NewHarness(t)
+
+	state := types.InitialProfilesState()
+	target := newTestUserProfile("profile_0", "Old Name")
+	state.Profiles[target.ID] = target
+
+	svc := loadedUserProfilesService(t, state)
+	result := svc.RenameProfile(target.ID, "New Name")
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, target.ID, result.Profile.ID)
+	require.Equal(t, "New Name", result.Profile.Name)
+
+	persisted, err := ReadUserProfilesState()
+	require.NoError(t, err)
+	require.Equal(t, "New Name", persisted.Profiles[target.ID].Name)
+}
+
+func TestRenameProfileRejectsDuplicateNameCaseInsensitive(t *testing.T) {
+	testutil.NewHarness(t)
+
+	state := types.InitialProfilesState()
+	first := newTestUserProfile("profile_0", "Alpha")
+	second := newTestUserProfile("profile_1", "Beta")
+	state.Profiles[first.ID] = first
+	state.Profiles[second.ID] = second
+
+	svc := loadedUserProfilesService(t, state)
+	result := svc.RenameProfile(second.ID, " alpha ")
+	require.Equal(t, types.ResponseError, result.Status)
+	require.True(t, findProfileErrorType(result.Errors, types.ErrorDuplicateName))
+}
+
 func TestSwapProfileMissingTargetFails(t *testing.T) {
 	testutil.NewHarness(t)
 	svc := loadedUserProfilesService(t, types.InitialProfilesState())
@@ -131,6 +164,7 @@ func TestSwapProfileWarnsWithoutForceWhenTargetArchiveMissing(t *testing.T) {
 
 	state := types.InitialProfilesState()
 	target := newTestUserProfile("profile_0", "Target")
+	target.Subscriptions.Maps["map-a"] = "1.0.0"
 	state.Profiles[target.ID] = target
 	svc := loadedUserProfilesService(t, state)
 
@@ -145,6 +179,24 @@ func TestSwapProfileWarnsWithoutForceWhenTargetArchiveMissing(t *testing.T) {
 
 	_, err := os.Stat(profileArchivePath(current.UUID))
 	require.NoError(t, err)
+}
+
+func TestSwapProfileWithoutSubscriptionsSkipsArchiveWarning(t *testing.T) {
+	testutil.NewHarness(t)
+
+	state := types.InitialProfilesState()
+	target := newTestUserProfile("profile_0", "Empty Target")
+	state.Profiles[target.ID] = target
+	svc := loadedUserProfilesService(t, state)
+
+	result := svc.SwapProfile(types.SwapProfileRequest{ProfileID: target.ID})
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, target.ID, result.Profile.ID)
+	require.Empty(t, result.Errors)
+
+	activeAfter := svc.GetActiveProfile()
+	require.Equal(t, types.ResponseSuccess, activeAfter.Status)
+	require.Equal(t, target.ID, activeAfter.Profile.ID)
 }
 
 func TestSwapProfileForceWithoutArchiveSwapsAndSyncs(t *testing.T) {
@@ -172,6 +224,7 @@ func TestSwapProfileUsesFreshArchiveRestorePath(t *testing.T) {
 
 	state := types.InitialProfilesState()
 	target := newTestUserProfile("profile_0", "Target")
+	target.Subscriptions.Maps["map-a"] = "1.0.0"
 	state.Profiles[target.ID] = target
 	svc := loadedUserProfilesService(t, state)
 
@@ -209,4 +262,49 @@ func TestProfileArchiveFreshnessMetadata(t *testing.T) {
 	stale, err := svc.isProfileArchiveFresh(target)
 	require.NoError(t, err)
 	require.False(t, stale)
+}
+
+func TestListProfilesReturnsProfilesWithDefaultFirst(t *testing.T) {
+	testutil.NewHarness(t)
+
+	state := types.InitialProfilesState()
+	state.Profiles["profile_1"] = newTestUserProfile("profile_1", "Zulu")
+	state.Profiles["profile_0"] = newTestUserProfile("profile_0", "Alpha")
+
+	svc := loadedUserProfilesService(t, state)
+	result := svc.ListProfiles()
+
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, types.DefaultProfileID, result.ActiveProfileID)
+	require.Len(t, result.Profiles, 3)
+	require.Equal(t, types.DefaultProfileID, result.Profiles[0].ID)
+	require.Equal(t, "Alpha", result.Profiles[1].Name)
+	require.Equal(t, "Zulu", result.Profiles[2].Name)
+}
+
+func TestListProfilesErrorsWhenStateNotLoaded(t *testing.T) {
+	testutil.NewHarness(t)
+
+	svc := userProfilesService(t)
+	result := svc.ListProfiles()
+
+	require.Equal(t, types.ResponseError, result.Status)
+	require.True(t, findProfileErrorType(result.Errors, types.ErrorProfilesNotLoaded))
+}
+
+func TestListProfilesIncludesArchiveSizeWhenArchiveExists(t *testing.T) {
+	testutil.NewHarness(t)
+
+	state := types.InitialProfilesState()
+	target := newTestUserProfile("profile_0", "Target")
+	state.Profiles[target.ID] = target
+
+	svc := loadedUserProfilesService(t, state)
+	archivePath := profileArchivePath(target.UUID)
+	require.NoError(t, os.MkdirAll(filepath.Dir(archivePath), 0o755))
+	require.NoError(t, os.WriteFile(archivePath, []byte("1234567890"), 0o644))
+
+	result := svc.ListProfiles()
+	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, int64(10), result.ArchiveSizes[target.ID])
 }

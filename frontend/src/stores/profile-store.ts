@@ -68,6 +68,7 @@ interface ProfileState {
   initialized: boolean;
 
   initialize: () => Promise<void>;
+  refreshActiveProfile: () => Promise<void>;
   isSubscribed: (type: AssetType, id: string) => boolean;
   theme: () => string;
   defaultPerPage: () => number;
@@ -97,11 +98,8 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     if (get().initialized) return;
     set({ loading: true, error: null });
     try {
-      const result = await GetActiveProfile();
-      if (result.status !== 'success') {
-        throw new Error(result.message || 'Failed to load active profile');
-      }
-      set({ profile: result.profile, initialized: true, loading: false });
+      await get().refreshActiveProfile();
+      set({ initialized: true, loading: false });
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : String(err),
@@ -109,6 +107,14 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         loading: false,
       });
     }
+  },
+
+  refreshActiveProfile: async () => {
+    const result = await GetActiveProfile();
+    if (result.status !== 'success') {
+      throw new Error(result.message || 'Failed to load active profile');
+    }
+    set({ profile: result.profile, error: null });
   },
 
   isSubscribed: (type: AssetType, id: string) => {
@@ -124,8 +130,15 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   searchViewMode: () => resolveUIPreferences(get().profile).searchViewMode,
 
   updateUIPreferences: async (updates) => {
+    const activeResult = await GetActiveProfile();
+    if (activeResult.status !== 'success') {
+      throw new Error(
+        activeResult.message || 'Failed to resolve active profile',
+      );
+    }
+    const activeProfile = activeResult.profile;
     const nextPreferences: UIPreferencesPayload = {
-      ...resolveUIPreferences(get().profile),
+      ...resolveUIPreferences(activeProfile),
       ...updates,
     };
 
@@ -176,8 +189,15 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   updateCommandLineArgs: async (preferences) => {
     set({ loading: true, error: null });
     try {
+      const activeResult = await GetActiveProfile();
+      if (activeResult.status !== 'success') {
+        throw new Error(
+          activeResult.message || 'Failed to resolve active profile',
+        );
+      }
+      const activeProfile = activeResult.profile;
       const payload = {
-        ...resolveSystemPreferences(get().profile),
+        ...resolveSystemPreferences(activeProfile),
         ...preferences,
       };
       const result = await UpdateSystemPreferences(payload);

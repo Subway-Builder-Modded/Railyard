@@ -26,6 +26,28 @@ func TestCopyDirFromFS(t *testing.T) {
 	require.Equal(t, "payload", string(bytes))
 }
 
+func TestCopyDirFromFSOverwritesExistingFiles(t *testing.T) {
+	source := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(source, "nested"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(source, "nested", "data.txt"), []byte("new"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(source, ".railyard_asset"), []byte("marker"), 0o644))
+
+	dest := filepath.Join(t.TempDir(), "dest")
+	require.NoError(t, os.MkdirAll(filepath.Join(dest, "nested"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dest, "nested", "data.txt"), []byte("old"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dest, ".railyard_asset"), []byte("old-marker"), 0o644))
+
+	require.NoError(t, CopyDirFromFS(dest, os.DirFS(source)))
+
+	bytes, err := os.ReadFile(filepath.Join(dest, "nested", "data.txt"))
+	require.NoError(t, err)
+	require.Equal(t, "new", string(bytes))
+
+	marker, err := os.ReadFile(filepath.Join(dest, ".railyard_asset"))
+	require.NoError(t, err)
+	require.Equal(t, "marker", string(marker))
+}
+
 func TestCopyOptionalFile(t *testing.T) {
 	log := logger.LoggerAtPath(filepath.Join(t.TempDir(), "optional.log"))
 	source := filepath.Join(t.TempDir(), "source.txt")

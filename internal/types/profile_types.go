@@ -218,6 +218,14 @@ type UserProfileResult struct {
 	Errors  []UserProfilesError `json:"errors"`
 }
 
+type UserProfilesListResult struct {
+	GenericResponse
+	ActiveProfileID string              `json:"activeProfileId"`
+	Profiles        []UserProfile       `json:"profiles"`
+	ArchiveSizes    map[string]int64    `json:"archiveSizes"`
+	Errors          []UserProfilesError `json:"errors"`
+}
+
 type UpdateSubscriptionsResult struct {
 	GenericResponse
 	RequestType    UpdateSubscriptionRequestType `json:"requestType"`

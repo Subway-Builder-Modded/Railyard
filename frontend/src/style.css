@@ -87,6 +87,8 @@
   --local-uninstall-fg: var(--background);
   --local-update: #3f6fd1;
   --local-update-fg: var(--background);
+  --local-profiles: #754aca;
+  --local-profiles-fg: var(--background);
   --local-import: #0f8f68;
   --local-import-fg: var(--background);
   --local-files: #d4af37;
@@ -98,6 +100,8 @@
   --uninstall-foreground: var(--local-uninstall-fg);
   --update-primary: var(--local-update);
   --update-foreground: var(--local-update-fg);
+  --profiles-primary: var(--local-profiles);
+  --profiles-foreground: var(--local-profiles-fg);
   --import-primary: var(--local-import);
   --import-foreground: var(--local-import-fg);
   --files-primary: var(--local-files);
@@ -175,6 +179,8 @@
   --local-uninstall-fg: var(--background);
   --local-update: #1040c8;
   --local-update-fg: var(--background);
+  --local-profiles: #754aca;
+  --local-profiles-fg: var(--background);
   --local-import: #0a9070;
   --local-import-fg: var(--background);
   --local-files: #b07808;
@@ -186,6 +192,8 @@
   --uninstall-foreground: var(--local-uninstall-fg);
   --update-primary: var(--local-update);
   --update-foreground: var(--local-update-fg);
+  --profiles-primary: var(--local-profiles);
+  --profiles-foreground: var(--local-profiles-fg);
   --import-primary: var(--local-import);
   --import-foreground: var(--local-import-fg);
   --files-primary: var(--local-files);
@@ -257,6 +265,8 @@
   --local-uninstall-fg: var(--foreground);
   --local-update: #3a6bbf;
   --local-update-fg: var(--foreground);
+  --local-profiles: #754aca;
+  --local-profiles-fg: var(--foreground);
   --local-import: #32e8b0;
   --local-import-fg: var(--background);
   --local-files: #b58721;
@@ -311,6 +321,8 @@
   --local-uninstall-fg: #1a130d;
   --local-update: #7da2d9;
   --local-update-fg: #1a130d;
+  --local-profiles: #754aca;
+  --local-profiles-fg: #1a130d;
   --local-import: #58c89a;
   --local-import-fg: #1a130d;
   --local-files: #d4a95f;
@@ -322,6 +334,8 @@
   --uninstall-foreground: var(--local-uninstall-fg);
   --update-primary: var(--local-update);
   --update-foreground: var(--local-update-fg);
+  --profiles-primary: var(--local-profiles);
+  --profiles-foreground: var(--local-profiles-fg);
   --import-primary: var(--local-import);
   --import-foreground: var(--local-import-fg);
   --files-primary: var(--local-files);
@@ -379,6 +393,8 @@
   --local-uninstall-fg: var(--foreground);
   --local-update: #4888e0;
   --local-update-fg: var(--foreground);
+  --local-profiles: #754aca;
+  --local-profiles-fg: var(--foreground);
   --local-import: #28d8a8;
   --local-import-fg: var(--background);
   --local-files: #b09020;
@@ -439,6 +455,8 @@
   --local-uninstall-fg: var(--background);
   --local-update: #60a8f8;
   --local-update-fg: var(--background);
+  --local-profiles: #754aca;
+  --local-profiles-fg: var(--background);
   --local-import: #32e8b0;
   --local-import-fg: var(--background);
   --local-files: #e8c040;
