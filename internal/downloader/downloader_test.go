@@ -100,7 +100,7 @@ func configureDownloaderConfig(t *testing.T, cfg *config.Config) {
 	t.Helper()
 	cfg.Cfg.MetroMakerDataPath = t.TempDir()
 	exePath := filepath.Join(t.TempDir(), "subway-builder.exe")
-	require.NoError(t, os.WriteFile(exePath, []byte("exe"), 0o644))
+	require.NoError(t, os.WriteFile(exePath, []byte("exe"), 0o755))
 	cfg.Cfg.ExecutablePath = exePath
 }
 
