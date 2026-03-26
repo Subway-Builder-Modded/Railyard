@@ -6,224 +6,249 @@ export type ThemeValue =
   | 'light'
   | 'system'
   | 'midnight'
-  | 'sepia'
+  | 'coffee'
   | 'forest'
   | 'crystal';
 
-interface ThemePreviewColors {
-  bg: string;
-  sidebar: string;
-  card: string;
-  bar: string;
-  primary: string;
-  muted: string;
-  border: string;
-}
+type PreviewTheme = Exclude<ThemeValue, 'system'>;
 
 interface ThemeOption {
-  value: ThemeValue;
+  value: PreviewTheme;
   label: string;
-  colors: ThemePreviewColors;
 }
 
 const THEME_OPTIONS: ThemeOption[] = [
-  {
-    value: 'light',
-    label: 'Light',
-    colors: {
-      bg: '#fafafa',
-      sidebar: '#f7f7f7',
-      card: '#ffffff',
-      bar: '#f3f3f3',
-      primary: '#3f3f3f',
-      muted: '#ececec',
-      border: '#dfdfdf',
-    },
-  },
-  {
-    value: 'dark',
-    label: 'Dark',
-    colors: {
-      bg: '#1c1c1c',
-      sidebar: '#232323',
-      card: '#282828',
-      bar: '#1c1c1c',
-      primary: '#ebebeb',
-      muted: '#383838',
-      border: '#2e2e2e',
-    },
-  },
-  {
-    value: 'sepia',
-    label: 'Sepia',
-    colors: {
-      bg: '#251508',
-      sidebar: '#2c1a0c',
-      card: '#332010',
-      bar: '#251508',
-      primary: '#f0e4d0',
-      muted: '#3e2818',
-      border: '#4a3020',
-    },
-  },
-  {
-    value: 'midnight',
-    label: 'Midnight',
-    colors: {
-      bg: '#0d1120',
-      sidebar: '#111828',
-      card: '#161e30',
-      bar: '#0d1120',
-      primary: '#e8eaf0',
-      muted: '#1c2438',
-      border: '#1e2840',
-    },
-  },
-  {
-    value: 'crystal',
-    label: 'Crystal',
-    colors: {
-      bg: '#dff0ef',
-      sidebar: '#d0e8e8',
-      card: '#eaf6f6',
-      bar: '#c8e0e0',
-      primary: '#0c2830',
-      muted: '#b8d8da',
-      border: '#82b8bc',
-    },
-  },
-  {
-    value: 'forest',
-    label: 'Forest',
-    colors: {
-      bg: '#0d1a0f',
-      sidebar: '#112015',
-      card: '#15261a',
-      bar: '#0d1a0f',
-      primary: '#d8ede0',
-      muted: '#1a2e20',
-      border: '#1e3425',
-    },
-  },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'coffee', label: 'Coffee' },
+  { value: 'midnight', label: 'Midnight' },
+  { value: 'crystal', label: 'Crystal' },
+  { value: 'forest', label: 'Forest' },
 ];
 
-interface ThemePreviewProps {
-  colors: ThemePreviewColors;
+interface ThemeVars {
+  background: string;
+  card: string;
+  border: string;
+  muted: string;
+  mutedFg: string;
+  accent: string;
+  primary: string;
+  install: string;
+  uninstall: string;
+  update: string;
+  files: string;
 }
 
-function ThemePreview({ colors }: ThemePreviewProps) {
+const THEME_VARS: Record<PreviewTheme, ThemeVars> = {
+  light: {
+    background: 'oklch(0.98 0 0)',
+    card: 'oklch(1 0 0)',
+    border: 'oklch(0.88 0 0)',
+    muted: 'oklch(0.95 0 0)',
+    mutedFg: 'oklch(0.5 0 0)',
+    accent: '#dbeee8',
+    primary: '#0f8f68',
+    install: '#0f8f68',
+    uninstall: '#b03a3a',
+    update: '#3f6fd1',
+    files: '#d4af37',
+  },
+  dark: {
+    background: 'oklch(0.11 0 0)',
+    card: 'oklch(0.16 0 0)',
+    border: 'oklch(1 0 0 / 8%)',
+    muted: 'oklch(0.22 0 0)',
+    mutedFg: 'oklch(0.62 0 0)',
+    accent: '#0b3327',
+    primary: '#32e8b0',
+    install: '#32e8b0',
+    uninstall: '#b83a5d',
+    update: '#3a6bbf',
+    files: '#b58721',
+  },
+  crystal: {
+    background: 'oklch(0.96 0.028 192)',
+    card: 'oklch(0.98 0.022 192)',
+    border: 'oklch(0.77 0.036 192)',
+    muted: 'oklch(0.89 0.032 192)',
+    mutedFg: 'oklch(0.48 0.042 196)',
+    accent: '#b1ddde',
+    primary: 'oklch(0.56 0.082 208)',
+    install: '#0a9070',
+    uninstall: '#b82020',
+    update: '#1040c8',
+    files: '#b07808',
+  },
+  coffee: {
+    background: 'oklch(0.2 0.026 56)',
+    card: 'oklch(0.24 0.026 56)',
+    border: 'oklch(0.48 0.024 58 / 42%)',
+    muted: 'oklch(0.31 0.028 56)',
+    mutedFg: 'oklch(0.68 0.02 74)',
+    accent: '#5b3e28',
+    primary: 'oklch(0.76 0.066 74)',
+    install: '#58c89a',
+    uninstall: '#ce6666',
+    update: '#7da2d9',
+    files: '#d4a95f',
+  },
+  midnight: {
+    background: 'oklch(0.1 0.038 258)',
+    card: 'oklch(0.15 0.035 258)',
+    border: 'oklch(0.4 0.03 256 / 34%)',
+    muted: 'oklch(0.21 0.036 258)',
+    mutedFg: 'oklch(0.62 0.02 242)',
+    accent: '#1f314f',
+    primary: 'oklch(0.74 0.092 250)',
+    install: '#28d8a8',
+    uninstall: '#c83860',
+    update: '#4888e0',
+    files: '#b09020',
+  },
+  forest: {
+    background: 'oklch(0.11 0.028 152)',
+    card: 'oklch(0.16 0.028 152)',
+    border: 'oklch(1 0 0 / 9%)',
+    muted: 'oklch(0.2 0.028 152)',
+    mutedFg: 'oklch(0.58 0.018 148)',
+    accent: '#213e28',
+    primary: 'oklch(0.77 0.103 152)',
+    install: '#32e8b0',
+    uninstall: '#f07060',
+    update: '#60a8f8',
+    files: '#e8c040',
+  },
+};
+
+interface ThemePreviewProps {
+  theme: PreviewTheme;
+}
+
+function ThemePreview({ theme }: ThemePreviewProps) {
+  const v = THEME_VARS[theme];
+
   return (
     <div
-      className="relative w-full rounded-sm overflow-hidden"
+      className="relative w-full overflow-hidden rounded-sm"
       style={{
         aspectRatio: '16 / 10',
-        background: colors.bg,
-        border: `1px solid ${colors.border}`,
+        background: v.background,
+        border: `1px solid ${v.border}`,
       }}
     >
-      {/* Top bar */}
-      <div
-        className="absolute top-0 left-0 right-0 flex items-center gap-1 px-2"
-        style={{
-          height: '15%',
-          background: colors.bar,
-          borderBottom: `1px solid ${colors.border}`,
-        }}
-      >
+      <div className="absolute inset-0 flex flex-col gap-[3.5%] p-[5%]">
+        {/* Navbar */}
         <div
-          className="rounded-full"
-          style={{ width: 5, height: 5, background: '#f47067' }}
-        />
-        <div
-          className="rounded-full"
-          style={{ width: 5, height: 5, background: '#f1a33c' }}
-        />
-        <div
-          className="rounded-full"
-          style={{ width: 5, height: 5, background: '#58be40' }}
-        />
-        <div
-          className="ml-2 rounded-sm flex-1"
-          style={{ height: 6, background: colors.muted, maxWidth: '40%' }}
-        />
-        <div className="ml-auto flex items-center gap-1">
-          <div
-            className="rounded-[2px]"
-            style={{ width: 6, height: 6, background: '#2da44e' }}
-          />
-          <div
-            className="rounded-[2px]"
-            style={{ width: 6, height: 6, background: '#f85149' }}
-          />
-        </div>
-      </div>
-
-      {/* Body */}
-      <div
-        className="absolute bottom-0 left-0 right-0 flex"
-        style={{ top: '15%' }}
-      >
-        {/* Sidebar strip */}
-        <div
-          className="flex flex-col gap-1 p-1.5"
+          className="flex shrink-0 items-center justify-between rounded-[3px] px-1.5"
           style={{
-            width: '30%',
-            background: colors.sidebar,
-            borderRight: `1px solid ${colors.border}`,
+            height: '19%',
+            background: v.card,
+            border: `1px solid ${v.border}`,
           }}
         >
-          <div
-            className="rounded-sm"
-            style={{ height: 5, background: colors.primary, width: '70%' }}
-          />
-          <div
-            className="rounded-sm"
-            style={{ height: 5, background: colors.muted, width: '90%' }}
-          />
-          <div
-            className="rounded-sm"
-            style={{ height: 5, background: colors.muted, width: '60%' }}
-          />
-          <div
-            className="rounded-sm"
-            style={{ height: 5, background: colors.muted, width: '80%' }}
-          />
-        </div>
-
-        {/* Main content */}
-        <div className="flex-1 p-2 flex flex-col gap-1.5">
-          <div
-            className="rounded-sm"
-            style={{ height: 4, width: '42%', background: '#2da44e' }}
-          />
-          <div
-            className="rounded-sm"
-            style={{ height: 7, background: colors.muted, width: '65%' }}
-          />
-          <div
-            className="rounded-sm"
-            style={{
-              height: 20,
-              background: colors.card,
-              border: `1px solid ${colors.border}`,
-            }}
-          />
-          <div className="flex gap-1.5">
+          <div className="flex items-center gap-1">
             <div
-              className="rounded-sm flex-1"
+              className="rounded-[2px]"
+              style={{ width: 9, height: 6, background: v.primary }}
+            />
+            <div
+              className="rounded-[2px]"
+              style={{ width: 15, height: 3.5, background: v.muted }}
+            />
+            <div
+              className="rounded-[2px]"
               style={{
-                height: 12,
-                background: colors.card,
-                border: `1px solid ${colors.border}`,
+                width: 12,
+                height: 3.5,
+                background: v.muted,
+                opacity: 0.5,
               }}
             />
             <div
-              className="rounded-sm flex-1"
+              className="rounded-[2px]"
               style={{
-                height: 12,
-                background: colors.card,
-                border: `1px solid ${colors.border}`,
+                width: 10,
+                height: 3.5,
+                background: v.muted,
+                opacity: 0.5,
               }}
+            />
+          </div>
+          <div className="flex items-center gap-1">
+            <div
+              className="rounded-[2px]"
+              style={{ width: 13, height: 5, background: v.install }}
+            />
+            <div
+              className="rounded-[2px]"
+              style={{
+                width: 10,
+                height: 5,
+                background: v.muted,
+                opacity: 0.4,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Content — two-column matching the home page layout */}
+        <div className="flex flex-1 gap-[3.5%]">
+          {/* Left card */}
+          <div
+            className="flex flex-[3] flex-col gap-[5%] rounded-[3px] p-[5%]"
+            style={{ background: v.card, border: `1px solid ${v.border}` }}
+          >
+            <div
+              className="rounded-[1px]"
+              style={{ width: '45%', height: 3, background: v.primary }}
+            />
+            {(
+              [
+                [85, 0.35],
+                [70, 0.28],
+                [55, 0.22],
+              ] as [number, number][]
+            ).map(([w, o], i) => (
+              <div key={i} className="flex items-center gap-1">
+                <div
+                  className="shrink-0 rounded-[1px]"
+                  style={{ width: 8, height: 8, background: v.muted }}
+                />
+                <div
+                  className="rounded-[1px]"
+                  style={{
+                    width: `${w}%`,
+                    height: 3,
+                    background: v.mutedFg,
+                    opacity: o,
+                  }}
+                />
+              </div>
+            ))}
+            <div className="mt-auto flex gap-0.5">
+              {[v.install, v.update, v.files, v.uninstall].map((c, i) => (
+                <div
+                  key={i}
+                  className="rounded-[1px]"
+                  style={{ flex: 1, height: 4, background: c, opacity: 0.75 }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Right card */}
+          <div
+            className="flex flex-[2] flex-col gap-[5%] rounded-[3px] p-[5%]"
+            style={{ background: v.card, border: `1px solid ${v.border}` }}
+          >
+            <div
+              className="rounded-[1px]"
+              style={{ width: '65%', height: 3, background: v.primary }}
+            />
+            <div
+              className="flex-1 rounded-[2px]"
+              style={{ background: v.accent }}
             />
           </div>
         </div>
@@ -260,7 +285,7 @@ export function ThemePicker({ value, onChange, disabled }: ThemePickerProps) {
             )}
             aria-pressed={isSelected}
           >
-            <ThemePreview colors={option.colors} />
+            <ThemePreview theme={option.value} />
             <div className="flex items-center gap-2 px-0.5">
               <div
                 className={cn(

@@ -7,7 +7,7 @@ type FullTheme =
   | 'light'
   | 'system'
   | 'midnight'
-  | 'sepia'
+  | 'coffee'
   | 'forest'
   | 'crystal';
 
@@ -16,7 +16,7 @@ const VALID_THEMES = new Set<FullTheme>([
   'light',
   'system',
   'midnight',
-  'sepia',
+  'coffee',
   'forest',
   'crystal',
 ]);
@@ -37,10 +37,10 @@ function applyThemeClasses(
     theme === 'dark' ||
     theme === 'midnight' ||
     theme === 'forest' ||
-    theme === 'sepia';
+    theme === 'coffee';
   root.classList.toggle('dark', isDark);
   root.classList.toggle('midnight', theme === 'midnight');
-  root.classList.toggle('sepia', theme === 'sepia');
+  root.classList.toggle('coffee', theme === 'coffee');
   root.classList.toggle('forest', theme === 'forest');
   root.classList.toggle('crystal', theme === 'crystal');
 }

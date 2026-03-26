@@ -16,7 +16,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { listingPathToAssetType } from '@/lib/asset-types';
 import { isCompatible } from '@/lib/semver';
 import {
@@ -215,13 +215,17 @@ export function ProjectPage() {
         totalDownloads={totalDownloads}
       />
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(tab) => setProjectTab(projectKey, tab)}
-      >
-        <TabsList
+      <div className="space-y-5">
+        <ToggleGroup
+          type="single"
+          value={activeTab}
           variant="default"
-          className="h-auto rounded-xl border border-border/70 bg-background/90 p-0.5 shadow-sm backdrop-blur-md"
+          size="sm"
+          spacing={1}
+          onValueChange={(tab) => {
+            if (tab) setProjectTab(projectKey, tab);
+          }}
+          className="rounded-xl border border-border/70 bg-background p-0.5 shadow-sm"
         >
           {(
             [
@@ -236,18 +240,18 @@ export function ProjectPage() {
               icon: React.ComponentType<{ className?: string }>;
             }[]
           ).map(({ value, label, icon: Icon }) => (
-            <TabsTrigger
+            <ToggleGroupItem
               key={value}
               value={value}
-              className="h-10 flex-none rounded-lg px-3 text-sm font-semibold text-muted-foreground hover:bg-accent/45 hover:text-primary dark:hover:text-primary data-[state=active]:bg-accent/45 data-[state=active]:text-primary data-[state=active]:shadow-none dark:data-[state=active]:bg-accent/45 dark:data-[state=active]:text-primary"
+              className="h-9 rounded-lg px-3 text-sm font-semibold text-muted-foreground hover:bg-accent/45 hover:text-primary data-[state=on]:bg-accent/45 data-[state=on]:text-primary"
             >
               <Icon className="h-4 w-4" />
               {label}
-            </TabsTrigger>
+            </ToggleGroupItem>
           ))}
-        </TabsList>
+        </ToggleGroup>
 
-        <TabsContent value="description" className="mt-5">
+        {activeTab === 'description' && (
           <div className="rounded-xl border border-border bg-card p-5">
             <div className="prose prose-sm prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed">
               <Markdown
@@ -273,15 +277,13 @@ export function ProjectPage() {
               </Markdown>
             </div>
           </div>
-        </TabsContent>
-
-        {hasGallery && (
-          <TabsContent value="gallery" className="mt-5">
-            <ProjectGallery type={type} id={item.id} gallery={gallery} />
-          </TabsContent>
         )}
 
-        <TabsContent value="versions" className="mt-5">
+        {hasGallery && activeTab === 'gallery' && (
+          <ProjectGallery type={type} id={item.id} gallery={gallery} />
+        )}
+
+        {activeTab === 'versions' && (
           <ProjectVersions
             type={type}
             itemId={item.id}
@@ -291,8 +293,8 @@ export function ProjectPage() {
             error={versionsError}
             gameVersion={gameVersion}
           />
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }

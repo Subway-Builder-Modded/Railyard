@@ -10,6 +10,10 @@ func TestIsValidTheme(t *testing.T) {
 	require.True(t, isValidTheme(ThemeDark))
 	require.True(t, isValidTheme(ThemeLight))
 	require.True(t, isValidTheme(ThemeSystem))
+	require.True(t, isValidTheme(ThemeMidnight))
+	require.True(t, isValidTheme(ThemeCoffee))
+	require.True(t, isValidTheme(ThemeForest))
+	require.True(t, isValidTheme(ThemeCrystal))
 	require.False(t, isValidTheme(ThemeMode("custom")))
 }
 

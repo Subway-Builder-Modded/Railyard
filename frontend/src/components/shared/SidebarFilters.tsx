@@ -92,7 +92,7 @@ export function SidebarFilters({
               >
                 <span
                   className={cn(
-                    'mr-3 flex items-center gap-2 rounded-lg px-2',
+                    'mr-0.5 flex items-center gap-2 rounded-lg px-2',
                     'py-[clamp(0.38rem,0.8vw,0.52rem)]',
                     'text-[clamp(0.78rem,0.9vw,0.86rem)] font-semibold',
                     'transition-all duration-150',
@@ -118,7 +118,7 @@ export function SidebarFilters({
                 {isCurrent && (
                   <span
                     aria-hidden
-                    className="absolute right-1 top-0 h-full w-[5px] rounded-full bg-primary"
+                    className="absolute right-0 top-0 h-full w-[5px] rounded-full bg-primary"
                   />
                 )}
               </button>
