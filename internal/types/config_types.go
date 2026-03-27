@@ -68,6 +68,52 @@ type GithubTokenValidResponse struct {
 	Valid bool `json:"valid"`
 }
 
+// SubscriptionTypeResolver describes how a subscriptions map is linked to a managed directory.
+type SubscriptionTypeResolver struct {
+	Label          string
+	BasePath       string
+	ResolveSubPath func(subscriptionID string) (string, bool)
+}
+
+func SubscriptionTypeResolvers(
+	metroMakerDataPath string,
+	mapCodeByID map[string]string,
+) map[string]SubscriptionTypeResolver {
+	// maps are stored in subdirectories based on their city code
+	resolveMapCode := func(subscriptionID string) (string, bool) {
+		code, ok := mapCodeByID[subscriptionID]
+		if !ok || code == "" {
+			return "", false
+		}
+		return code, true
+	}
+	// mods are stored within subdirectories with names quivalent to their IDs
+	resolveIdentity := func(subscriptionID string) (string, bool) {
+		if strings.TrimSpace(subscriptionID) == "" {
+			return "", false
+		}
+		return subscriptionID, true
+	}
+
+	return map[string]SubscriptionTypeResolver{
+		"maps": {
+			Label:          "map",
+			BasePath:       paths.MetroMakerMapsDataPath(metroMakerDataPath),
+			ResolveSubPath: resolveMapCode,
+		},
+		"localMaps": {
+			Label:          "local map",
+			BasePath:       paths.MetroMakerMapsDataPath(metroMakerDataPath),
+			ResolveSubPath: resolveMapCode,
+		},
+		"mods": {
+			Label:          "mod",
+			BasePath:       paths.MetroMakerModsPath(metroMakerDataPath),
+			ResolveSubPath: resolveIdentity,
+		},
+	}
+}
+
 // AreConfigPathsConfigured checks if both required paths have been set in AppConfig
 func (c AppConfig) AreConfigPathsConfigured() bool {
 	return strings.TrimSpace(c.MetroMakerDataPath) != "" && strings.TrimSpace(c.ExecutablePath) != ""
@@ -77,7 +123,7 @@ func (c AppConfig) AreConfigPathsConfigured() bool {
 func (c AppConfig) GetModsFolderPath() string {
 	pathsValid, _ := c.ValidateConfigPaths()
 	if pathsValid {
-		return paths.JoinLocalPath(c.MetroMakerDataPath, "mods")
+		return paths.MetroMakerModsPath(c.MetroMakerDataPath)
 	}
 	return ""
 }
@@ -95,7 +141,7 @@ func (c AppConfig) GetThumbnailFolderPath() string {
 func (c AppConfig) GetMapsFolderPath() string {
 	pathsValid, _ := c.ValidateConfigPaths()
 	if pathsValid {
-		return paths.JoinLocalPath(c.MetroMakerDataPath, "cities", "data")
+		return paths.MetroMakerMapsDataPath(c.MetroMakerDataPath)
 	}
 	return ""
 }

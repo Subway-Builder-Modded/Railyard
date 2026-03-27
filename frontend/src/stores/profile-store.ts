@@ -68,6 +68,7 @@ interface ProfileState {
   initialized: boolean;
 
   initialize: () => Promise<void>;
+  refreshActiveProfile: () => Promise<void>;
   isSubscribed: (type: AssetType, id: string) => boolean;
   theme: () => string;
   defaultPerPage: () => number;
@@ -97,11 +98,8 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     if (get().initialized) return;
     set({ loading: true, error: null });
     try {
-      const result = await GetActiveProfile();
-      if (result.status !== 'success') {
-        throw new Error(result.message || 'Failed to load active profile');
-      }
-      set({ profile: result.profile, initialized: true, loading: false });
+      await get().refreshActiveProfile();
+      set({ initialized: true, loading: false });
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : String(err),
@@ -111,12 +109,25 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     }
   },
 
+  refreshActiveProfile: async () => {
+    const result = await GetActiveProfile();
+    if (result.status !== 'success') {
+      throw new Error(result.message || 'Failed to load active profile');
+    }
+    set({ profile: result.profile, error: null });
+  },
+
   isSubscribed: (type: AssetType, id: string) => {
     const profile = get().profile;
     if (!profile?.subscriptions) return false;
-    const subs =
-      type === 'mod' ? profile.subscriptions.mods : profile.subscriptions.maps;
-    return subs ? id in subs : false;
+    if (type === 'mod') {
+      const modSubscriptions = profile.subscriptions.mods ?? {};
+      return id in modSubscriptions;
+    }
+
+    const mapSubscriptions = profile.subscriptions.maps ?? {};
+    const localMapSubscriptions = profile.subscriptions.localMaps ?? {};
+    return id in mapSubscriptions || id in localMapSubscriptions;
   },
 
   theme: () => resolveUIPreferences(get().profile).theme,
@@ -140,16 +151,8 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
 
   updateSubscription: async (type, id, action, version) => {
     // Always resolve a fresh profile to avoid stale IDs from cached state
-    const activeResult = await GetActiveProfile();
-    if (activeResult.status !== 'success') {
-      throw new Error(
-        activeResult.message || 'Failed to resolve active profile',
-      );
-    }
-    const freshProfile = activeResult.profile;
-
     const request = new types.UpdateSubscriptionsRequest({
-      profileId: freshProfile.id,
+      profileId: get().profile?.id,
       assets: { [id]: new types.SubscriptionUpdateItem({ version, type }) },
       action,
       applyMode: 'persist_and_sync',

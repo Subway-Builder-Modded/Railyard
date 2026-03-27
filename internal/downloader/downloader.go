@@ -283,7 +283,7 @@ func (d *Downloader) operationKey(action operationAction, assetType types.AssetT
 
 // getModPath returns the filesystem path for installed mods.
 func (d *Downloader) getModPath() string {
-	return paths.JoinLocalPath(d.Config.Cfg.MetroMakerDataPath, "mods")
+	return paths.MetroMakerModsPath(d.Config.Cfg.MetroMakerDataPath)
 }
 
 func (d *Downloader) logStatus(status types.Status, message string, attrs ...any) types.GenericResponse {
@@ -391,7 +391,7 @@ func (d *Downloader) uninstallError(assetType types.AssetType, assetID string, e
 
 // getMapDataPath returns the filesystem path for installed map data.
 func (d *Downloader) getMapDataPath() string {
-	return paths.JoinLocalPath(d.Config.Cfg.MetroMakerDataPath, "cities", "data")
+	return paths.MetroMakerMapsDataPath(d.Config.Cfg.MetroMakerDataPath)
 }
 
 // getMapTilePath returns the filesystem path for installed map tiles.

@@ -112,7 +112,7 @@ func TestBootstrapInstalledStateFromProfileSkipsModOnVersionMismatch(t *testing.
 	reg := NewRegistry(testutil.TestLogSink{}, cfg)
 	require.NoError(t, reg.fetchFromDisk())
 
-	modPath := paths.JoinLocalPath(cfg.Cfg.MetroMakerDataPath, "mods", "mod-a")
+	modPath := paths.JoinLocalPath(paths.MetroMakerModsPath(cfg.Cfg.MetroMakerDataPath), "mod-a")
 	require.NoError(t, os.MkdirAll(modPath, 0o755))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(modPath, constants.RailyardAssetMarker), []byte(""), 0o644))
 	require.NoError(t, files.WriteJSON(
@@ -191,7 +191,7 @@ func TestBootstrapInstalledStateFromProfileSuccessOnEmptyState(t *testing.T) {
 	reg := NewRegistry(testutil.TestLogSink{}, cfg)
 	require.NoError(t, reg.fetchFromDisk())
 
-	modPath := paths.JoinLocalPath(cfg.Cfg.MetroMakerDataPath, "mods", "mod-a")
+	modPath := paths.JoinLocalPath(paths.MetroMakerModsPath(cfg.Cfg.MetroMakerDataPath), "mod-a")
 	require.NoError(t, os.MkdirAll(modPath, 0o755))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(modPath, constants.RailyardAssetMarker), []byte(""), 0o644)) // Add asset marker
 	require.NoError(t, files.WriteJSON(
@@ -200,7 +200,7 @@ func TestBootstrapInstalledStateFromProfileSuccessOnEmptyState(t *testing.T) {
 		types.MetroMakerModManifest{Version: "1.0.0"},
 	))
 
-	mapPath := paths.JoinLocalPath(cfg.Cfg.MetroMakerDataPath, "cities", "data", "AAA")
+	mapPath := paths.JoinLocalPath(paths.MetroMakerMapsDataPath(cfg.Cfg.MetroMakerDataPath), "AAA")
 	require.NoError(t, os.MkdirAll(mapPath, 0o755))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, constants.RailyardAssetMarker), []byte(""), 0o644)) // Add asset marker
 	writeInstalledMapFiles(t, cfg.Cfg.GetMapsFolderPath(), paths.TilesPath(), "AAA", types.ConfigData{
@@ -392,7 +392,7 @@ func TestBootstrapInstalledStateFromProfileKeepsRemoteMapWhenDownloadedDataFiles
 	reg := NewRegistry(testutil.TestLogSink{}, cfg)
 	require.NoError(t, reg.fetchFromDisk())
 
-	mapPath := paths.JoinLocalPath(cfg.Cfg.MetroMakerDataPath, "cities", "data", "AAA")
+	mapPath := paths.JoinLocalPath(paths.MetroMakerMapsDataPath(cfg.Cfg.MetroMakerDataPath), "AAA")
 	require.NoError(t, os.MkdirAll(mapPath, 0o755))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, constants.RailyardAssetMarker), []byte(""), 0o644))
 	require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, "buildings_index.json.gz"), []byte("{}"), 0o644))

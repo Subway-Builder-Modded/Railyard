@@ -104,13 +104,13 @@ func materializeInstalledAssets(
 ) {
 	t.Helper()
 	for _, mod := range mods {
-		modPath := paths.JoinLocalPath(cfg.Cfg.MetroMakerDataPath, "mods", mod.ID)
+		modPath := paths.JoinLocalPath(paths.MetroMakerModsPath(cfg.Cfg.MetroMakerDataPath), mod.ID)
 		require.NoError(t, os.MkdirAll(modPath, 0o755))
 		require.NoError(t, os.WriteFile(paths.JoinLocalPath(modPath, constants.RailyardAssetMarker), []byte(""), 0o644))
 	}
 
 	for _, m := range maps {
-		mapPath := paths.JoinLocalPath(cfg.Cfg.MetroMakerDataPath, "cities", "data", m.MapConfig.Code)
+		mapPath := paths.JoinLocalPath(paths.MetroMakerMapsDataPath(cfg.Cfg.MetroMakerDataPath), m.MapConfig.Code)
 		require.NoError(t, os.MkdirAll(mapPath, 0o755))
 		require.NoError(t, os.WriteFile(paths.JoinLocalPath(mapPath, constants.RailyardAssetMarker), []byte(""), 0o644))
 

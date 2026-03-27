@@ -51,15 +51,17 @@ func (s *UserProfiles) CreateProfileArchive(profileID string) types.GenericRespo
 		return setupErr
 	}
 
-	if mapsErr, ok := s.copyMapsToArchive(tempDir, profileID); !ok {
+	profileMaps, profileMods := s.collectInstalledAssetsForProfile(profile)
+
+	if mapsErr, ok := s.copyMapsToArchive(tempDir, profileID, profileMaps); !ok {
 		return mapsErr
 	}
 
-	if modsErr, ok := s.copyModsToArchive(tempDir, profileID); !ok {
+	if modsErr, ok := s.copyModsToArchive(tempDir, profileID, profileMods); !ok {
 		return modsErr
 	}
 
-	if metadataErr, ok := s.writeInstalledMetadata(tempDir, profileID); !ok {
+	if metadataErr, ok := s.writeInstalledMetadata(tempDir, profileID, profileMaps, profileMods); !ok {
 		return metadataErr
 	}
 	if subscriptionsErr, ok := s.writeProfileSubscriptionsMetadata(tempDir, profile.Subscriptions, profileID); !ok {
@@ -86,8 +88,8 @@ func (s *UserProfiles) setupArchiveDirectories(tempDir, profileID string) (types
 }
 
 // copyMapsToArchive copies installed maps data to the archive directory
-func (s *UserProfiles) copyMapsToArchive(tempDir, profileID string) (types.GenericResponse, bool) {
-	for _, mapInfo := range s.Registry.GetInstalledMaps() {
+func (s *UserProfiles) copyMapsToArchive(tempDir, profileID string, maps []types.InstalledMapInfo) (types.GenericResponse, bool) {
+	for _, mapInfo := range maps {
 		code := mapInfo.MapConfig.Code
 		mapDir := paths.JoinLocalPath(tempDir, "maps", code)
 
@@ -96,7 +98,7 @@ func (s *UserProfiles) copyMapsToArchive(tempDir, profileID string) (types.Gener
 		}
 
 		// Copy map data
-		dataPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "cities", "data", code)
+		dataPath := paths.JoinLocalPath(paths.MetroMakerMapsDataPath(s.Config.Cfg.MetroMakerDataPath), code)
 		if err := files.CopyDirFromFS(paths.JoinLocalPath(mapDir, "data"), os.DirFS(dataPath)); err != nil {
 			return s.archiveError("Failed to copy map data", "failed to copy map data", err, "profile_id", profileID, "map_id", code)
 		}
@@ -117,8 +119,8 @@ func (s *UserProfiles) copyMapsToArchive(tempDir, profileID string) (types.Gener
 }
 
 // copyModsToArchive copies installed mods data to the archive directory
-func (s *UserProfiles) copyModsToArchive(tempDir, profileID string) (types.GenericResponse, bool) {
-	for _, modInfo := range s.Registry.GetInstalledMods() {
+func (s *UserProfiles) copyModsToArchive(tempDir, profileID string, mods []types.InstalledModInfo) (types.GenericResponse, bool) {
+	for _, modInfo := range mods {
 		modDest := paths.JoinLocalPath(tempDir, "mods", modInfo.ID)
 
 		if err := os.MkdirAll(modDest, os.ModePerm); err != nil {
@@ -134,15 +136,51 @@ func (s *UserProfiles) copyModsToArchive(tempDir, profileID string) (types.Gener
 }
 
 // writeInstalledMetadata writes the installed maps and mods JSON to the archive directory
-func (s *UserProfiles) writeInstalledMetadata(tempDir, profileID string) (types.GenericResponse, bool) {
-	if err := files.WriteArchiveJSON(tempDir, "installed_maps.json", "installed maps", s.Registry.GetInstalledMaps()); err != nil {
+func (s *UserProfiles) writeInstalledMetadata(
+	tempDir, profileID string,
+	maps []types.InstalledMapInfo,
+	mods []types.InstalledModInfo,
+) (types.GenericResponse, bool) {
+	if err := files.WriteArchiveJSON(tempDir, "installed_maps.json", "installed maps", maps); err != nil {
 		return s.archiveError("Failed to write installed maps file", "failed to write installed maps file", err, "profile_id", profileID)
 	}
 
-	if err := files.WriteArchiveJSON(tempDir, "installed_mods.json", "installed mods", s.Registry.GetInstalledMods()); err != nil {
+	if err := files.WriteArchiveJSON(tempDir, "installed_mods.json", "installed mods", mods); err != nil {
 		return s.archiveError("Failed to write installed mods file", "failed to write installed mods file", err, "profile_id", profileID)
 	}
 	return types.GenericResponse{}, true
+}
+
+// collectInstalledAssetsForProfile filters the full list of installed maps and mods to only those that are subscribed to by the profile.
+func (s *UserProfiles) collectInstalledAssetsForProfile(profile types.UserProfile) ([]types.InstalledMapInfo, []types.InstalledModInfo) {
+	mapIDs := make(map[string]struct{}, len(profile.Subscriptions.Maps)+len(profile.Subscriptions.LocalMaps))
+	for mapID := range profile.Subscriptions.Maps {
+		mapIDs[mapID] = struct{}{}
+	}
+	for localMapID := range profile.Subscriptions.LocalMaps {
+		mapIDs[localMapID] = struct{}{}
+	}
+
+	modIDs := make(map[string]struct{}, len(profile.Subscriptions.Mods))
+	for modID := range profile.Subscriptions.Mods {
+		modIDs[modID] = struct{}{}
+	}
+
+	filteredMaps := make([]types.InstalledMapInfo, 0, len(mapIDs))
+	for _, installedMap := range s.Registry.GetInstalledMaps() {
+		if _, ok := mapIDs[installedMap.ID]; ok {
+			filteredMaps = append(filteredMaps, installedMap)
+		}
+	}
+
+	filteredMods := make([]types.InstalledModInfo, 0, len(modIDs))
+	for _, installedMod := range s.Registry.GetInstalledMods() {
+		if _, ok := modIDs[installedMod.ID]; ok {
+			filteredMods = append(filteredMods, installedMod)
+		}
+	}
+
+	return filteredMaps, filteredMods
 }
 
 // writeProfileSubscriptionsMetadata writes the profile's subscriptions JSON to the archive directory for use in future freshness checks
@@ -235,7 +273,10 @@ func (s *UserProfiles) restoreMapsFromArchive(tempDir, profileID string) (types.
 		code := mapInfo.MapConfig.Code
 
 		// Create city data directory
-		cityDataPath := paths.JoinLocalPath(s.Config.Cfg.MetroMakerDataPath, "cities", "data", code)
+		cityDataPath := paths.JoinLocalPath(paths.MetroMakerMapsDataPath(s.Config.Cfg.MetroMakerDataPath), code)
+		if err := clearRestoreDestination(cityDataPath); err != nil {
+			return s.archiveError("Failed to clear city data before restore", "failed to clear city data before restore", err, "profile_id", profileID, "map_id", code)
+		}
 		// Copy city data
 		archiveMapDataPath := paths.JoinLocalPath(tempDir, "maps", code, "data")
 		if err := files.CopyDirFromFS(cityDataPath, os.DirFS(archiveMapDataPath)); err != nil {
@@ -263,6 +304,9 @@ func (s *UserProfiles) restoreMapsFromArchive(tempDir, profileID string) (types.
 func (s *UserProfiles) restoreModsFromArchive(tempDir, profileID string) (types.GenericResponse, bool) {
 	for _, modInfo := range s.Registry.GetInstalledMods() {
 		modDest := paths.JoinLocalPath(s.Config.Cfg.GetModsFolderPath(), modInfo.ID)
+		if err := clearRestoreDestination(modDest); err != nil {
+			return s.archiveError("Failed to clear mod data before restore", "failed to clear mod data before restore", err, "profile_id", profileID, "mod_id", modInfo.ID)
+		}
 
 		archiveModDataPath := paths.JoinLocalPath(tempDir, "mods", modInfo.ID, "data")
 		if err := files.CopyDirFromFS(modDest, os.DirFS(archiveModDataPath)); err != nil {
@@ -312,4 +356,12 @@ func areSubscriptionsEqual(left types.Subscriptions, right types.Subscriptions) 
 	return utils.MapEqual(left.Maps, right.Maps) &&
 		utils.MapEqual(left.LocalMaps, right.LocalMaps) &&
 		utils.MapEqual(left.Mods, right.Mods)
+}
+
+// clearRestoreDestination removes the existing directory at the destination path to prepare for restoring data from the archive to avoid file conflicts/collisions.
+func clearRestoreDestination(dirPath string) error {
+	if err := os.RemoveAll(dirPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
 }

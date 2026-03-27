@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"railyard/internal/constants"
 	"railyard/internal/files"
 	"railyard/internal/logger"
 	"railyard/internal/paths"
@@ -104,6 +105,105 @@ func (s *UserProfiles) GetActiveProfile() types.UserProfileResult {
 		s.Logger.MultipleError("Failed to get active profile", logger.AsErrors(result.Errors), "active_profile_id", s.state.ActiveProfileID)
 	}
 	return result
+}
+
+func (s *UserProfiles) ListProfiles() types.UserProfilesListResult {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.logRequest("ListProfiles")
+	if !s.loaded {
+		return types.UserProfilesListResult{
+			GenericResponse: types.ErrorResponse("Profiles state not loaded"),
+			Profiles:        []types.UserProfile{},
+			ArchiveSizes:    map[string]int64{},
+			Errors: []types.UserProfilesError{
+				userProfilesError("", "", "", types.ErrorProfilesNotLoaded, "", "Profiles state not loaded"),
+			},
+		}
+	}
+
+	profiles := make([]types.UserProfile, 0, len(s.state.Profiles))
+	for _, profile := range s.state.Profiles {
+		profiles = append(profiles, profile)
+	}
+
+	archiveSizes := make(map[string]int64, len(profiles))
+	subscriptionSizes := map[string]int64{}
+	for _, profile := range profiles {
+		// check the archive path of the profile if it exists
+		info, err := os.Stat(profileArchivePath(profile.UUID))
+		if err == nil {
+			archiveSizes[profile.ID] = info.Size()
+			continue
+		}
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		s.Logger.Warn(
+			"Failed to stat profile archive while listing profiles",
+			"profile_id", profile.ID,
+			"archive_path", profileArchivePath(profile.UUID),
+			"error", err,
+		)
+	}
+	// active profile generally does not have an archive path as it is written on profile swap, so we instead resolve the size of all installed subscriptions in their respective folders to give an estimate of the profile size on disk
+	activeProfile, ok := s.state.Profiles[s.state.ActiveProfileID]
+	if ok {
+		size, err := s.activeProfileSubscriptionsSize(activeProfile)
+		if err != nil {
+			s.Logger.Warn(
+				"Failed to resolve active profile subscriptions size while listing profiles",
+				"profile_id", activeProfile.ID,
+				"error", err,
+			)
+		} else {
+			subscriptionSizes[activeProfile.ID] = size
+		}
+	}
+
+	return types.UserProfilesListResult{
+		GenericResponse:   types.SuccessResponse("Profiles resolved"),
+		ActiveProfileID:   s.state.ActiveProfileID,
+		Profiles:          profiles,
+		ArchiveSizes:      archiveSizes,
+		SubscriptionSizes: subscriptionSizes,
+		Errors:            []types.UserProfilesError{},
+	}
+}
+
+func (s *UserProfiles) activeProfileSubscriptionsSize(profile types.UserProfile) (int64, error) {
+	metroMakerDataPath := s.Config.Cfg.MetroMakerDataPath
+	if metroMakerDataPath == "" {
+		return 0, nil
+	}
+
+	mapCodeByID := map[string]string{}
+	for _, installed := range s.Registry.GetInstalledMaps() {
+		mapCodeByID[installed.ID] = installed.MapConfig.Code
+	}
+	resolvers := types.SubscriptionTypeResolvers(metroMakerDataPath, mapCodeByID)
+
+	var total int64
+	var sizeErr error
+	// Iterate over each subscription type and sum the sizes of their respective subscription directories on disk, if they exist.
+	profile.Subscriptions.ForEachSubscriptionType(func(subscriptionType string, entries map[string]string) bool {
+		for subscriptionID := range entries {
+			size, handled, err := managedSubscriptionDirectorySize(subscriptionType, subscriptionID, resolvers)
+			if err != nil {
+				sizeErr = err
+				return false
+			}
+			if handled {
+				total += size
+			}
+		}
+		return true
+	})
+	if sizeErr != nil {
+		return 0, sizeErr
+	}
+
+	return total, nil
 }
 
 func (s *UserProfiles) resolveActiveProfile() types.UserProfileResult {
@@ -275,14 +375,12 @@ func (s *UserProfiles) CreateProfile(req types.CreateProfileRequest) types.UserP
 	}
 
 	// enforce unique profile names (case-insensitive)
-	for _, profile := range s.state.Profiles {
-		if strings.EqualFold(strings.TrimSpace(profile.Name), name) {
-			return profileStateErrorResult(
-				"Profile name already exists",
-				types.UserProfile{},
-				userProfilesError("", "", "", types.ErrorDuplicateName, "", fmt.Sprintf("Profile name %q already exists", name)),
-			)
-		}
+	if hasDuplicateProfileName(s.state.Profiles, name, "") {
+		return profileStateErrorResult(
+			"Profile name already exists",
+			types.UserProfile{},
+			userProfilesError("", "", "", types.ErrorDuplicateName, "", fmt.Sprintf("Profile name %q already exists", name)),
+		)
 	}
 
 	nextState := copyProfilesState(s.state)
@@ -302,6 +400,52 @@ func (s *UserProfiles) CreateProfile(req types.CreateProfileRequest) types.UserP
 	return types.UserProfileResult{
 		GenericResponse: types.SuccessResponse("Profile created"),
 		Profile:         validatedState.Profiles[profile.ID],
+		Errors:          []types.UserProfilesError{},
+	}
+}
+
+func (s *UserProfiles) RenameProfile(profileID string, name string) types.UserProfileResult {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.logRequest("RenameProfile", "profile_id", profileID)
+
+	profileID = strings.TrimSpace(profileID)
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return profileStateErrorResult(
+			"Invalid profile name",
+			types.UserProfile{},
+			userProfilesError(profileID, "", "", types.ErrorInvalidProfileName, "", "Profile name is required"),
+		)
+	}
+
+	profile, exists := s.state.Profiles[profileID]
+	if !exists {
+		err := profileNotFoundError(profileID)
+		return profileStateErrorResult("Profile not found", types.UserProfile{}, err)
+	}
+
+	if hasDuplicateProfileName(s.state.Profiles, name, profileID) {
+		return profileStateErrorResult(
+			"Profile name already exists",
+			profile,
+			userProfilesError(profileID, "", "", types.ErrorDuplicateName, "", fmt.Sprintf("Profile name %q already exists", name)),
+		)
+	}
+
+	nextState := copyProfilesState(s.state)
+	profile.Name = name
+	nextState.Profiles[profileID] = profile
+
+	validatedState, validationErrResult := s.validateAndPersistProfileState(nextState, "rename", profileID, profile)
+	if validationErrResult != nil {
+		return *validationErrResult
+	}
+
+	s.setState(validatedState)
+	return types.UserProfileResult{
+		GenericResponse: types.SuccessResponse("Profile renamed"),
+		Profile:         validatedState.Profiles[profileID],
 		Errors:          []types.UserProfilesError{},
 	}
 }
@@ -381,7 +525,7 @@ func (s *UserProfiles) SwapProfile(req types.SwapProfileRequest) types.UserProfi
 	if currentErrResult != nil {
 		return *currentErrResult
 	}
-	// Create a new archive for the current profile before swapping, unless the archive is already fresh, to ensure that there is a backup for the profile in case we need to restore it in the future
+	// Create/update archive for the current profile before swapping unless already fresh.
 	if !isCurrentArchiveFresh {
 		archiveResult := s.CreateProfileArchive(currentProfile.ID)
 		if archiveResult.Status == types.ResponseError {
@@ -393,12 +537,13 @@ func (s *UserProfiles) SwapProfile(req types.SwapProfileRequest) types.UserProfi
 			)
 		}
 	}
-	// Validate target profile archive status
+
+	// Validate target profile archive status.
 	isTargetArchiveFresh, targetErrResult := s.resolveProfileArchiveFreshness(targetProfile, currentProfile, "target")
 	if targetErrResult != nil {
 		return *targetErrResult
 	}
-	// If the target archive is not fresh, request a confirmation from the frontend before proceeding with the swap, as swapping to a profile with a stale or missing archive would result in potential download and sync operations post-swap
+	// If the target archive is not fresh, request confirmation before proceeding.
 	if !isTargetArchiveFresh && !req.ForceSwap {
 		errorType := types.ErrorArchiveStale
 		exists, statErr := profileArchiveExists(targetProfile.UUID)
@@ -421,6 +566,19 @@ func (s *UserProfiles) SwapProfile(req types.SwapProfileRequest) types.UserProfi
 			},
 		}
 	}
+	// For empty target profiles, force-swap should create a deterministic empty archive and restore from it.
+	if !isTargetArchiveFresh && req.ForceSwap && !profileHasSubscriptions(targetProfile) {
+		archiveResult := s.CreateProfileArchive(targetProfile.ID)
+		if archiveResult.Status == types.ResponseError {
+			s.Logger.Error("Failed to create target profile archive before swap", errors.New(archiveResult.Message), "profile_id", targetProfile.ID)
+			return profileStateErrorResult(
+				"Failed to create target profile archive before swap",
+				currentProfile,
+				userProfilesError(targetProfile.ID, "", "", types.ErrorArchiveUpdate, "", "Failed to create target profile archive before swap: "+archiveResult.Message),
+			)
+		}
+		isTargetArchiveFresh = true
+	}
 
 	// Proceed with the swap once we determine that both the current and target profile archives are in a known state (and after confirming with the user if the target archive is not fresh)
 	swappedProfile, persistErr := s.setActiveProfile(targetProfile.ID)
@@ -433,7 +591,7 @@ func (s *UserProfiles) SwapProfile(req types.SwapProfileRequest) types.UserProfi
 		)
 	}
 
-	// If the target archive is fresh, we can skip the restore/sync steps
+	// If the target archive is fresh, we can restore from archive.
 	if isTargetArchiveFresh {
 		restoreResult := s.RestoreProfileArchive(targetProfile.ID)
 		if restoreResult.Status == types.ResponseError {
@@ -589,6 +747,61 @@ func nextGeneratedProfileID(profiles map[string]types.UserProfile) string {
 		}
 	}
 	return fmt.Sprintf("profile_%d", maxID+1)
+}
+
+// hasDuplicateProfileName checks if there is another profile with the same name (case-insensitive) in the provided profiles map, excluding the profile with excludeProfileID (usually the profile being updated/renamed)
+func hasDuplicateProfileName(profiles map[string]types.UserProfile, name string, excludeProfileID string) bool {
+	for profileID, profile := range profiles {
+		if excludeProfileID != "" && profileID == excludeProfileID {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(profile.Name), name) {
+			return true
+		}
+	}
+	return false
+}
+
+// profileHasSubscriptions checks if the given profile has any subscriptions
+func profileHasSubscriptions(profile types.UserProfile) bool { return profile.Subscriptions.HasAny() }
+
+func managedSubscriptionDirectorySize(subscriptionType string, subscriptionID string, bucketSpecs map[string]types.SubscriptionTypeResolver) (int64, bool, error) {
+	spec, ok := bucketSpecs[subscriptionType]
+	if !ok {
+		return 0, false, nil
+	}
+
+	subPath, ok := spec.ResolveSubPath(subscriptionID)
+	if !ok || subPath == "" {
+		return 0, false, nil
+	}
+
+	assetPath := paths.JoinLocalPath(spec.BasePath, subPath)
+	size, err := files.ManagedDirectorySize(assetPath, constants.RailyardAssetMarker)
+	if err != nil {
+		return 0, true, fmt.Errorf("failed to resolve managed size for %s %q: %w", spec.Label, subscriptionID, err)
+	}
+
+	if subscriptionType == "maps" || subscriptionType == "localMaps" {
+		tilePath := paths.JoinLocalPath(paths.TilesPath(), subPath+".pmtiles")
+		tileSize, tileErr := optionalFileSize(tilePath)
+		if tileErr != nil {
+			return 0, true, fmt.Errorf("failed to resolve managed size for map tiles %q: %w", subscriptionID, tileErr)
+		}
+		size += tileSize
+	}
+	return size, true, nil
+}
+
+func optionalFileSize(filePath string) (int64, error) {
+	info, err := os.Stat(filePath)
+	if err == nil {
+		return info.Size(), nil
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return 0, nil
+	}
+	return 0, err
 }
 
 func (s *UserProfiles) swapProfilesSnapshot(profileID string) (types.UserProfile, types.UserProfile, types.UserProfileResult, bool) {

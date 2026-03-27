@@ -106,6 +106,16 @@ func MetroMakerTmpStagingPath(metroMakerDataPath string) string {
 	return JoinLocalPath(metroMakerDataPath, MetroMakerRailyardDirName, StagingDirName)
 }
 
+// MetroMakerModsPath returns the mods directory under MetroMaker data root.
+func MetroMakerModsPath(metroMakerDataPath string) string {
+	return JoinLocalPath(metroMakerDataPath, "mods")
+}
+
+// MetroMakerMapsDataPath returns the cities/data directory under MetroMaker data root.
+func MetroMakerMapsDataPath(metroMakerDataPath string) string {
+	return JoinLocalPath(metroMakerDataPath, "cities", "data")
+}
+
 // NormalizeLocalPath normalizes a local filesystem path for the current OS.
 // It trims whitespace and replaces both backslashes and forward slashes with os.PathSeparator
 func NormalizeLocalPath(input string) string {

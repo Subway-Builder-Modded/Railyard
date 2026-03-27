@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/google/uuid"
@@ -67,6 +68,54 @@ type Subscriptions struct {
 	Maps      map[string]string `json:"maps"`
 	LocalMaps map[string]string `json:"localMaps"`
 	Mods      map[string]string `json:"mods"`
+}
+
+// ForEachSubscriptionType iterates over all map[string]string fields on Subscriptions.
+// It uses the field's JSON name as the subscription type key when available.
+func (s Subscriptions) ForEachSubscriptionType(fn func(subscriptionType string, entries map[string]string) bool) {
+	subscriptionsValue := reflect.ValueOf(s)
+	subscriptionsType := subscriptionsValue.Type()
+	for index := 0; index < subscriptionsType.NumField(); index++ {
+		fieldType := subscriptionsType.Field(index)
+		fieldValue := subscriptionsValue.Field(index)
+
+		if fieldValue.Kind() != reflect.Map {
+			continue
+		}
+		if fieldValue.Type().Key().Kind() != reflect.String || fieldValue.Type().Elem().Kind() != reflect.String {
+			continue
+		}
+
+		entries, ok := fieldValue.Interface().(map[string]string)
+		if !ok {
+			continue
+		}
+
+		subscriptionType := fieldType.Name
+		if jsonTag, hasTag := fieldType.Tag.Lookup("json"); hasTag {
+			jsonName := strings.Split(jsonTag, ",")[0]
+			if jsonName != "" && jsonName != "-" {
+				subscriptionType = jsonName
+			}
+		}
+
+		if !fn(subscriptionType, entries) {
+			return
+		}
+	}
+}
+
+// HasAny reports whether any subscription bucket contains at least one subscription.
+func (s Subscriptions) HasAny() bool {
+	hasAny := false
+	s.ForEachSubscriptionType(func(_ string, entries map[string]string) bool {
+		if len(entries) > 0 {
+			hasAny = true
+			return false
+		}
+		return true
+	})
+	return hasAny
 }
 
 type SubscriptionAction string
@@ -216,6 +265,15 @@ type UserProfileResult struct {
 	GenericResponse
 	Profile UserProfile         `json:"profile"`
 	Errors  []UserProfilesError `json:"errors"`
+}
+
+type UserProfilesListResult struct {
+	GenericResponse
+	ActiveProfileID   string              `json:"activeProfileId"`
+	Profiles          []UserProfile       `json:"profiles"`
+	ArchiveSizes      map[string]int64    `json:"archiveSizes"`
+	SubscriptionSizes map[string]int64    `json:"subscriptionSizes"`
+	Errors            []UserProfilesError `json:"errors"`
 }
 
 type UpdateSubscriptionsResult struct {

@@ -13,6 +13,7 @@ import { ChangelogPage } from '@/pages/ChangelogPage';
 import { HomePage } from '@/pages/HomePage';
 import { LibraryPage } from '@/pages/LibraryPage';
 import { LogsPage } from '@/pages/LogsPage';
+import { ProfilesPage } from '@/pages/ProfilesPage';
 import { ProjectPage } from '@/pages/ProjectPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { useConfigStore } from '@/stores/config-store';
@@ -252,6 +253,7 @@ function App() {
               component={ChangelogPage}
             />
             <Route path="/project/:type/:id" component={ProjectPage} />
+            <Route path="/profiles" component={ProfilesPage} />
             <Route path="/logs" component={LogsPage} />
             <Route path="/settings" component={SettingsPage} />
           </Switch>

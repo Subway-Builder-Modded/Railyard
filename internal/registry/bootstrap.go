@@ -1,10 +1,7 @@
 package registry
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
-	"os"
 
 	"railyard/internal/constants"
 	"railyard/internal/files"
@@ -210,16 +207,28 @@ func modManifestVersionMatches(modPath string, expectedVersion string) (bool, er
 
 // hasAssetMarker checks for the presence of the .railyard_asset marker file in the expected location for the given asset, logging a warning if it is missing to avoid bootstrapping assets that may not be managed by Railyard or are corrupted/missing
 func (r *Registry) hasAssetMarker(assetType types.AssetType, assetID string, installRoot string, markerPathPart string) bool {
-	markerPath := paths.JoinLocalPath(installRoot, markerPathPart, constants.RailyardAssetMarker)
-	_, err := os.Stat(markerPath)
-	if !errors.Is(err, fs.ErrNotExist) {
+	assetDirPath := paths.JoinLocalPath(installRoot, markerPathPart)
+	markerPath := paths.JoinLocalPath(assetDirPath, constants.RailyardAssetMarker)
+	hasMarker, err := files.HasAssetMarker(assetDirPath, constants.RailyardAssetMarker)
+	if err != nil {
+		r.logger.Warn(
+			"Skipping subscribed asset during installed-state bootstrap: failed to verify marker",
+			"asset_type", assetType,
+			"asset_id", assetID,
+			"marker_path", markerPath,
+			"error", err,
+		)
+		return false
+	}
+	if hasMarker {
 		return true
 	}
-	attrs := []any{
+
+	r.logger.Warn(
+		"Skipping subscribed asset during installed-state bootstrap: missing marker",
 		"asset_type", assetType,
 		"asset_id", assetID,
 		"marker_path", markerPath,
-	}
-	r.logger.Warn("Skipping subscribed asset during installed-state bootstrap: missing marker", attrs...)
+	)
 	return false
 }

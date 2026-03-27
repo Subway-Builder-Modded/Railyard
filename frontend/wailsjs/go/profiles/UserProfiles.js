@@ -22,12 +22,20 @@ export function ImportAsset(arg1) {
   return window['go']['profiles']['UserProfiles']['ImportAsset'](arg1);
 }
 
+export function ListProfiles() {
+  return window['go']['profiles']['UserProfiles']['ListProfiles']();
+}
+
 export function LoadProfiles() {
   return window['go']['profiles']['UserProfiles']['LoadProfiles']();
 }
 
 export function QuarantineUserProfiles() {
   return window['go']['profiles']['UserProfiles']['QuarantineUserProfiles']();
+}
+
+export function RenameProfile(arg1, arg2) {
+  return window['go']['profiles']['UserProfiles']['RenameProfile'](arg1, arg2);
 }
 
 export function ResetUserProfiles() {

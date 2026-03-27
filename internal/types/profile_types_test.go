@@ -1,6 +1,7 @@
 package types
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -186,4 +187,35 @@ func TestIsValidSubscriptionAction(t *testing.T) {
 	require.True(t, IsValidSubscriptionAction(SubscriptionActionSubscribe))
 	require.True(t, IsValidSubscriptionAction(SubscriptionActionUnsubscribe))
 	require.False(t, IsValidSubscriptionAction(SubscriptionAction("invalid")))
+}
+
+func TestSubscriptionsForEachSubscriptionTypeUsesJSONNames(t *testing.T) {
+	subscriptions := Subscriptions{
+		Maps:      map[string]string{"map-a": "1.0.0"},
+		LocalMaps: map[string]string{},
+		Mods:      map[string]string{"mod-a": "2.0.0"},
+	}
+
+	buckets := []string{}
+	subscriptions.ForEachSubscriptionType(func(subscriptionType string, _ map[string]string) bool {
+		buckets = append(buckets, subscriptionType)
+		return true
+	})
+
+	slices.Sort(buckets)
+	require.Equal(t, []string{"localMaps", "maps", "mods"}, buckets)
+}
+
+func TestSubscriptionsHasAny(t *testing.T) {
+	require.False(t, Subscriptions{
+		Maps:      map[string]string{},
+		LocalMaps: map[string]string{},
+		Mods:      map[string]string{},
+	}.HasAny())
+
+	require.True(t, Subscriptions{
+		Maps:      map[string]string{},
+		LocalMaps: map[string]string{"local-map": "1.0.0"},
+		Mods:      map[string]string{},
+	}.HasAny())
 }

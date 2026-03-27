@@ -12,9 +12,13 @@ export function GetActiveProfile():Promise<types.UserProfileResult>;
 
 export function ImportAsset(arg1:types.ImportAssetRequest):Promise<types.UpdateSubscriptionsResult>;
 
+export function ListProfiles():Promise<types.UserProfilesListResult>;
+
 export function LoadProfiles():Promise<types.UserProfileResult>;
 
 export function QuarantineUserProfiles():Promise<boolean|string>;
+
+export function RenameProfile(arg1:string,arg2:string):Promise<types.UserProfileResult>;
 
 export function ResetUserProfiles():Promise<types.UserProfileResult>;
 

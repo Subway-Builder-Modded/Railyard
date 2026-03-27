@@ -1,4 +1,5 @@
 import {
+  CircleUser,
   Compass,
   Inbox,
   Play,
@@ -58,6 +59,12 @@ const navLinks: NavLinkConfig[] = [
     label: 'Library',
     icon: Inbox,
     isCurrent: (location: string) => location.startsWith('/library'),
+  },
+  {
+    href: '/profiles',
+    label: 'Profiles',
+    icon: CircleUser,
+    isCurrent: (location: string) => location.startsWith('/profiles'),
   },
   {
     href: '/logs',
