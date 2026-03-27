@@ -782,7 +782,27 @@ func managedSubscriptionDirectorySize(subscriptionType string, subscriptionID st
 	if err != nil {
 		return 0, true, fmt.Errorf("failed to resolve managed size for %s %q: %w", spec.Label, subscriptionID, err)
 	}
+
+	if subscriptionType == "maps" || subscriptionType == "localMaps" {
+		tilePath := paths.JoinLocalPath(paths.TilesPath(), subPath+".pmtiles")
+		tileSize, tileErr := optionalFileSize(tilePath)
+		if tileErr != nil {
+			return 0, true, fmt.Errorf("failed to resolve managed size for map tiles %q: %w", subscriptionID, tileErr)
+		}
+		size += tileSize
+	}
 	return size, true, nil
+}
+
+func optionalFileSize(filePath string) (int64, error) {
+	info, err := os.Stat(filePath)
+	if err == nil {
+		return info.Size(), nil
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return 0, nil
+	}
+	return 0, err
 }
 
 func (s *UserProfiles) swapProfilesSnapshot(profileID string) (types.UserProfile, types.UserProfile, types.UserProfileResult, bool) {

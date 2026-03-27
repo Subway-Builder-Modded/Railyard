@@ -33,7 +33,9 @@ const UNINSTALL_ACCENT = getLocalAccentClasses('uninstall');
 
 function profileCounts(profile: types.UserProfile) {
   return {
-    maps: Object.keys(profile.subscriptions?.maps ?? {}).length,
+    maps:
+      Object.keys(profile.subscriptions?.maps ?? {}).length +
+      Object.keys(profile.subscriptions?.localMaps ?? {}).length,
     mods: Object.keys(profile.subscriptions?.mods ?? {}).length,
   };
 }
@@ -364,9 +366,7 @@ export function ProfilesPage() {
             const subscriptionSizeBytes =
               profilesStore.subscriptionSizes[profile.id];
             const showSubscriptionSize =
-              isActive &&
-              archiveSizeBytes === undefined &&
-              subscriptionSizeBytes !== undefined;
+              isActive && subscriptionSizeBytes !== undefined;
             const sizeLabel = showSubscriptionSize
               ? 'Subscriptions Size'
               : 'Archive Size';
