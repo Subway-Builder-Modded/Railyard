@@ -152,7 +152,7 @@ func (s *UserProfiles) ListProfiles() types.UserProfilesListResult {
 		size, err := s.activeProfileSubscriptionsSize(activeProfile)
 		if err != nil {
 			s.Logger.Warn(
-				"Failed to resolve active profile subscriptions size while listing profiles",
+				"Failed to resolve active profile subscription size while listing profiles",
 				"profile_id", activeProfile.ID,
 				"error", err,
 			)

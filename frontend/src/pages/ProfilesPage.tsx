@@ -31,6 +31,14 @@ const DEFAULT_PROFILE_ID = '__default__';
 const UPDATE_ACCENT = getLocalAccentClasses('update');
 const FILES_ACCENT = getLocalAccentClasses('files');
 const UNINSTALL_ACCENT = getLocalAccentClasses('uninstall');
+const UI_THEME_DISPLAY_NAMES: Record<string, string> = {
+  dark: 'Dark',
+  light: 'Light',
+};
+const UI_SEARCH_VIEW_MODE_DISPLAY_NAMES: Record<string, string> = {
+  card: 'Card',
+  list: 'List',
+};
 
 function profileCounts(profile: types.UserProfile) {
   return {
@@ -47,6 +55,40 @@ function sortProfilesForDisplay(profiles: types.UserProfile[]) {
     if (b.id === DEFAULT_PROFILE_ID) return 1;
     return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
   });
+}
+
+function formatStorageSize(bytes: number | undefined): string {
+  const safeBytes =
+    typeof bytes === 'number' && Number.isFinite(bytes) && bytes > 0 ? bytes : 0;
+
+  if (safeBytes < 1024) return `${safeBytes} B`;
+  if (safeBytes < 1024 ** 2) return `${(safeBytes / 1024).toFixed(1)} KB`;
+  if (safeBytes < 1024 ** 3) return `${(safeBytes / 1024 ** 2).toFixed(1)} MB`;
+  return `${(safeBytes / 1024 ** 3).toFixed(1)} GB`;
+}
+
+function formatPreference(value: boolean | undefined): string {
+  if (value === undefined) return 'Default';
+  return value ? 'Enabled' : 'Disabled';
+}
+
+function humanizeKebabCase(value: string): string {
+  return value
+    .split('-')
+    .map((part) =>
+      part.length > 0 ? `${part[0].toUpperCase()}${part.slice(1)}` : part,
+    )
+    .join(' ');
+}
+
+function resolveDisplayName(
+  value: string | undefined,
+  displayNames: Record<string, string>,
+  fallback: string,
+): string {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) return fallback;
+  return displayNames[normalized] ?? humanizeKebabCase(normalized);
 }
 
 function ProfileStat({
@@ -99,6 +141,16 @@ export function ProfilesPage() {
     () => sortProfilesForDisplay(profilesStore.profiles),
     [profilesStore.profiles],
   );
+
+  const refreshProfileContext = useCallback(async () => {
+    await profileStore.refreshActiveProfile();
+    await installedStore.updateInstalledLists();
+    await profilesStore.loadProfiles();
+  }, [
+    installedStore.updateInstalledLists,
+    profileStore.refreshActiveProfile,
+    profilesStore,
+  ]);
 
   const handleCreate = useCallback(async () => {
     const name = dialogs.create.name.trim();
@@ -200,9 +252,7 @@ export function ProfilesPage() {
         if (result.status === 'success') {
           toast.success(`Switched to "${dialogs.swap.target.name}"`);
           swap.close();
-          await profileStore.refreshActiveProfile();
-          await installedStore.updateInstalledLists();
-          await profilesStore.loadProfiles();
+          await refreshProfileContext();
           return;
         }
 
@@ -213,9 +263,7 @@ export function ProfilesPage() {
           }
           toast.warning(result.message || 'Profile switched with warnings');
           swap.close();
-          await profileStore.refreshActiveProfile();
-          await installedStore.updateInstalledLists();
-          await profilesStore.loadProfiles();
+          await refreshProfileContext();
           return;
         }
 
@@ -223,9 +271,7 @@ export function ProfilesPage() {
           // Backend may have switched active profile before a restore/sync error.
           // Refresh UI state so swap controls reflect the new active profile.
           swap.close();
-          await profileStore.refreshActiveProfile();
-          await installedStore.updateInstalledLists();
-          await profilesStore.loadProfiles();
+          await refreshProfileContext();
         }
 
         throw new Error(result.message || 'Failed to switch profile');
@@ -241,9 +287,7 @@ export function ProfilesPage() {
       dialogs.swap.target,
       hasArchiveConflictError,
       gameStore.running,
-      installedStore.updateInstalledLists,
-      profileStore.refreshActiveProfile,
-      profilesStore,
+      refreshProfileContext,
       swap,
     ],
   );
@@ -326,7 +370,7 @@ export function ProfilesPage() {
     },
   };
 
-  // Dialog for confirming profile deletion, which requires explicit confirmation since it's a destructive action that cannot be undeone.
+  // Dialog for confirming profile deletion, which requires explicit confirmation since it's a destructive action that cannot be undone.
   const deleteDialogProps = {
     open: dialogs.remove.target !== null,
     onOpenChange: (open: boolean) => {
@@ -379,24 +423,47 @@ export function ProfilesPage() {
               hasSubscriptions &&
               archiveSizeBytes !== undefined;
             const sizeLabel = showSubscriptionSize
-              ? 'Subscriptions Size'
+              ? 'Subscription Size'
               : 'Archive Size';
             const sizeValue = showSubscriptionSize
-              ? `${(subscriptionSizeBytes / (1024 * 1024)).toFixed(2)} MB`
+              ? formatStorageSize(subscriptionSizeBytes)
               : showArchiveSize
-                ? `${(archiveSizeBytes / (1024 * 1024)).toFixed(2)} MB`
-                : 'Unknown';
+                ? formatStorageSize(archiveSizeBytes)
+                : formatStorageSize(0);
             const swapUnavailable = isProfileSwapUnavailable({
               gameRunning: gameStore.running,
               targetIsActive: isActive,
               swapLoading: dialogs.swap.loading,
             });
+            const mapSubscriptions = Object.keys(
+              profile.subscriptions?.maps ?? {},
+            ).length;
+            const localMapSubscriptions = Object.keys(
+              profile.subscriptions?.localMaps ?? {},
+            ).length;
+            const modSubscriptions = Object.keys(
+              profile.subscriptions?.mods ?? {},
+            ).length;
+            const uiTheme = resolveDisplayName(
+              profile.uiPreferences?.theme,
+              UI_THEME_DISPLAY_NAMES,
+              'System Default',
+            );
+            const uiSearchViewMode = resolveDisplayName(
+              profile.uiPreferences?.searchViewMode,
+              UI_SEARCH_VIEW_MODE_DISPLAY_NAMES,
+              'Default',
+            );
+            const uiDefaultPerPage =
+              profile.uiPreferences?.defaultPerPage !== undefined
+                ? profile.uiPreferences.defaultPerPage
+                : 'Default';
 
             return (
               <div
                 key={profile.id}
                 className={cn(
-                  'overflow-hidden rounded-xl border bg-card transition-colors',
+                  'overflow-hidden rounded-xl border bg-card transition-colors hover:bg-[color-mix(in_srgb,var(--profiles-primary)_12%,transparent)]',
                   isActive
                     ? 'border-[color-mix(in_srgb,var(--profiles-primary)_45%,transparent)]'
                     : 'border-border',
@@ -404,7 +471,7 @@ export function ProfilesPage() {
               >
                 <button
                   type="button"
-                  className="w-full px-4 py-4 text-left hover:bg-accent/30"
+                  className="w-full px-4 py-4 text-left"
                   onClick={() =>
                     setExpandedProfileID((current) =>
                       current === profile.id ? null : profile.id,
@@ -432,13 +499,16 @@ export function ProfilesPage() {
                       </p>
                     </div>
 
-                    <div className="flex w-24 shrink-0 items-center justify-end gap-1">
+                    <div className="grid w-[7.75rem] shrink-0 grid-cols-3 justify-items-center gap-0.5">
                       {!isActive ? (
                         <Button
                           type="button"
                           size="icon"
                           variant="ghost"
-                          className={cn('shrink-0', UPDATE_ACCENT.iconButton)}
+                          className={cn(
+                            'col-start-1 shrink-0',
+                            UPDATE_ACCENT.iconButton,
+                          )}
                           disabled={swapUnavailable}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -448,12 +518,17 @@ export function ProfilesPage() {
                         >
                           <ArrowLeftRight className="h-4 w-4" />
                         </Button>
-                      ) : null}
+                      ) : (
+                        <span className="size-10" aria-hidden="true" />
+                      )}
                       <Button
                         type="button"
                         size="icon"
                         variant="ghost"
-                        className={cn('shrink-0', FILES_ACCENT.iconButton)}
+                        className={cn(
+                          'col-start-2 shrink-0',
+                          FILES_ACCENT.iconButton,
+                        )}
                         onClick={(event) => {
                           event.stopPropagation();
                           rename.open(profile);
@@ -462,13 +537,13 @@ export function ProfilesPage() {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      {profile.id !== '__default__' ? (
+                      {!isActive && profile.id !== DEFAULT_PROFILE_ID ? (
                         <Button
                           type="button"
                           size="icon"
                           variant="ghost"
                           className={cn(
-                            'shrink-0',
+                            'col-start-3 shrink-0',
                             UNINSTALL_ACCENT.iconButton,
                           )}
                           onClick={(event) => {
@@ -479,7 +554,9 @@ export function ProfilesPage() {
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      ) : null}
+                      ) : (
+                        <span className="size-10" aria-hidden="true" />
+                      )}
                     </div>
 
                     <div className="col-start-2 col-end-3 mt-1 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
@@ -492,29 +569,87 @@ export function ProfilesPage() {
 
                 {isExpanded ? (
                   <div className="grid gap-3 border-t border-border/70 bg-muted/10 px-4 py-3 md:grid-cols-3">
-                    <section className="rounded-lg border border-border/70 bg-card/50 p-3">
+                    <section className="rounded-lg border border-border/70 bg-transparent p-3">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--profiles-primary)]">
                         Subscriptions
                       </h4>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        Detailed subscription breakdown will be added here.
-                      </p>
+                      <div className="mt-2 space-y-1.5 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Maps</span>
+                          <span className="font-semibold">
+                            {mapSubscriptions}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">
+                            Local Maps
+                          </span>
+                          <span className="font-semibold">
+                            {localMapSubscriptions}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Mods</span>
+                          <span className="font-semibold">
+                            {modSubscriptions}
+                          </span>
+                        </div>
+                      </div>
                     </section>
-                    <section className="rounded-lg border border-border/70 bg-card/50 p-3">
+                    <section className="rounded-lg border border-border/70 bg-transparent p-3">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--profiles-primary)]">
                         UI Preferences
                       </h4>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        Theme, paging, and view preferences will be shown here.
-                      </p>
+                      <div className="mt-2 space-y-1.5 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Theme</span>
+                          <span className="truncate font-semibold">
+                            {uiTheme}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Per Page</span>
+                          <span className="font-semibold">
+                            {uiDefaultPerPage}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">
+                            Search View
+                          </span>
+                          <span className="truncate font-semibold">
+                            {uiSearchViewMode}
+                          </span>
+                        </div>
+                      </div>
                     </section>
-                    <section className="rounded-lg border border-border/70 bg-card/50 p-3">
+                    <section className="rounded-lg border border-border/70 bg-transparent p-3">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--profiles-primary)]">
                         System Preferences
                       </h4>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        Startup and runtime preferences will be shown here.
-                      </p>
+                      <div className="mt-2 space-y-1.5 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">
+                            Registry Refresh
+                          </span>
+                          <span className="font-semibold">
+                            {formatPreference(
+                              profile.systemPreferences
+                                ?.refreshRegistryOnStartup,
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">
+                            Dev Tools
+                          </span>
+                          <span className="font-semibold">
+                            {profile.systemPreferences?.useDevTools
+                              ? 'Enabled'
+                              : 'Disabled'}
+                          </span>
+                        </div>
+                      </div>
                     </section>
                   </div>
                 ) : null}
