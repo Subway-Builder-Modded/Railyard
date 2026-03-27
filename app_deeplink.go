@@ -76,8 +76,12 @@ func (a *App) HandleDeepLinkTarget(target deeplink.Target) {
 }
 
 func (a *App) emitPendingDeepLinks() {
+	if a.ctx == nil {
+		return
+	}
+
 	queued := a.deepLinks.drain()
-	if a.ctx == nil || len(queued) == 0 {
+	if len(queued) == 0 {
 		return
 	}
 

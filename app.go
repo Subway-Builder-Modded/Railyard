@@ -162,7 +162,8 @@ func (a *App) startup(ctx context.Context) {
 
 	// Registry must be initialized + startup profile ready so that initial Frontend state is viable.
 	a.setStartupReady(true)
-	a.emitPendingDeepLinks()
+	// Keep startup deep links queued until the frontend consumes them.
+	// Emitting here can race listener registration during cold launches.
 	go runNonBlockingStartupRoutines(a, activeProfile)
 }
 

@@ -40,3 +40,15 @@ func TestOnSecondInstanceLaunchQueuesDeepLinkFromArgs(t *testing.T) {
 	require.Equal(t, "mods", response.Target.Type)
 	require.Equal(t, "signal-pack", response.Target.ID)
 }
+
+func TestEmitPendingDeepLinksDoesNotDrainWithoutContext(t *testing.T) {
+	app := &App{Logger: logger.LoggerAtPath("")}
+	app.HandleDeepLinkTarget(deeplink.Target{Type: "mods", ID: "signal-pack"})
+
+	app.emitPendingDeepLinks()
+
+	response := app.ConsumePendingDeepLink()
+	require.NotNil(t, response.Target)
+	require.Equal(t, "mods", response.Target.Type)
+	require.Equal(t, "signal-pack", response.Target.ID)
+}
