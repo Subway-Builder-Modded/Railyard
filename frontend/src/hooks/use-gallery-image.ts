@@ -67,14 +67,15 @@ function getOrRequestGalleryImage(
     return inFlight;
   }
 
-  const request = requestGalleryImage(type, id, imagePath)
-    .then((entry) => {
+  const request = (async () => {
+    try {
+      const entry = await requestGalleryImage(type, id, imagePath);
       galleryImageCache.set(cacheKey, entry);
       return entry;
-    })
-    .finally(() => {
+    } finally {
       galleryImageRequests.delete(cacheKey);
-    });
+    }
+  })();
 
   galleryImageRequests.set(cacheKey, request);
   return request;
@@ -121,21 +122,23 @@ export function useGalleryImage(
     setLoading(true);
     setError(false);
 
-    getOrRequestGalleryImage(type, id, imagePath)
-      .then((entry) => {
+    const loadImage = async () => {
+      try {
+        const entry = await getOrRequestGalleryImage(type, id, imagePath);
         if (!cancelled) {
           setImageUrl(entry.imageUrl);
           setError(entry.error);
           setLoading(false);
         }
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) {
           setImageUrl(null);
           setError(true);
           setLoading(false);
         }
-      });
+      }
+    };
+    loadImage();
 
     return () => {
       cancelled = true;
