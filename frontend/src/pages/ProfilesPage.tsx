@@ -20,6 +20,7 @@ import { getLocalAccentClasses } from '@/lib/local-accent';
 import { isProfileSwapUnavailable } from '@/lib/profile-swap';
 import { cn } from '@/lib/utils';
 import { useGameStore } from '@/stores/game-store';
+import { useInstalledStore } from '@/stores/installed-store';
 import { useProfileStore } from '@/stores/profile-store';
 import { useProfilesStore } from '@/stores/profiles-store';
 
@@ -67,6 +68,7 @@ function ProfileStat({
 
 export function ProfilesPage() {
   const gameStore = useGameStore();
+  const installedStore = useInstalledStore();
   const profileStore = useProfileStore();
   const profilesStore = useProfilesStore();
   const { dialogs, create, rename, remove, swap } = useProfilesState();
@@ -199,6 +201,7 @@ export function ProfilesPage() {
           toast.success(`Switched to "${dialogs.swap.target.name}"`);
           swap.close();
           await profileStore.refreshActiveProfile();
+          await installedStore.updateInstalledLists();
           await profilesStore.loadProfiles();
           return;
         }
@@ -211,6 +214,7 @@ export function ProfilesPage() {
           toast.warning(result.message || 'Profile switched with warnings');
           swap.close();
           await profileStore.refreshActiveProfile();
+          await installedStore.updateInstalledLists();
           await profilesStore.loadProfiles();
           return;
         }
@@ -220,6 +224,7 @@ export function ProfilesPage() {
           // Refresh UI state so swap controls reflect the new active profile.
           swap.close();
           await profileStore.refreshActiveProfile();
+          await installedStore.updateInstalledLists();
           await profilesStore.loadProfiles();
         }
 
@@ -236,6 +241,7 @@ export function ProfilesPage() {
       dialogs.swap.target,
       hasArchiveConflictError,
       gameStore.running,
+      installedStore.updateInstalledLists,
       profileStore.refreshActiveProfile,
       profilesStore,
       swap,

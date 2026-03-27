@@ -180,7 +180,8 @@ func TestSwapProfileWarnsWithoutForceWhenTargetArchiveMissing(t *testing.T) {
 	require.Equal(t, current.ID, activeAfter.Profile.ID)
 
 	_, err := os.Stat(profileArchivePath(current.UUID))
-	require.NoError(t, err)
+	require.Error(t, err)
+	require.True(t, os.IsNotExist(err))
 }
 
 func TestSwapProfileWithoutSubscriptionsSkipsArchiveWarning(t *testing.T) {

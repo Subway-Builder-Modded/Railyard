@@ -120,9 +120,14 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   isSubscribed: (type: AssetType, id: string) => {
     const profile = get().profile;
     if (!profile?.subscriptions) return false;
-    const subs =
-      type === 'mod' ? profile.subscriptions.mods : profile.subscriptions.maps;
-    return subs ? id in subs : false;
+    if (type === 'mod') {
+      const modSubscriptions = profile.subscriptions.mods ?? {};
+      return id in modSubscriptions;
+    }
+
+    const mapSubscriptions = profile.subscriptions.maps ?? {};
+    const localMapSubscriptions = profile.subscriptions.localMaps ?? {};
+    return id in mapSubscriptions || id in localMapSubscriptions;
   },
 
   theme: () => resolveUIPreferences(get().profile).theme,

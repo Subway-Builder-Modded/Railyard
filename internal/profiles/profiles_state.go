@@ -520,21 +520,29 @@ func (s *UserProfiles) SwapProfile(req types.SwapProfileRequest) types.UserProfi
 		}
 	}
 
-	// Validate current profile archive status
-	isCurrentArchiveFresh, currentErrResult := s.resolveProfileArchiveFreshness(currentProfile, currentProfile, "current")
-	if currentErrResult != nil {
-		return *currentErrResult
-	}
-	// Create a new archive for the current profile before swapping, unless the archive is already fresh, to ensure that there is a backup for the profile in case we need to restore it in the future
-	if !isCurrentArchiveFresh {
-		archiveResult := s.CreateProfileArchive(currentProfile.ID)
-		if archiveResult.Status == types.ResponseError {
-			s.Logger.Error("Failed to update current profile archive before swap", errors.New(archiveResult.Message), "profile_id", currentProfile.ID)
-			return profileStateErrorResult(
-				"Failed to update current profile archive before swap",
-				currentProfile,
-				userProfilesError(currentProfile.ID, "", "", types.ErrorArchiveUpdate, "", "Failed to update current profile archive before swap: "+archiveResult.Message),
-			)
+	currentHasSubscriptions := profileHasSubscriptions(currentProfile)
+	if currentHasSubscriptions {
+		// Validate current profile archive status
+		isCurrentArchiveFresh, currentErrResult := s.resolveProfileArchiveFreshness(currentProfile, currentProfile, "current")
+		if currentErrResult != nil {
+			return *currentErrResult
+		}
+		// Create a new archive for the current profile before swapping, unless the archive is already fresh, to ensure that there is a backup for the profile in case we need to restore it in the future
+		if !isCurrentArchiveFresh {
+			archiveResult := s.CreateProfileArchive(currentProfile.ID)
+			if archiveResult.Status == types.ResponseError {
+				s.Logger.Error("Failed to update current profile archive before swap", errors.New(archiveResult.Message), "profile_id", currentProfile.ID)
+				return profileStateErrorResult(
+					"Failed to update current profile archive before swap",
+					currentProfile,
+					userProfilesError(currentProfile.ID, "", "", types.ErrorArchiveUpdate, "", "Failed to update current profile archive before swap: "+archiveResult.Message),
+				)
+			}
+		}
+	} else {
+		archivePath := profileArchivePath(currentProfile.UUID)
+		if err := os.Remove(archivePath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			s.Logger.Warn("Failed to clear stale archive for profile with no subscriptions", "profile_id", currentProfile.ID, "archive_path", archivePath, "error", err)
 		}
 	}
 	// Profiles with no subscriptions can simply be restored from the profiles JSON in memory without needing to worry about archive freshness
