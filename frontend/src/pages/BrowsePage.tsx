@@ -1,5 +1,5 @@
 import { Compass, SearchX } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   BrowseSidebar,
@@ -7,6 +7,7 @@ import {
 } from '@/components/browse/BrowseSidebar';
 import { SortSelect } from '@/components/browse/SortSelect';
 import { ViewModeToggle } from '@/components/browse/ViewModeToggle';
+import { PageLoadScreen } from '@/components/layout/PageLoadScreen';
 import { SearchBar } from '@/components/search/SearchBar';
 import { CardSkeletonGrid } from '@/components/shared/CardSkeletonGrid';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -16,6 +17,7 @@ import { PageHeading } from '@/components/shared/PageHeading';
 import { Pagination } from '@/components/shared/Pagination';
 import { ResponsiveCardGrid } from '@/components/shared/ResponsiveCardGrid';
 import { useFilteredItems } from '@/hooks/use-filtered-items';
+import { preloadGalleryImage } from '@/hooks/use-gallery-image';
 import type { AssetType } from '@/lib/asset-types';
 import { buildAssetListingCounts } from '@/lib/listing-counts';
 import { buildSpecialDemandValues } from '@/lib/map-filter-values';
@@ -25,9 +27,18 @@ import { useProfileStore } from '@/stores/profile-store';
 import { useRegistryStore } from '@/stores/registry-store';
 import { useUIStore } from '@/stores/ui-store';
 
-export function BrowsePage() {
+interface BrowsePageContentProps {
+  warmupMode: boolean;
+  onWarmupComplete: () => void;
+}
+
+function BrowsePageContent({
+  warmupMode,
+  onWarmupComplete,
+}: BrowsePageContentProps) {
   const sidebarOpen = useUIStore((s) => s.browseSidebarOpen);
   const setSidebarOpen = useUIStore((s) => s.setBrowseSidebarOpen);
+  const warmupCompleteRef = useRef(false);
 
   const viewMode = useBrowseStore((s) => s.viewMode);
   const setViewMode = useBrowseStore((s) => s.setViewMode);
@@ -124,6 +135,58 @@ export function BrowsePage() {
     () => (viewMode === 'compact' ? 'compact' : 'default'),
     [viewMode],
   );
+
+  useEffect(() => {
+    if (loading) {
+      warmupCompleteRef.current = false;
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    if (!warmupMode || loading || warmupCompleteRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+    const finishWarmup = () => {
+      if (cancelled || warmupCompleteRef.current) {
+        return;
+      }
+      warmupCompleteRef.current = true;
+      onWarmupComplete();
+    };
+
+    const warmup = async () => {
+      await Promise.allSettled(
+        items.map(({ type: itemType, item }) =>
+          preloadGalleryImage(itemType, item.id, item.gallery?.[0]),
+        ),
+      );
+
+      await new Promise<void>((resolve) => {
+        let firstFrame = 0;
+        let secondFrame = 0;
+
+        firstFrame = window.requestAnimationFrame(() => {
+          secondFrame = window.requestAnimationFrame(() => resolve());
+        });
+
+        if (cancelled) {
+          window.cancelAnimationFrame(firstFrame);
+          window.cancelAnimationFrame(secondFrame);
+          resolve();
+        }
+      });
+
+      finishWarmup();
+    };
+
+    warmup().catch(() => finishWarmup());
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items, loading, onWarmupComplete, warmupMode]);
 
   return (
     <div className="relative isolate">
@@ -273,5 +336,43 @@ export function BrowsePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export function BrowsePage() {
+  const loading = useRegistryStore((s) => s.loading);
+  const [warmupReady, setWarmupReady] = useState(false);
+
+  useEffect(() => {
+    if (loading) {
+      setWarmupReady(false);
+    }
+  }, [loading]);
+
+  const handleWarmupComplete = useCallback(() => {
+    setWarmupReady(true);
+  }, []);
+
+  const showLoader = loading || !warmupReady;
+
+  return (
+    <>
+      <div
+        aria-hidden={showLoader}
+        className={showLoader ? 'pointer-events-none opacity-0' : undefined}
+      >
+        <BrowsePageContent
+          warmupMode={showLoader}
+          onWarmupComplete={handleWarmupComplete}
+        />
+      </div>
+
+      {showLoader && (
+        <PageLoadScreen
+          title="Loading Browse"
+          description="Preparing sidebar, cards, and thumbnails..."
+        />
+      )}
+    </>
   );
 }
