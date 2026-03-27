@@ -151,6 +151,7 @@ func (s *UserProfiles) writeInstalledMetadata(
 	return types.GenericResponse{}, true
 }
 
+// collectInstalledAssetsForProfile filters the full list of installed maps and mods to only those that are subscribed to by the profile.
 func (s *UserProfiles) collectInstalledAssetsForProfile(profile types.UserProfile) ([]types.InstalledMapInfo, []types.InstalledModInfo) {
 	mapIDs := make(map[string]struct{}, len(profile.Subscriptions.Maps)+len(profile.Subscriptions.LocalMaps))
 	for mapID := range profile.Subscriptions.Maps {
