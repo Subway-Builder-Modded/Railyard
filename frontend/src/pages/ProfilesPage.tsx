@@ -371,16 +371,21 @@ export function ProfilesPage() {
             const archiveSizeBytes = profilesStore.archiveSizes[profile.id];
             const subscriptionSizeBytes =
               profilesStore.subscriptionSizes[profile.id];
+            const hasSubscriptions = counts.maps + counts.mods > 0;
             const showSubscriptionSize =
               isActive && subscriptionSizeBytes !== undefined;
+            const showArchiveSize =
+              !showSubscriptionSize &&
+              hasSubscriptions &&
+              archiveSizeBytes !== undefined;
             const sizeLabel = showSubscriptionSize
               ? 'Subscriptions Size'
               : 'Archive Size';
             const sizeValue = showSubscriptionSize
               ? `${(subscriptionSizeBytes / (1024 * 1024)).toFixed(2)} MB`
-              : archiveSizeBytes === undefined
-                ? 'Unknown'
-                : `${(archiveSizeBytes / (1024 * 1024)).toFixed(2)} MB`;
+              : showArchiveSize
+                ? `${(archiveSizeBytes / (1024 * 1024)).toFixed(2)} MB`
+                : 'Unknown';
             const swapUnavailable = isProfileSwapUnavailable({
               gameRunning: gameStore.running,
               targetIsActive: isActive,

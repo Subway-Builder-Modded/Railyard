@@ -180,11 +180,10 @@ func TestSwapProfileWarnsWithoutForceWhenTargetArchiveMissing(t *testing.T) {
 	require.Equal(t, current.ID, activeAfter.Profile.ID)
 
 	_, err := os.Stat(profileArchivePath(current.UUID))
-	require.Error(t, err)
-	require.True(t, os.IsNotExist(err))
+	require.NoError(t, err)
 }
 
-func TestSwapProfileWithoutSubscriptionsSkipsArchiveWarning(t *testing.T) {
+func TestSwapProfileWithoutSubscriptionsWarnsWhenArchiveMissing(t *testing.T) {
 	testutil.NewHarness(t)
 
 	state := types.InitialProfilesState()
@@ -192,14 +191,14 @@ func TestSwapProfileWithoutSubscriptionsSkipsArchiveWarning(t *testing.T) {
 	state.Profiles[target.ID] = target
 	svc := loadedUserProfilesService(t, state)
 
+	current := svc.GetActiveProfile().Profile
 	result := svc.SwapProfile(types.SwapProfileRequest{ProfileID: target.ID})
-	require.Equal(t, types.ResponseSuccess, result.Status)
-	require.Equal(t, target.ID, result.Profile.ID)
-	require.Empty(t, result.Errors)
+	require.Equal(t, types.ResponseWarn, result.Status)
+	require.True(t, findProfileErrorType(result.Errors, types.ErrorArchiveMissing))
 
 	activeAfter := svc.GetActiveProfile()
 	require.Equal(t, types.ResponseSuccess, activeAfter.Status)
-	require.Equal(t, target.ID, activeAfter.Profile.ID)
+	require.Equal(t, current.ID, activeAfter.Profile.ID)
 }
 
 func TestSwapProfileForceWithoutArchiveSwapsAndSyncs(t *testing.T) {
@@ -207,6 +206,7 @@ func TestSwapProfileForceWithoutArchiveSwapsAndSyncs(t *testing.T) {
 
 	state := types.InitialProfilesState()
 	target := newTestUserProfile("profile_0", "Target")
+	target.Subscriptions.Mods["mod-a"] = "1.0.0"
 	state.Profiles[target.ID] = target
 	svc := loadedUserProfilesService(t, state)
 
@@ -214,7 +214,7 @@ func TestSwapProfileForceWithoutArchiveSwapsAndSyncs(t *testing.T) {
 		ProfileID: target.ID,
 		ForceSwap: true,
 	})
-	require.Equal(t, types.ResponseSuccess, result.Status)
+	require.Equal(t, types.ResponseError, result.Status)
 	require.Equal(t, target.ID, result.Profile.ID)
 
 	activeAfter := svc.GetActiveProfile()
@@ -304,6 +304,7 @@ func TestListProfilesIncludesArchiveSizeWhenArchiveExists(t *testing.T) {
 
 	state := types.InitialProfilesState()
 	target := newTestUserProfile("profile_0", "Target")
+	target.Subscriptions.Mods["mod-a"] = "1.0.0"
 	state.Profiles[target.ID] = target
 
 	svc := loadedUserProfilesService(t, state)
