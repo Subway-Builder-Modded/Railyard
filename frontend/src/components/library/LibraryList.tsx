@@ -140,7 +140,12 @@ export function LibraryList({
         </div>
         {showMapColumns && (
           <>
-            <div className={cn(COL.city, 'hidden shrink-0 lg:flex lg:items-center')}>
+            <div
+              className={cn(
+                COL.city,
+                'hidden shrink-0 lg:flex lg:items-center',
+              )}
+            >
               <SortableHeaderCell
                 label="City"
                 field="city_code"
@@ -149,7 +154,12 @@ export function LibraryList({
                 onSort={handleColumnSort}
               />
             </div>
-            <div className={cn(COL.country, 'hidden shrink-0 lg:flex lg:items-center')}>
+            <div
+              className={cn(
+                COL.country,
+                'hidden shrink-0 lg:flex lg:items-center',
+              )}
+            >
               <SortableHeaderCell
                 label="Country"
                 field="country"
@@ -364,7 +374,9 @@ function LibraryListRow({
         </div>
 
         {showMapColumns && (
-          <div className={cn(COL.city, 'hidden shrink-0 lg:flex lg:items-center')}>
+          <div
+            className={cn(COL.city, 'hidden shrink-0 lg:flex lg:items-center')}
+          >
             {mapCityCode && (
               <span className="inline-flex h-5 items-center text-sm leading-none font-semibold text-foreground">
                 {mapCityCode}
