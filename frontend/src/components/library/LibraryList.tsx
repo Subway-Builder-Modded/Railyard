@@ -1,12 +1,9 @@
 import {
   CircleFadingArrowUp,
   FolderOpen,
-  Globe,
   HardDrive,
-  Hash,
   OctagonX,
   Trash2,
-  Type,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
@@ -136,7 +133,6 @@ export function LibraryList({
           <SortableHeaderCell
             label="Name"
             field="name"
-            icon={Type}
             sort={sort}
             textFields={TEXT_SORT_FIELDS}
             onSort={handleColumnSort}
@@ -144,21 +140,19 @@ export function LibraryList({
         </div>
         {showMapColumns && (
           <>
-            <div className={cn(COL.city, 'hidden shrink-0 lg:block')}>
+            <div className={cn(COL.city, 'hidden shrink-0 lg:flex lg:items-center')}>
               <SortableHeaderCell
                 label="City"
                 field="city_code"
-                icon={Hash}
                 sort={sort}
                 textFields={TEXT_SORT_FIELDS}
                 onSort={handleColumnSort}
               />
             </div>
-            <div className={cn(COL.country, 'hidden shrink-0 lg:block')}>
+            <div className={cn(COL.country, 'hidden shrink-0 lg:flex lg:items-center')}>
               <SortableHeaderCell
                 label="Country"
                 field="country"
-                icon={Globe}
                 sort={sort}
                 textFields={TEXT_SORT_FIELDS}
                 onSort={handleColumnSort}
@@ -167,7 +161,7 @@ export function LibraryList({
           </>
         )}
         <div className={cn(COL.version, 'flex shrink-0 items-center')}>
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="inline-flex h-5 translate-y-px items-center text-xs leading-none font-semibold uppercase tracking-wide text-muted-foreground">
             Version
           </span>
         </div>
@@ -370,9 +364,9 @@ function LibraryListRow({
         </div>
 
         {showMapColumns && (
-          <div className={cn(COL.city, 'hidden shrink-0 lg:block')}>
+          <div className={cn(COL.city, 'hidden shrink-0 lg:flex lg:items-center')}>
             {mapCityCode && (
-              <span className="text-sm font-semibold text-foreground">
+              <span className="inline-flex h-5 items-center text-sm leading-none font-semibold text-foreground">
                 {mapCityCode}
               </span>
             )}
@@ -387,18 +381,20 @@ function LibraryListRow({
             )}
           >
             {CountryFlag && (
-              <CountryFlag className="h-3 w-4 shrink-0 rounded-[1px]" />
+              <span className="grid h-5 w-4 place-items-center leading-none">
+                <CountryFlag className="block h-3 w-4 shrink-0 translate-y-[0.5px] rounded-[1px]" />
+              </span>
             )}
             {mapCountry && (
-              <span className="text-sm font-semibold text-foreground">
+              <span className="inline-flex h-5 items-center text-sm leading-none font-semibold text-foreground">
                 {mapCountry}
               </span>
             )}
           </div>
         )}
 
-        <div className={cn(COL.version, 'shrink-0')}>
-          <span className="text-sm font-semibold text-foreground">
+        <div className={cn(COL.version, 'shrink-0 flex items-center')}>
+          <span className="inline-flex h-5 items-center text-sm leading-none font-semibold text-foreground">
             {entry.installedVersion}
           </span>
         </div>
