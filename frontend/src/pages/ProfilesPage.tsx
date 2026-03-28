@@ -437,6 +437,8 @@ export function ProfilesPage() {
               targetIsActive: isActive,
               swapLoading: dialogs.swap.loading,
             });
+            const deleteUnavailable =
+              isActive || profile.id === DEFAULT_PROFILE_ID;
             const mapSubscriptions = Object.keys(
               profile.subscriptions?.maps ?? {},
             ).length;
@@ -502,27 +504,23 @@ export function ProfilesPage() {
                     </div>
 
                     <div className="grid w-[7.75rem] shrink-0 grid-cols-3 justify-items-center gap-0.5">
-                      {!isActive ? (
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className={cn(
-                            'col-start-1 shrink-0',
-                            UPDATE_ACCENT.iconButton,
-                          )}
-                          disabled={swapUnavailable}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            swap.open(profile);
-                          }}
-                          aria-label={`Switch to profile ${profile.name}`}
-                        >
-                          <ArrowLeftRight className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <span className="size-10" aria-hidden="true" />
-                      )}
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className={cn(
+                          'col-start-1 shrink-0 disabled:opacity-40 disabled:saturate-0',
+                          UPDATE_ACCENT.iconButton,
+                        )}
+                        disabled={swapUnavailable}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          swap.open(profile);
+                        }}
+                        aria-label={`Switch to profile ${profile.name}`}
+                      >
+                        <ArrowLeftRight className="h-4 w-4" />
+                      </Button>
                       <Button
                         type="button"
                         size="icon"
@@ -539,26 +537,23 @@ export function ProfilesPage() {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      {!isActive && profile.id !== DEFAULT_PROFILE_ID ? (
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className={cn(
-                            'col-start-3 shrink-0',
-                            UNINSTALL_ACCENT.iconButton,
-                          )}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            remove.open(profile);
-                          }}
-                          aria-label={`Delete profile ${profile.name}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <span className="size-10" aria-hidden="true" />
-                      )}
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className={cn(
+                          'col-start-3 shrink-0 disabled:opacity-40 disabled:saturate-0',
+                          UNINSTALL_ACCENT.iconButton,
+                        )}
+                        disabled={deleteUnavailable}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          remove.open(profile);
+                        }}
+                        aria-label={`Delete profile ${profile.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
 
                     <div className="col-start-2 col-end-3 mt-1 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
