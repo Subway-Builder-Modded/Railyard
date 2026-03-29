@@ -207,11 +207,15 @@ export function LibraryActionBar({
           }
           icon={OctagonX}
           tone="uninstall"
-          confirm={withLockAwareConfirm({
-            label: 'Uninstall',
-            onConfirm: handleConfirmUninstall,
-            loading: uninstallLoading,
-          }, mutationLocked, mutationLockedReason)}
+          confirm={withLockAwareConfirm(
+            {
+              label: 'Uninstall',
+              onConfirm: handleConfirmUninstall,
+              loading: uninstallLoading,
+            },
+            mutationLocked,
+            mutationLockedReason,
+          )}
         >
           <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             <ul className="space-y-1">
@@ -244,11 +248,15 @@ export function LibraryActionBar({
           }
           icon={CircleFadingArrowUp}
           tone="update"
-          confirm={withLockAwareConfirm({
-            label: 'Update',
-            onConfirm: handleConfirmUpdate,
-            loading: updateLoading,
-          }, mutationLocked, mutationLockedReason)}
+          confirm={withLockAwareConfirm(
+            {
+              label: 'Update',
+              onConfirm: handleConfirmUpdate,
+              loading: updateLoading,
+            },
+            mutationLocked,
+            mutationLockedReason,
+          )}
         >
           {updatePreviewEntries.length > 0 && (
             <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">

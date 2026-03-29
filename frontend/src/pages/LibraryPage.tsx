@@ -505,12 +505,16 @@ export function LibraryPage() {
         icon={FileArchive}
         description="Import a local map ZIP into your Library. Local assets are tracked separately from registry assets."
         tone="import"
-        confirm={withLockAwareConfirm({
-          label: 'Choose ZIP',
-          cancelLabel: 'Close',
-          onConfirm: handlePickArchive,
-          loading: importLoading,
-        }, mutationLocked, mutationLockedReason)}
+        confirm={withLockAwareConfirm(
+          {
+            label: 'Choose ZIP',
+            cancelLabel: 'Close',
+            onConfirm: handlePickArchive,
+            loading: importLoading,
+          },
+          mutationLocked,
+          mutationLockedReason,
+        )}
       >
         <div className="min-w-0 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           Asset Type: <span className="font-medium text-foreground">Map</span>
@@ -535,14 +539,18 @@ export function LibraryPage() {
           icon={AlertTriangle}
           description="This local import conflicts with an existing map. Replace the existing map to continue."
           tone="files"
-          confirm={withLockAwareConfirm({
-            label: 'Replace',
-            onConfirm: () => {
-              if (!importSelectedPath) return;
-              void runImport(importSelectedPath, true);
+          confirm={withLockAwareConfirm(
+            {
+              label: 'Replace',
+              onConfirm: () => {
+                if (!importSelectedPath) return;
+                void runImport(importSelectedPath, true);
+              },
+              loading: importLoading,
             },
-            loading: importLoading,
-          }, mutationLocked, mutationLockedReason)}
+            mutationLocked,
+            mutationLockedReason,
+          )}
         >
           <div
             className={`rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground ${FILES_ACCENT.dialogPanel}`}

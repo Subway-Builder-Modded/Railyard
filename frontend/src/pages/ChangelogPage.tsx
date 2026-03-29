@@ -687,11 +687,15 @@ export function ChangelogPage() {
         description="This will permanently remove all installed files. You can reinstall it later from the Browse page."
         icon={OctagonX}
         tone="uninstall"
-        confirm={withLockAwareConfirm({
-          label: 'Uninstall',
-          onConfirm: handleUninstall,
-          loading: uninstallLoading,
-        }, mutationLocked, mutationLockedReason)}
+        confirm={withLockAwareConfirm(
+          {
+            label: 'Uninstall',
+            onConfirm: handleUninstall,
+            loading: uninstallLoading,
+          },
+          mutationLocked,
+          mutationLockedReason,
+        )}
       >
         <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">{item.name}</span>
@@ -714,13 +718,17 @@ export function ChangelogPage() {
             </>
           }
           tone="files"
-          confirm={withLockAwareConfirm({
-            label: 'Install Anyway',
-            onConfirm: () => {
-              setPrereleasePrompt(false);
-              doInstall(versionInfo.version);
+          confirm={withLockAwareConfirm(
+            {
+              label: 'Install Anyway',
+              onConfirm: () => {
+                setPrereleasePrompt(false);
+                doInstall(versionInfo.version);
+              },
             },
-          }, mutationLocked, mutationLockedReason)}
+            mutationLocked,
+            mutationLockedReason,
+          )}
         />
       )}
 
@@ -822,14 +830,18 @@ export function ChangelogPage() {
           description={`Installing ${item.name} ${conflictState.version} conflicts with an existing map. Replace the existing map to continue.`}
           icon={AlertTriangle}
           tone="files"
-          confirm={withLockAwareConfirm({
-            label: 'Replace',
-            onConfirm: () => {
-              const version = conflictState.version;
-              setConflictState(null);
-              void doInstall(version, true);
+          confirm={withLockAwareConfirm(
+            {
+              label: 'Replace',
+              onConfirm: () => {
+                const version = conflictState.version;
+                setConflictState(null);
+                void doInstall(version, true);
+              },
             },
-          }, mutationLocked, mutationLockedReason)}
+            mutationLocked,
+            mutationLockedReason,
+          )}
         >
           <div
             className={`rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground ${FILES_ACCENT.dialogPanel}`}

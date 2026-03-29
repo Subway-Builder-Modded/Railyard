@@ -343,11 +343,15 @@ export function HomePage() {
         description={`This will update ${pendingUpdateEntries.length} asset${pendingUpdateEntries.length === 1 ? '' : 's'}.`}
         icon={CircleFadingArrowUp}
         tone="update"
-        confirm={withLockAwareConfirm({
-          label: 'Update All',
-          onConfirm: () => void handleUpdateAll(),
-          loading: updatingAll,
-        }, mutationLocked, mutationLockedReason)}
+        confirm={withLockAwareConfirm(
+          {
+            label: 'Update All',
+            onConfirm: () => void handleUpdateAll(),
+            loading: updatingAll,
+          },
+          mutationLocked,
+          mutationLockedReason,
+        )}
       >
         {pendingUpdateEntries.length > 0 && (
           <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">

@@ -470,11 +470,15 @@ function LibraryListRow({
         description="This will permanently remove all installed files. You can reinstall it later from the Browse page."
         icon={OctagonX}
         tone="uninstall"
-        confirm={withLockAwareConfirm({
-          label: 'Uninstall',
-          onConfirm: handleUninstall,
-          loading: uninstallLoading,
-        }, mutationLocked, mutationLockedReason)}
+        confirm={withLockAwareConfirm(
+          {
+            label: 'Uninstall',
+            onConfirm: handleUninstall,
+            loading: uninstallLoading,
+          },
+          mutationLocked,
+          mutationLockedReason,
+        )}
       >
         <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">{entry.item.name}</span>
@@ -489,11 +493,15 @@ function LibraryListRow({
           description={`This will update the selected ${updateTarget.type === 'mod' ? 'mod' : 'map'} to its latest available version.`}
           icon={CircleFadingArrowUp}
           tone="update"
-          confirm={withLockAwareConfirm({
-            label: 'Update',
-            onConfirm: handleUpdate,
-            loading: updateLoading,
-          }, mutationLocked, mutationLockedReason)}
+          confirm={withLockAwareConfirm(
+            {
+              label: 'Update',
+              onConfirm: handleUpdate,
+              loading: updateLoading,
+            },
+            mutationLocked,
+            mutationLockedReason,
+          )}
         >
           {previewEntries.length > 0 && (
             <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">

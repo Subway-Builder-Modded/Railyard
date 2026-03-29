@@ -19,6 +19,12 @@ import {
   UpdateSubscriptionsToLatest,
 } from '../../wailsjs/go/profiles/UserProfiles';
 
+/**
+ * This module provides a thin wrapper over the Wails-generated client functions for subscription mutations, adding error handling for mutation locks and ensuring that the active profile ID is resolved before making requests. 
+ * 
+ * This wrapper exists to centralize gating of subscription mutations based on the current game state. Direct calls to UserProfiles wails functions will be considered invalid as part of the ESLint rules.
+ */
+
 export class SubscriptionMutationLockedError extends Error {
   readonly code = SUBSCRIPTION_MUTATION_LOCK_ERROR_CODE;
 
@@ -33,6 +39,7 @@ export {
   SUBSCRIPTION_MUTATION_LOCK_MESSAGE,
 };
 
+// isSubscriptionMutationLockedError is a helper type guard that checks if a given error is a SubscriptionMutationLockedError, either by instance or by shape.
 export function isSubscriptionMutationLockedError(
   error: unknown,
 ): error is SubscriptionMutationLockedErrorLike {
@@ -42,12 +49,15 @@ export function isSubscriptionMutationLockedError(
   return isSubscriptionMutationLockedErrorLike(error);
 }
 
+// ensureSubscriptionMutationUnlocked checks if subscription mutations are currently locked based on the game state, and throws a SubscriptionMutationLockedError if the game is currently running. 
+// This is used to prevent destructive subscription mutations that may adversely affect game state
 function ensureSubscriptionMutationUnlocked() {
   if (isSubscriptionMutationLocked(useGameStore.getState().running)) {
     throw new SubscriptionMutationLockedError();
   }
 }
 
+// mutateSubscriptionsForActiveProfile is a wrapper around the UpdateSubscriptions Wails function
 export async function mutateSubscriptionsForActiveProfile(args: {
   assets: Record<string, types.SubscriptionUpdateItem>;
   action: 'subscribe' | 'unsubscribe';
@@ -67,6 +77,7 @@ export async function mutateSubscriptionsForActiveProfile(args: {
   );
 }
 
+// applyLatestSubscriptionUpdatesForActiveProfile is a wrapper around the UpdateSubscriptionsToLatest Wails function
 export async function applyLatestSubscriptionUpdatesForActiveProfile(args: {
   targets?: Pick<{ id: string; type: AssetType }, 'id' | 'type'>[];
 }): Promise<types.UpdateSubscriptionsResult> {
@@ -82,6 +93,7 @@ export async function applyLatestSubscriptionUpdatesForActiveProfile(args: {
   );
 }
 
+// importAssetForActiveProfile is a wrapper around the ImportAsset Wails function
 export async function importAssetForActiveProfile(args: {
   assetType: AssetType;
   zipPath: string;

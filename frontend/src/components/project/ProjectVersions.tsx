@@ -440,14 +440,18 @@ export function ProjectVersions({
             </>
           }
           tone="files"
-          confirm={withLockAwareConfirm({
-            label: 'Install Anyway',
-            onConfirm: () => {
-              const version = prereleasePrompt.version;
-              setPrereleasePrompt(null);
-              doInstall(version);
+          confirm={withLockAwareConfirm(
+            {
+              label: 'Install Anyway',
+              onConfirm: () => {
+                const version = prereleasePrompt.version;
+                setPrereleasePrompt(null);
+                doInstall(version);
+              },
             },
-          }, mutationLocked, mutationLockedReason)}
+            mutationLocked,
+            mutationLockedReason,
+          )}
         />
       )}
 
@@ -549,14 +553,18 @@ export function ProjectVersions({
           description={`Installing ${itemName} ${conflictState.version} conflicts with an existing map. Replace the existing map to continue.`}
           icon={AlertTriangle}
           tone="files"
-          confirm={withLockAwareConfirm({
-            label: 'Replace',
-            onConfirm: () => {
-              const version = conflictState.version;
-              setConflictState(null);
-              void doInstall(version, true);
+          confirm={withLockAwareConfirm(
+            {
+              label: 'Replace',
+              onConfirm: () => {
+                const version = conflictState.version;
+                setConflictState(null);
+                void doInstall(version, true);
+              },
             },
-          }, mutationLocked, mutationLockedReason)}
+            mutationLocked,
+            mutationLockedReason,
+          )}
         >
           <div
             className={`rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground ${FILES_ACCENT.dialogPanel}`}
