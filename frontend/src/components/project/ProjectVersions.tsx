@@ -35,10 +35,10 @@ import { assetTypeToListingPath } from '@/lib/asset-types';
 import { getLocalAccentClasses } from '@/lib/local-accent';
 import { isCompatible } from '@/lib/semver';
 import {
-  isSubscriptionMutationLocked,
-  isSubscriptionMutationLockedError,
-  SUBSCRIPTION_MUTATION_LOCK_MESSAGE,
-} from '@/lib/subscription-mutation-lock';
+  handleSubscriptionMutationError,
+  useSubscriptionMutationLockState,
+  withLockAwareConfirm,
+} from '@/lib/subscription-mutation-ui';
 import {
   hasCancellationSyncErrors,
   hasOnlySilentSyncWarnings,
@@ -47,7 +47,6 @@ import {
 } from '@/lib/subscription-sync-error';
 import { cn } from '@/lib/utils';
 import { useDownloadQueueStore } from '@/stores/download-queue-store';
-import { useGameStore } from '@/stores/game-store';
 import {
   AssetConflictError,
   useInstalledStore,
@@ -156,15 +155,10 @@ export function ProjectVersions({
 
   const cancellationToastId = `cancel-install-${type}-${itemId}`;
   const installedVersion = getInstalledVersion(itemId);
-  const gameRunning = useGameStore((s) => s.running);
-  const mutationLocked = isSubscriptionMutationLocked(gameRunning);
+  const { locked: mutationLocked, reason: mutationLockedReason } =
+    useSubscriptionMutationLockState();
 
   const doInstall = async (version: string, replaceOnConflict = false) => {
-    if (mutationLocked) {
-      toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-      return;
-    }
-
     try {
       let result: types.UpdateSubscriptionsResult;
       if (type === 'mod') {
@@ -189,8 +183,7 @@ export function ProjectVersions({
       const queueText = total > 1 ? ` (${completed}/${total} Downloaded)` : '';
       toast.success(`Installed ${version} successfully.${queueText}`);
     } catch (err) {
-      if (isSubscriptionMutationLockedError(err)) {
-        toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
+      if (handleSubscriptionMutationError(err, () => {})) {
         return;
       }
       if (err instanceof AssetConflictError && err.conflicts.length > 0) {
@@ -447,18 +440,14 @@ export function ProjectVersions({
             </>
           }
           tone="files"
-          confirm={{
+          confirm={withLockAwareConfirm({
             label: 'Install Anyway',
             onConfirm: () => {
               const version = prereleasePrompt.version;
               setPrereleasePrompt(null);
               doInstall(version);
             },
-            disabled: mutationLocked,
-            disabledReason: mutationLocked
-              ? SUBSCRIPTION_MUTATION_LOCK_MESSAGE
-              : undefined,
-          }}
+          }, mutationLocked, mutationLockedReason)}
         />
       )}
 
@@ -560,18 +549,14 @@ export function ProjectVersions({
           description={`Installing ${itemName} ${conflictState.version} conflicts with an existing map. Replace the existing map to continue.`}
           icon={AlertTriangle}
           tone="files"
-          confirm={{
+          confirm={withLockAwareConfirm({
             label: 'Replace',
             onConfirm: () => {
               const version = conflictState.version;
               setConflictState(null);
               void doInstall(version, true);
             },
-            disabled: mutationLocked,
-            disabledReason: mutationLocked
-              ? SUBSCRIPTION_MUTATION_LOCK_MESSAGE
-              : undefined,
-          }}
+          }, mutationLocked, mutationLockedReason)}
         >
           <div
             className={`rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground ${FILES_ACCENT.dialogPanel}`}

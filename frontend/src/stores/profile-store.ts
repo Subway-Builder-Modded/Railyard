@@ -5,20 +5,15 @@ import {
   normalizeSearchViewMode,
   type SearchViewMode,
 } from '@/lib/search-view-mode';
-import {
-  isSubscriptionMutationLocked,
-  SUBSCRIPTION_MUTATION_LOCK_MESSAGE,
-} from '@/lib/subscription-mutation-lock';
+import { mutateSubscriptionsForActiveProfile } from '@/lib/subscription-mutation-client';
 
 import { types } from '../../wailsjs/go/models';
 import {
   GetActiveProfile,
   ResetUserProfiles,
-  UpdateSubscriptions,
   UpdateSystemPreferences,
   UpdateUIPreferences,
 } from '../../wailsjs/go/profiles/UserProfiles';
-import { useGameStore } from './game-store';
 
 interface UIPreferencesPayload {
   theme: string;
@@ -155,19 +150,13 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   },
 
   updateSubscription: async (type, id, action, version) => {
-    if (isSubscriptionMutationLocked(useGameStore.getState().running)) {
-      throw new Error(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-    }
-
-    // Always resolve a fresh profile to avoid stale IDs from cached state
-    const request = new types.UpdateSubscriptionsRequest({
-      profileId: get().profile?.id,
-      assets: { [id]: new types.SubscriptionUpdateItem({ version, type }) },
+    const result = await mutateSubscriptionsForActiveProfile({
+      assets: {
+        [id]: new types.SubscriptionUpdateItem({ version, type }),
+      },
       action,
-      applyMode: 'persist_and_sync',
+      replaceOnConflict: false,
     });
-
-    const result = await UpdateSubscriptions(request);
     if (result.status === 'error') throw new Error(result.message);
     set({ profile: result.profile });
   },

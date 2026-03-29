@@ -22,6 +22,34 @@ module.exports = [
       'simple-import-sort/imports': 'error',
       'simple-import-sort/exports': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/wailsjs/go/profiles/UserProfiles'],
+              importNames: [
+                'UpdateSubscriptions',
+                'UpdateSubscriptionsToLatest',
+                'ImportAsset',
+              ],
+              message:
+                'Use lib/subscription-mutation-client.ts (or read-only helpers) instead of direct mutation API imports.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      'src/lib/subscription-mutation-client.ts',
+      'src/lib/subscription-updates.ts',
+      '**/*.test.ts',
+      '**/*.test.tsx',
+    ],
+    rules: {
+      'no-restricted-imports': 'off',
     },
   },
   {

@@ -14,7 +14,6 @@ import {
   TrainTrack,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
 import { Link } from 'wouter';
 
 import { AppDialog } from '@/components/dialogs/AppDialog';
@@ -29,10 +28,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { AssetType } from '@/lib/asset-types';
 import { getLocalAccentClasses } from '@/lib/local-accent';
 import {
-  isSubscriptionMutationLocked,
-  isSubscriptionMutationLockedError,
-  SUBSCRIPTION_MUTATION_LOCK_MESSAGE,
-} from '@/lib/subscription-mutation-lock';
+  handleSubscriptionMutationError,
+  useSubscriptionMutationLockState,
+  withLockAwareConfirm,
+} from '@/lib/subscription-mutation-ui';
 import {
   indexPendingSubscriptionUpdates,
   type PendingUpdatesByKey,
@@ -40,7 +39,6 @@ import {
 } from '@/lib/subscription-updates';
 import { sortTaggedItemsByLastUpdated } from '@/lib/tagged-items';
 import { cn } from '@/lib/utils';
-import { useGameStore } from '@/stores/game-store';
 import { useInstalledStore } from '@/stores/installed-store';
 import { useRegistryStore } from '@/stores/registry-store';
 
@@ -64,8 +62,8 @@ export function HomePage() {
     isOperating,
     getInstalledVersion,
   } = useInstalledStore();
-  const gameRunning = useGameStore((s) => s.running);
-  const mutationLocked = isSubscriptionMutationLocked(gameRunning);
+  const { locked: mutationLocked, reason: mutationLockedReason } =
+    useSubscriptionMutationLockState();
 
   const [pendingUpdatesByKey, setPendingUpdatesByKey] =
     useState<PendingUpdatesByKey>({});
@@ -155,10 +153,6 @@ export function HomePage() {
       operations: Array<{ type: AssetType; id: string }>,
       options?: { trackBulkUpdate?: boolean },
     ) => {
-      if (mutationLocked) {
-        toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-        return;
-      }
       const trackBulkUpdate = options?.trackBulkUpdate ?? false;
       if (trackBulkUpdate) {
         setUpdatingAll(true);
@@ -168,23 +162,18 @@ export function HomePage() {
         await updateAssetsToLatest(operations);
         void fetchPendingUpdates();
       } catch (err) {
-        if (isSubscriptionMutationLockedError(err)) {
-          toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-        } // Other errors are surfaced via toasts in the store.
+        handleSubscriptionMutationError(err, () => {});
+        // Other errors are surfaced via toasts in the store.
       } finally {
         if (trackBulkUpdate) {
           setUpdatingAll(false);
         }
       }
     },
-    [fetchPendingUpdates, mutationLocked, updateAssetsToLatest],
+    [fetchPendingUpdates, updateAssetsToLatest],
   );
 
   const handleUpdateAll = useCallback(async () => {
-    if (mutationLocked) {
-      toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-      return;
-    }
     setUpdateAllConfirmOpen(false);
     await runUpdateOperations(
       pendingUpdateEntries.map(({ type, id }) => ({ type, id })),
@@ -354,15 +343,11 @@ export function HomePage() {
         description={`This will update ${pendingUpdateEntries.length} asset${pendingUpdateEntries.length === 1 ? '' : 's'}.`}
         icon={CircleFadingArrowUp}
         tone="update"
-        confirm={{
+        confirm={withLockAwareConfirm({
           label: 'Update All',
           onConfirm: () => void handleUpdateAll(),
           loading: updatingAll,
-          disabled: mutationLocked,
-          disabledReason: mutationLocked
-            ? SUBSCRIPTION_MUTATION_LOCK_MESSAGE
-            : undefined,
-        }}
+        }, mutationLocked, mutationLockedReason)}
       >
         {pendingUpdateEntries.length > 0 && (
           <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">

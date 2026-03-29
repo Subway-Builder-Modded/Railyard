@@ -33,10 +33,10 @@ import { getCountryFlagIcon } from '@/lib/flags';
 import { getLocalAccentClasses } from '@/lib/local-accent';
 import { formatSourceQuality } from '@/lib/map-filter-values';
 import {
-  isSubscriptionMutationLocked,
-  isSubscriptionMutationLockedError,
-  SUBSCRIPTION_MUTATION_LOCK_MESSAGE,
-} from '@/lib/subscription-mutation-lock';
+  handleSubscriptionMutationError,
+  useSubscriptionMutationLockState,
+  withLockAwareConfirm,
+} from '@/lib/subscription-mutation-ui';
 import {
   hasCancellationSyncErrors,
   hasOnlySilentSyncWarnings,
@@ -44,7 +44,6 @@ import {
   toSubscriptionSyncErrorState,
 } from '@/lib/subscription-sync-error';
 import { useDownloadQueueStore } from '@/stores/download-queue-store';
-import { useGameStore } from '@/stores/game-store';
 import {
   AssetConflictError,
   useInstalledStore,
@@ -89,8 +88,8 @@ export function ProjectHeader({
 }: ProjectHeaderProps) {
   const mapItem = isMapManifest(item) ? item : null;
   const cancellationToastId = `cancel-install-${type}-${item.id}`;
-  const gameRunning = useGameStore((s) => s.running);
-  const mutationLocked = isSubscriptionMutationLocked(gameRunning);
+  const { locked: mutationLocked, reason: mutationLockedReason } =
+    useSubscriptionMutationLockState();
 
   const [uninstallOpen, setUninstallOpen] = useState(false);
   const [uninstallLoading, setUninstallLoading] = useState(false);
@@ -132,11 +131,6 @@ export function ProjectHeader({
     gameVersion && latestVersion && !latestCompatibleVersion;
 
   const doInstall = async (version: string, replaceOnConflict = false) => {
-    if (mutationLocked) {
-      toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-      return;
-    }
-
     try {
       let result: types.UpdateSubscriptionsResult;
       if (type === 'mod') {
@@ -163,8 +157,7 @@ export function ProjectHeader({
         `${item.name} ${version} installed successfully.${queueText}`,
       );
     } catch (err) {
-      if (isSubscriptionMutationLockedError(err)) {
-        toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
+      if (handleSubscriptionMutationError(err, () => {})) {
         return;
       }
       if (err instanceof AssetConflictError && err.conflicts.length > 0) {
@@ -201,19 +194,13 @@ export function ProjectHeader({
   };
 
   const handleUninstall = async () => {
-    if (mutationLocked) {
-      toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-      return;
-    }
     setUninstallLoading(true);
     try {
       await uninstallAssets([{ id: item.id, type }]);
       toast.success(`${item.name} has been uninstalled.`);
       setUninstallOpen(false);
     } catch (err) {
-      if (isSubscriptionMutationLockedError(err)) {
-        toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-      } else {
+      if (!handleSubscriptionMutationError(err, () => {})) {
         toast.error(`Failed to uninstall ${item.name}.`);
       }
     } finally {
@@ -257,9 +244,7 @@ export function ProjectHeader({
                 id: cancellationToastId,
               });
             } catch (err) {
-              if (isSubscriptionMutationLockedError(err)) {
-                toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-              } else {
+              if (!handleSubscriptionMutationError(err, () => {})) {
                 toast.error(err instanceof Error ? err.message : String(err));
               }
             }
@@ -480,15 +465,11 @@ export function ProjectHeader({
         description="This will permanently remove all installed files. You can reinstall it later from the Browse page."
         icon={OctagonX}
         tone="uninstall"
-        confirm={{
+        confirm={withLockAwareConfirm({
           label: 'Uninstall',
           onConfirm: handleUninstall,
           loading: uninstallLoading,
-          disabled: mutationLocked,
-          disabledReason: mutationLocked
-            ? SUBSCRIPTION_MUTATION_LOCK_MESSAGE
-            : undefined,
-        }}
+        }, mutationLocked, mutationLockedReason)}
       >
         <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">{item.name}</span>
@@ -511,17 +492,13 @@ export function ProjectHeader({
             </>
           }
           tone="files"
-          confirm={{
+          confirm={withLockAwareConfirm({
             label: 'Install Anyway',
             onConfirm: () => {
               setPrereleasePrompt(false);
               doInstall(effectiveVersion.version);
             },
-            disabled: mutationLocked,
-            disabledReason: mutationLocked
-              ? SUBSCRIPTION_MUTATION_LOCK_MESSAGE
-              : undefined,
-          }}
+          }, mutationLocked, mutationLockedReason)}
         />
       )}
 
@@ -623,18 +600,14 @@ export function ProjectHeader({
           description={`Installing ${item.name} ${conflictState.version} conflicts with an existing map. Replace the existing map to continue.`}
           icon={AlertTriangle}
           tone="files"
-          confirm={{
+          confirm={withLockAwareConfirm({
             label: 'Replace',
             onConfirm: () => {
               const version = conflictState.version;
               setConflictState(null);
               void doInstall(version, true);
             },
-            disabled: mutationLocked,
-            disabledReason: mutationLocked
-              ? SUBSCRIPTION_MUTATION_LOCK_MESSAGE
-              : undefined,
-          }}
+          }, mutationLocked, mutationLockedReason)}
         >
           <div
             className={`rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground ${FILES_ACCENT.dialogPanel}`}

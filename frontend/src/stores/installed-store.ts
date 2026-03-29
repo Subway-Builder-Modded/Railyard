@@ -2,26 +2,18 @@ import { create } from 'zustand';
 
 import type { AssetType } from '@/lib/asset-types';
 import {
-  isSubscriptionMutationLocked,
-  SUBSCRIPTION_MUTATION_LOCK_ERROR_CODE,
-  SUBSCRIPTION_MUTATION_LOCK_MESSAGE,
-} from '@/lib/subscription-mutation-lock';
-import {
-  requestLatestSubscriptionUpdatesForActiveProfile,
-  resolveActiveProfileID,
-} from '@/lib/subscription-updates';
+  applyLatestSubscriptionUpdatesForActiveProfile,
+  importAssetForActiveProfile,
+  mutateSubscriptionsForActiveProfile,
+} from '@/lib/subscription-mutation-client';
+export { SubscriptionMutationLockedError } from '@/lib/subscription-mutation-client';
 
 import { types } from '../../wailsjs/go/models';
-import {
-  ImportAsset,
-  UpdateSubscriptions,
-} from '../../wailsjs/go/profiles/UserProfiles';
 import {
   GetInstalledMapsResponse,
   GetInstalledModsResponse,
 } from '../../wailsjs/go/registry/Registry';
 import { useDownloadQueueStore } from './download-queue-store';
-import { useGameStore } from './game-store';
 
 export class SubscriptionSyncError extends Error {
   readonly status: string;
@@ -62,15 +54,6 @@ export class InvalidMapCodeError extends Error {
     super(message);
     this.name = 'InvalidMapCodeError';
     this.profileErrors = profileErrors;
-  }
-}
-
-export class SubscriptionMutationLockedError extends Error {
-  readonly code = SUBSCRIPTION_MUTATION_LOCK_ERROR_CODE;
-
-  constructor(message = SUBSCRIPTION_MUTATION_LOCK_MESSAGE) {
-    super(message);
-    this.name = 'SubscriptionMutationLockedError';
   }
 }
 
@@ -148,12 +131,6 @@ interface InstalledState {
 }
 
 export const useInstalledStore = create<InstalledState>((set, get) => {
-  const throwIfSubscriptionMutationLocked = () => {
-    if (isSubscriptionMutationLocked(useGameStore.getState().running)) {
-      throw new SubscriptionMutationLockedError();
-    }
-  };
-
   const getInstalledLists = async () => {
     const [modsResponse, mapsResponse] = await Promise.all([
       GetInstalledModsResponse(),
@@ -217,15 +194,11 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
       throw new Error('No assets provided for subscription update');
     }
 
-    const profileID = await resolveActiveProfileID();
-    const request = new types.UpdateSubscriptionsRequest({
-      profileId: profileID,
+    const result = await mutateSubscriptionsForActiveProfile({
       assets,
       action,
-      applyMode: 'persist_and_sync',
-      replaceOnConflict: replaceOnConflict,
+      replaceOnConflict,
     });
-    const result = await UpdateSubscriptions(request);
     if (result.status === 'warn' && (result.conflicts?.length ?? 0) > 0) {
       throw new AssetConflictError(
         resolveSubscriptionSyncMessage(result, 'Asset conflict detected'),
@@ -249,7 +222,6 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
     assetType: AssetType,
     replaceOnConflict = false,
   ) => {
-    throwIfSubscriptionMutationLocked();
     useDownloadQueueStore.getState().enqueue();
     set((state) => ({
       installingVersionById: {
@@ -290,7 +262,6 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
   const uninstallAssets = async (
     assets: Array<{ id: string; type: AssetType }>,
   ) => {
-    throwIfSubscriptionMutationLocked();
     if (assets.length === 0) {
       throw new Error('No assets provided for uninstall');
     }
@@ -327,7 +298,6 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
   const updateAssetsToLatest = async (
     assets: Array<{ id: string; type: AssetType }>,
   ) => {
-    throwIfSubscriptionMutationLocked();
     if (assets.length === 0) {
       throw new Error('No assets provided for update');
     }
@@ -338,8 +308,7 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
     set({ error: null });
 
     try {
-      const result = await requestLatestSubscriptionUpdatesForActiveProfile({
-        apply: true,
+      const result = await applyLatestSubscriptionUpdatesForActiveProfile({
         targets: assets,
       });
       if (result.status === 'error') {
@@ -372,19 +341,14 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
     zipPath: string,
     replaceOnConflict = false,
   ) => {
-    throwIfSubscriptionMutationLocked();
-    const profileID = await resolveActiveProfileID();
     set({ error: null });
 
     try {
-      const result = await ImportAsset(
-        new types.ImportAssetRequest({
-          profileId: profileID,
-          assetType: 'map',
-          zipPath,
-          replaceOnConflict,
-        }),
-      );
+      const result = await importAssetForActiveProfile({
+        assetType: 'map',
+        zipPath,
+        replaceOnConflict,
+      });
       if (result.status === 'warn' && (result.conflicts?.length ?? 0) > 0) {
         throw new AssetConflictError(
           resolveSubscriptionSyncMessage(result, 'Asset conflict detected'),
@@ -470,7 +434,6 @@ export const useInstalledStore = create<InstalledState>((set, get) => {
     importMapFromZip,
 
     cancelPendingInstall: async (type: AssetType, id: string) => {
-      throwIfSubscriptionMutationLocked();
       return uninstallAssets([{ id, type }]);
     },
 

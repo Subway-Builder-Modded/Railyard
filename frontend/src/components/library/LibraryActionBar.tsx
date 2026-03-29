@@ -12,9 +12,10 @@ import { Button } from '@/components/ui/button';
 import { type InstalledTaggedItem } from '@/hooks/use-filtered-installed-items';
 import { getLocalAccentClasses } from '@/lib/local-accent';
 import {
-  isSubscriptionMutationLockedError,
-  SUBSCRIPTION_MUTATION_LOCK_MESSAGE,
-} from '@/lib/subscription-mutation-lock';
+  handleSubscriptionMutationError,
+  useSubscriptionMutationLockState,
+  withLockAwareConfirm,
+} from '@/lib/subscription-mutation-ui';
 import {
   type AssetTarget,
   composeAssetKey,
@@ -22,7 +23,6 @@ import {
   type PendingUpdateTarget,
   toPendingUpdateTargets,
 } from '@/lib/subscription-updates';
-import { useGameStore } from '@/stores/game-store';
 import { useInstalledStore } from '@/stores/installed-store';
 import { useLibraryStore } from '@/stores/library-store';
 
@@ -42,7 +42,8 @@ export function LibraryActionBar({
 }: LibraryActionBarProps) {
   const { selectedIds, removeSelected } = useLibraryStore();
   const { uninstallAssets, updateAssetsToLatest } = useInstalledStore();
-  const gameRunning = useGameStore((s) => s.running);
+  const { locked: mutationLocked, reason: mutationLockedReason } =
+    useSubscriptionMutationLockState();
   const [uninstallTargets, setUninstallTargets] = useState<
     AssetTarget[] | null
   >(null);
@@ -68,18 +69,10 @@ export function LibraryActionBar({
   );
 
   const handleRemove = () => {
-    if (gameRunning) {
-      toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-      return;
-    }
     setUninstallTargets(selectedTargets);
   };
 
   const handleUpdate = () => {
-    if (gameRunning) {
-      toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-      return;
-    }
     setUpdateTargets(selectedUpdateTargets);
   };
 
@@ -103,11 +96,10 @@ export function LibraryActionBar({
       void onRefreshPendingUpdates();
       setUninstallTargets(null);
     } catch (err) {
-      if (isSubscriptionMutationLockedError(err)) {
-        toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-      } else {
-        toast.error('Failed to uninstall selected assets.');
-      }
+      handleSubscriptionMutationError(
+        err,
+        'Failed to uninstall selected assets.',
+      );
     } finally {
       setUninstallLoading(false);
     }
@@ -129,15 +121,12 @@ export function LibraryActionBar({
       void onRefreshPendingUpdates();
       setUpdateTargets(null);
     } catch (err) {
-      if (isSubscriptionMutationLockedError(err)) {
-        toast.warning(SUBSCRIPTION_MUTATION_LOCK_MESSAGE);
-      } else {
-        toast.error(
-          updateTargets.length === 1
-            ? `Failed to update ${updateTargets[0].name}.`
-            : 'Failed to update one or more selected assets.',
-        );
-      }
+      handleSubscriptionMutationError(
+        err,
+        updateTargets.length === 1
+          ? `Failed to update ${updateTargets[0].name}.`
+          : 'Failed to update one or more selected assets.',
+      );
     } finally {
       setUpdateLoading(false);
     }
@@ -185,7 +174,7 @@ export function LibraryActionBar({
             size="sm"
             onClick={handleUpdate}
             className={`gap-1.5 ${UPDATE_ACCENT_BUTTON_CLASS}`}
-            disabled={gameRunning}
+            disabled={mutationLocked}
           >
             <CircleFadingArrowUp className="h-3.5 w-3.5" />
             Update Selected
@@ -197,7 +186,7 @@ export function LibraryActionBar({
           size="sm"
           onClick={handleRemove}
           className="gap-1.5"
-          disabled={gameRunning}
+          disabled={mutationLocked}
         >
           <Trash2 className="h-3.5 w-3.5" />
           Uninstall
@@ -218,15 +207,11 @@ export function LibraryActionBar({
           }
           icon={OctagonX}
           tone="uninstall"
-          confirm={{
+          confirm={withLockAwareConfirm({
             label: 'Uninstall',
             onConfirm: handleConfirmUninstall,
             loading: uninstallLoading,
-            disabled: gameRunning,
-            disabledReason: gameRunning
-              ? SUBSCRIPTION_MUTATION_LOCK_MESSAGE
-              : undefined,
-          }}
+          }, mutationLocked, mutationLockedReason)}
         >
           <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             <ul className="space-y-1">
@@ -259,15 +244,11 @@ export function LibraryActionBar({
           }
           icon={CircleFadingArrowUp}
           tone="update"
-          confirm={{
+          confirm={withLockAwareConfirm({
             label: 'Update',
             onConfirm: handleConfirmUpdate,
             loading: updateLoading,
-            disabled: gameRunning,
-            disabledReason: gameRunning
-              ? SUBSCRIPTION_MUTATION_LOCK_MESSAGE
-              : undefined,
-          }}
+          }, mutationLocked, mutationLockedReason)}
         >
           {updatePreviewEntries.length > 0 && (
             <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
